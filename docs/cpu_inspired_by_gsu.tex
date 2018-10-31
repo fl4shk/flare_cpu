@@ -7,7 +7,7 @@
 \usepackage{lmodern}
 %\usepackage{setspace}
 %\usepackage[nottoc]{tocbibind}
-%\usepackage[font=large]{caption}
+\usepackage[font=large]{caption}
 %\usepackage{framed}
 %\usepackage{tabularx}
 %\usepackage{amsmath}
@@ -108,17 +108,33 @@
 	compatible.  It takes some of the ideas from the GSU and runs with
 	them.
 
+	\newpage
+	\tableofcontents
+	\newpage
+
 	\subsection{Registers}
 	There are sixteen general-purpose registers:  \texttt{r0}, \texttt{r1},
 	\texttt{r2}, \texttt{...}, \texttt{r12}, \texttt{lr}, \texttt{fp},
 	\texttt{sp}.  From the hardware's perspective, they are all equivalent. 
-	Each register is 32 bits long.
+	Each register is 32 bits long.  For special purpose registers, there
+	are also \texttt{pc}, the program counter (which is 32 bits long), and
+	the \texttt{flags}.  Also there are the interrupts-related registers:
+	\texttt{ids} (the destination to go to upon an interrupt happening),
+	\texttt{ira} (the program counter value to return to after an
+	interrupt) and \texttt{ie} (whether or not interrupts are enabled).
+	Here are the flags:
 
-	For special purpose registers, there are also \texttt{pc}, the program
-	counter, and the \texttt{flags}.  Also there are the interrupts-related
-	registers:  \texttt{ids} (the destination to go to upon an interrupt
-	happening), \texttt{ira} (the program counter value to return to after
-	an interrupt) and \texttt{ie} (whether or not interrupts are enabled).
+	\begin{table}[H]
+		\begin{center}
+			\caption{The Flags}
+			\label{tab:flags}
+			\begin{tabular}{|c|c|c|c|}
+				\hline
+				Zero (Z) & Carry (C) & oVerflow (V) & Negative (N)\\
+				\hline
+			\end{tabular}
+		\end{center}
+	\end{table}
 
 \end{document}
 
