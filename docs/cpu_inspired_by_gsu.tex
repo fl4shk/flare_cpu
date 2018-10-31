@@ -1,0 +1,124 @@
+\documentclass{article}
+
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{fancyvrb}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+%\usepackage{setspace}
+%\usepackage[nottoc]{tocbibind}
+%\usepackage[font=large]{caption}
+%\usepackage{framed}
+%\usepackage{tabularx}
+%\usepackage{amsmath}
+%\usepackage{hyperref}
+
+
+\title{CPU Inspired By GSU}
+\date{2018-10-31}
+\author{FL4SHK}
+
+%% Hide section, subsection, and subsubsection numbering
+%\renewcommand{\thesection}{}
+%\renewcommand{\thesubsection}{}
+%\renewcommand{\thesubsubsection}{}
+
+
+% Alternative form of doing section stuff
+\renewcommand{\thesection}{}
+\renewcommand{\thesubsection}{\arabic{section}.\arabic{subsection}}
+\makeatletter
+\def\@seccntformat#1{\csname #1ignore\expandafter\endcsname\csname the#1\endcsname\quad}
+\let\sectionignore\@gobbletwo
+\let\latex@numberline\numberline
+\def\numberline#1{\if\relax#1\relax\else\latex@numberline{#1}\fi}
+\makeatother
+
+\makeatletter
+\renewcommand\tableofcontents{%
+    \@starttoc{toc}%
+}
+\makeatother
+
+%Figures
+%\begin{figure}[H]
+%	\includegraphics[width=\linewidth]{example.png}
+%\end{figure}
+
+% Verbatim text
+%\VerbatimInput{main.cpp}
+
+%% Fixed-width text
+%\texttt{module FullAdder(input logic a, b, c_in, output logic s, c_out);}
+%% Bold
+%\textbf{green eggs}
+%% Italic
+%\textit{and}
+%% Underline
+%\underline{eggs}
+
+%% Non-numbered list
+%\begin{itemize}
+%\item item 0
+%\item item 1
+%\end{itemize}
+
+%% Numbered list
+%\begin{enumerate}
+%\item item 0
+%\item item 1
+%\end{enumerate}
+
+%% Spaces and new lines
+%LaTeX ignores extra spaces and new lines.
+%Place \\ at the end of a line to create a new line (but not create a new
+%paragraph)
+
+%% Use "\noindent" to prevent a paragraph from indenting
+
+%% Tables
+%\begin{table}[H]
+%	\begin{center}
+%		\caption{Results for \texttt{blocksPerGrid = 5}}:
+%		\label{tab:table0}
+%		\begin{tabular}{c|c}
+%			\textbf{\texttt{threadsPerBlock}}
+%				& \textbf{\texttt{scaling()} Running Time (us)}\\
+%			\hline
+%			32 & 156.39\\
+%			64 & 163.59\\
+%			128 & 155.62\\
+%			256 & 155.56\\
+%			512 & 161.57\\
+%			1024 & 166.85\\
+%		\end{tabular}
+%	\end{center}
+%\end{table}
+
+\begin{document}
+	\maketitle
+	\pagenumbering{gobble}
+	\newpage
+	\pagenumbering{arabic}
+
+
+	\section{Introduction}
+	This is an instruction set designed to be similar to the SuperFX/GSU,
+	while not being binary compatible, nor even assembly language
+	compatible.  It takes some of the ideas from the GSU and runs with
+	them.
+
+	\subsection{Registers}
+	There are sixteen general-purpose registers:  \texttt{r0}, \texttt{r1},
+	\texttt{r2}, \texttt{...}, \texttt{r12}, \texttt{lr}, \texttt{fp},
+	\texttt{sp}.  From the hardware's perspective, they are all equivalent. 
+	Each register is 32 bits long.
+
+	For special purpose registers, there are also \texttt{pc}, the program
+	counter, and the \texttt{flags}.  Also there are the interrupts-related
+	registers:  \texttt{ids} (the destination to go to upon an interrupt
+	happening), \texttt{ira} (the program counter value to return to after
+	an interrupt) and \texttt{ie} (whether or not interrupts are enabled).
+
+\end{document}
+
