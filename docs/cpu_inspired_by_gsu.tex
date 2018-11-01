@@ -455,6 +455,8 @@
 		\item \texttt{b} encodes register \texttt{rB}
 	\end{itemize}
 
+	\doublespacing
+
 	At the assembly language level, this instruction is simply
 	\texttt{pick rB}, but as with \texttt{pre}, it isn't typical to use
 	this instruction directly in assembly language source code.  Instead,
@@ -471,10 +473,101 @@
 	For all instructions, the default value of \texttt{rB} is \texttt{rA},
 	except when the previous instruction was a \texttt{pick} instruction.
 
-	%\subsection{Instruction Group 4:  Relative Branches}
-	%The following encoding is used, with each character representing one
-	%bit:  \\
-	%\texttt{0111 oooo iiii iiii}, where
+	\subsection{Instruction Group 4:  Relative Branches}
+	The following encoding is used, with each character representing one
+	bit:  \\
+	\texttt{0111 oooo iiii iiii}, where
+
+	\singlespacing
+	\begin{itemize}
+		\item \texttt{o} is the opcode
+		\item \texttt{i} is an 8-bit sign-extended immediate, which can
+		still be affected by \texttt{pre}, but when \texttt{pre} is the
+		instruction before this one, only bits \texttt{[4:0]} of the
+		immediate value encoded into this instruction will be used by the
+		hardware, with the remaining bits of the immediate coming from
+		\texttt{pre}.  Thus, \texttt{pre} can still only form a 17-bit
+		immediate for relative branches.
+	\end{itemize}
+	\doublespacing
+
+	Here is a list of instructions from this encoding group.
+
+	\singlespacing
+	\begin{itemize}
+		\item Opcode \texttt{0x0}:
+			\texttt{\textbf{bnv} simm}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (0) pc <= pc + simm + 2;} This is a NOP.
+		\end{itemize}
+		\item Opcode \texttt{0x1}:
+			\texttt{\textbf{bra} simm}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (1) pc <= pc + simm + 2;}
+		\end{itemize}
+		\item Opcode \texttt{0x2}:
+			\texttt{\textbf{bge} simm}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (!(flags.N XOR flags.V)) pc <= pc + simm + 2;}
+		\end{itemize}
+		\item Opcode \texttt{0x3}:
+			\texttt{\textbf{blt} simm}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (flags.N XOR flags.V) pc <= pc + simm + 2;}
+		\end{itemize}
+		\item Opcode \texttt{0x4}:
+			\texttt{\textbf{bne} simm}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (!flags.Z) pc <= pc + simm + 2;}
+		\end{itemize}
+		\item Opcode \texttt{0x5}:
+			\texttt{\textbf{beq} simm}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (flags.Z) pc <= pc + simm + 2;}
+		\end{itemize}
+		\item Opcode \texttt{0x6}:
+			\texttt{\textbf{bpl} simm}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (!flags.N) pc <= pc + simm + 2;}
+		\end{itemize}
+		\item Opcode \texttt{0x7}:
+			\texttt{\textbf{bmi} simm}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (flags.N) pc <= pc + simm + 2;}
+		\end{itemize}
+		\item Opcode \texttt{0x8}:
+			\texttt{\textbf{bcc} simm}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (!flags.C) pc <= pc + simm + 2;}
+		\end{itemize}
+		\item Opcode \texttt{0x9}:
+			\texttt{\textbf{bcs} simm}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (flags.C) pc <= pc + simm + 2;}
+		\end{itemize}
+		\item Opcode \texttt{0xa}:
+			\texttt{\textbf{bvc} simm}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (!flags.V) pc <= pc + simm + 2;}
+		\end{itemize}
+		\item Opcode \texttt{0xb}:
+			\texttt{\textbf{bvs} simm}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (flags.V) pc <= pc + simm + 2;}
+		\end{itemize}
+	\end{itemize}
 
 
 \end{document}
