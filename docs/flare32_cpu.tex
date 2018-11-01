@@ -14,8 +14,8 @@
 %\usepackage{hyperref}
 
 
-\title{CPU Inspired By GSU}
-\date{2018-10-31}
+\title{Flare32 CPU}
+\date{2018-11-1}
 \author{FL4SHK}
 
 %% Hide section, subsection, and subsubsection numbering
@@ -164,14 +164,13 @@
 	At the assembly language level, the instruction is simply
 	\texttt{pre expr}, but it isn't typical to use this instruction
 	directly in assembly language source code.  Instead, when an immediate
-	value will not fit in a 5-bit signed immediate, but will fit in an
-	18-bit signed immediate, this instruction will be inserted by the
-	assembler right before the instruction using an immediate value.  The
-	13-bit constant will be used as bits \texttt{[17:5]} of the immediate
-	value of the following instruction.  The full 18-bit immediate value
-	will then be sign extended to 32 bits.  Also, if the previous
-	instruction was a \texttt{pre} (or a \texttt{pick}), interrupts will
-	not be serviced.
+	value will not fit in a 5-bit signed immediate, this instruction will
+	be inserted by the assembler right before the instruction using an
+	immediate value.  The 13-bit constant will be used as bits
+	\texttt{[17:5]} of the immediate value of the following instruction.
+	The full 18-bit immediate value will then be sign extended to 32 bits.
+	Also, if the previous instruction was a \texttt{pre} (or a
+	\texttt{pick}), interrupts will not be serviced.
 
 	\subsection{Instruction Group 1:  ALU Instr with Immediate}
 	The following encoding is used, with each character representing one
@@ -363,7 +362,7 @@
 		\begin{itemize}
 			\item Mnemonic for when flags not affected:  \texttt{adc}
 			\item Mnemonic for when flags affected:  \texttt{adc.f}
-			\item Note:  Add with carry
+			\item Note:  Add with Carry
 			\item Affectable flags:
 				\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
 		\end{itemize}
@@ -380,7 +379,7 @@
 			\texttt{\textbf{cmp} rA, rC}
 		\begin{itemize}
 			\item Note:  Compare \texttt{rA} to \texttt{rC}.  \texttt{cmp}
-			\textit{always} is able to affect flags, independent of the
+			is \textit{always} able to affect flags, independent of the
 			encoded \texttt{f} bit of the instruction.
 			\item Affectable flags:
 				\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
@@ -445,24 +444,25 @@
 	\end{itemize}
 
 	\doublespacing
-	\subsection{Instruction Group 3:  Pick \texttt{rB}}
+	\subsection{Instruction Group 3:  Jumps and \texttt{pick}}
 	The following encoding is used, with each character representing one
 	bit:  \\
-	\texttt{0110 0000 0000 bbbb}, where
+	\texttt{0110 oooo 0000 bbbb}, where
 
 	\singlespacing
 	\begin{itemize}
+		\item \texttt{o} is the opcode
 		\item \texttt{b} encodes register \texttt{rB}
 	\end{itemize}
 
 	\doublespacing
 
-	At the assembly language level, this instruction is simply
-	\texttt{pick rB}, but as with \texttt{pre}, it isn't typical to use
-	this instruction directly in assembly language source code.  Instead,
-	when an instruction is typed as \texttt{instr rA, rB, operand}
-	\textit{and} when \texttt{rA} is not the same register as \texttt{rB},
-	a \texttt{pick rB} instruction will be inserted by the assembler before
+	At the assembly language level, \texttt{pick} is simply \texttt{pick
+	rB}, but as with \texttt{pre}, it isn't typical to use this instruction
+	directly in assembly language source code.  Instead, when an
+	instruction is typed as \texttt{instr rA, rB, operand} \textit{and}
+	when \texttt{rA} is not the same register as \texttt{rB}, a
+	\texttt{pick rB} instruction will be inserted by the assembler before
 	the instruction in the source code.  As mentioned before, when the
 	instruction previous to the current one is either a \texttt{pre} or a
 	\texttt{pick}, interrupts will not be serviced.  Note that since
@@ -472,6 +472,89 @@
 
 	For all instructions, the default value of \texttt{rB} is \texttt{rA},
 	except when the previous instruction was a \texttt{pick} instruction.
+
+	Here is the list of instructions from this encoding group, including
+	\texttt{pick} itself.
+
+	\singlespacing
+	\begin{itemize}
+		\item Opcode \texttt{0x0}:
+			\texttt{\textbf{jnv} rB}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (0) pc <= rB;} This is a NOP.
+		\end{itemize}
+		\item Opcode \texttt{0x1}:
+			\texttt{\textbf{jmp} rB}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (1) pc <= rB;}
+		\end{itemize}
+		\item Opcode \texttt{0x2}:
+			\texttt{\textbf{jge} rB}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (!(flags.N XOR flags.V)) pc <= rB;}
+		\end{itemize}
+		\item Opcode \texttt{0x3}:
+			\texttt{\textbf{jlt} rB}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (flags.N XOR flags.V) pc <= rB;}
+		\end{itemize}
+		\item Opcode \texttt{0x4}:
+			\texttt{\textbf{jne} rB}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (!flags.Z) pc <= rB;}
+		\end{itemize}
+		\item Opcode \texttt{0x5}:
+			\texttt{\textbf{jeq} rB}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (flags.Z) pc <= rB;}
+		\end{itemize}
+		\item Opcode \texttt{0x6}:
+			\texttt{\textbf{jpl} rB}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (!flags.N) pc <= rB;}
+		\end{itemize}
+		\item Opcode \texttt{0x7}:
+			\texttt{\textbf{jmi} rB}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (flags.N) pc <= rB;}
+		\end{itemize}
+		\item Opcode \texttt{0x8}:
+			\texttt{\textbf{jcc} rB}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (!flags.C) pc <= rB;}
+		\end{itemize}
+		\item Opcode \texttt{0x9}:
+			\texttt{\textbf{jcs} rB}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (flags.C) pc <= rB;}
+		\end{itemize}
+		\item Opcode \texttt{0xa}:
+			\texttt{\textbf{jvc} rB}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (!flags.V) pc <= rB;}
+		\end{itemize}
+		\item Opcode \texttt{0xb}:
+			\texttt{\textbf{jvs} rB}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (flags.V) pc <= rB;}
+		\end{itemize}
+		\item Opcode \texttt{0xc}:
+			\texttt{\textbf{pick} rB}
+	\end{itemize}
+
+	\doublespacing
 
 	\subsection{Instruction Group 4:  Relative Branches}
 	The following encoding is used, with each character representing one
