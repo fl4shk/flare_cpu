@@ -5,12 +5,12 @@
 \usepackage{fancyvrb}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
-%\usepackage{setspace}
-%\usepackage[nottoc]{tocbibind}
+\usepackage{setspace}
+\usepackage[nottoc]{tocbibind}
 \usepackage[font=large]{caption}
-%\usepackage{framed}
-%\usepackage{tabularx}
-%\usepackage{amsmath}
+\usepackage{framed}
+\usepackage{tabularx}
+\usepackage{amsmath}
 %\usepackage{hyperref}
 
 
@@ -102,16 +102,22 @@
 	\pagenumbering{arabic}
 
 
-	\section{Introduction}
+	\doublespacing
+	\section{Abstract}
+	\setcounter{section}{-1}
 	This is an instruction set designed to be similar to the SuperFX/GSU,
 	while not being binary compatible, nor even assembly language
 	compatible.  It takes some of the ideas from the GSU and runs with
 	them.
 
 	\newpage
+	\singlespacing
+	\section{Table of Contents}
 	\tableofcontents
 	\newpage
 
+	\doublespacing
+	\section{Introduction}
 	\subsection{Registers}
 	There are sixteen general-purpose registers:  \texttt{r0}, \texttt{r1},
 	\texttt{r2}, \texttt{...}, \texttt{r12}, \texttt{lr}, \texttt{fp},
@@ -122,6 +128,10 @@
 	\texttt{ids} (the destination to go to upon an interrupt happening),
 	\texttt{ira} (the program counter value to return to after an
 	interrupt) and \texttt{ie} (whether or not interrupts are enabled).
+	Two more registers are \texttt{hi} and \texttt{lo}, which are used as
+	the high 32 bits and low 32 bits of the result of a 32 by 32 -> 64
+	multiplication, or as the high 32 bits and low 32 bits of the result of
+	a 64 by 32 -> 64 division.
 	Here are the flags:
 
 	\begin{table}[H]
@@ -135,6 +145,337 @@
 			\end{tabular}
 		\end{center}
 	\end{table}
+
+	\newpage
+	\section{Instruction Set}
+	While this machine takes inspiration from the GSU, it uses 16-bit
+	instructions rather than 8-bit ones.
+
+	\subsection{Instruction Group 0:  The \texttt{pre} Instruction}
+	The following encoding is used, with each character representing one
+	bit:  \\
+	\texttt{000i iiii iiii iiii}, where 
+	
+	\singlespacing
+	\begin{itemize}
+		\item \texttt{i} is a 13-bit constant.
+	\end{itemize}
+
+	At the assembly language level, the instruction is simply
+	\texttt{pre expr}, but it isn't typical to use this instruction
+	directly in assembly language source code.  Instead, when an immediate
+	value will not fit in a 5-bit signed immediate, but will fit in an
+	18-bit signed immediate, this instruction will be inserted by the
+	assembler right before the instruction using an immediate value.  The
+	13-bit constant will be used as bits \texttt{[17:5]} of the immediate
+	value of the following instruction.  The full 18-bit immediate value
+	will then be sign extended to 32 bits.  Also, if the previous
+	instruction was a \texttt{pre} (or a \texttt{pick}), interrupts will
+	not be serviced.
+
+	\subsection{Instruction Group 1:  ALU Instr with Immediate}
+	The following encoding is used, with each character representing one
+	bit:  \\
+	\texttt{001i iiii aaaa ooof}, where
+
+	\singlespacing
+	\begin{itemize}
+		\item \texttt{i} is a 5-bit sign-extended immediate
+		\item \texttt{a} encodes register \texttt{rA}
+		\item \texttt{o} is the opcode
+		\item \texttt{f} is \texttt{0} if this instruction cannot affect
+		flags and \texttt{1} if this instruction is permitted to affect
+		flags. 
+	\end{itemize}
+	\doublespacing
+
+	Here is a list of instructions from this encoding group.
+
+	\singlespacing
+	\begin{itemize}
+		\item Opcode \texttt{0x0}:
+			\texttt{\textbf{addi} rA, simm}
+		\begin{itemize}
+			\item Mnemonic for when flags not affected:  \texttt{addi}
+			\item Mnemonic for when flags affected:  \texttt{addi.f}
+			\item Affectable flags:
+				\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		\end{itemize}
+		\item Opcode \texttt{0x1}:
+			\texttt{\textbf{subi} rA, simm}
+		\begin{itemize}
+			\item Mnemonic for when flags not affected:  \texttt{subi}
+			\item Mnemonic for when flags affected:  \texttt{subi.f}
+			\item Affectable flags:
+				\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		\end{itemize}
+		\item Opcode \texttt{0x2}:
+			\texttt{\textbf{addi} rA, pc, simm}
+		\begin{itemize}
+			\item Mnemonic for when flags not affected:  \texttt{addi}
+			\item Mnemonic for when flags affected:  \texttt{addi.f}
+			\item Affectable flags:
+				\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		\end{itemize}
+		\item Opcode \texttt{0x3}:
+			\texttt{\textbf{cpyi} rA, simm}
+		\begin{itemize}
+			\item Mnemonic for when flags not affected:  \texttt{cpyi}
+			\item Mnemonic for when flags affected:  \texttt{cpyi.f}
+			\item Note:  Copy an immediate value into \texttt{rA}
+			\item Affectable flags:
+				\texttt{Z}, \texttt{N}
+		\end{itemize}
+		\item Opcode \texttt{0x4}:
+			\texttt{\textbf{lui} rA, simm}
+		\begin{itemize}
+			\item Mnemonic for when flags not affected:  \texttt{lui}
+			\item Mnemonic for when flags affected:  \texttt{lui.f}
+			\item Note:  Copy bits \texttt{[15:0]} of the sign-extended
+			immediate value into bits \texttt{[31:16]} of \texttt{rA}.
+			Bits \texttt{[15:0]} of \texttt{rA} are not affected.
+			\item Affectable flags:
+				\texttt{Z}, \texttt{N}
+		\end{itemize}
+		\item Opcode \texttt{0x5}:
+			\texttt{\textbf{lsli} rA, simm}
+		\begin{itemize}
+			\item Mnemonic for when flags not affected:  \texttt{lsli}
+			\item Mnemonic for when flags affected:  \texttt{lsli.f}
+			\item Note:  Logical shift left
+			\item Affectable flags:
+				\texttt{Z}, \texttt{N}
+		\end{itemize}
+		\item Opcode \texttt{0x6}:
+			\texttt{\textbf{lsri} rA, simm}
+		\begin{itemize}
+			\item Mnemonic for when flags not affected:  \texttt{lsri}
+			\item Mnemonic for when flags affected:  \texttt{lsri.f}
+			\item Note:  Logical shift right
+			\item Affectable flags:
+				\texttt{Z}, \texttt{N}
+		\end{itemize}
+		\item Opcode \texttt{0x7}:
+			\texttt{\textbf{asri} rA, simm}
+		\begin{itemize}
+			\item Mnemonic for when flags not affected:  \texttt{asri}
+			\item Mnemonic for when flags affected:  \texttt{asri.f}
+			\item Note:  Arithmetic shift right
+			\item Affectable flags:
+				\texttt{Z}, \texttt{N}
+		\end{itemize}
+	\end{itemize}
+
+	\doublespacing
+
+	\subsection{Instruction Group 2:  ALU Instr without Immediate}
+	The following encoding is used, with each character representing one
+	bit:  \\
+	\texttt{010o cccc aaaa ooof}, where
+
+	\singlespacing
+	\begin{itemize}
+		\item \texttt{o} is the opcode
+		\item \texttt{c} encodes register \texttt{rC}
+		\item \texttt{a} encodes register \texttt{rA}
+		\item \texttt{f} is \texttt{0} if this instruction cannot affect
+		flags and \texttt{1} if this instruction is permitted to affect
+		flags. 
+	\end{itemize}
+	\doublespacing
+
+	Here is a list of instructions from this encoding group.
+
+	\singlespacing
+	\begin{itemize}
+		\item Opcode \texttt{0x0}:
+			\texttt{\textbf{add} rA, rC}
+		\begin{itemize}
+			\item Mnemonic for when flags not affected:  \texttt{add}
+			\item Mnemonic for when flags affected:  \texttt{add.f}
+			\item Affectable flags:
+				\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		\end{itemize}
+		\item Opcode \texttt{0x1}:
+			\texttt{\textbf{sub} rA, rC}
+		\begin{itemize}
+			\item Mnemonic for when flags not affected:  \texttt{sub}
+			\item Mnemonic for when flags affected:  \texttt{sub.f}
+			\item Affectable flags:
+				\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		\end{itemize}
+		\item Opcode \texttt{0x2}:
+			\texttt{\textbf{add} rA, pc, rC}
+		\begin{itemize}
+			\item Mnemonic for when flags not affected:  \texttt{add}
+			\item Mnemonic for when flags affected:  \texttt{add.f}
+			\item Affectable flags:
+				\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		\end{itemize}
+		\item Opcode \texttt{0x3}:
+			\texttt{\textbf{cpy} rA, rC}
+		\begin{itemize}
+			\item Mnemonic for when flags not affected:  \texttt{cpy}
+			\item Mnemonic for when flags affected:  \texttt{cpy.f}
+			\item Note:  Copy \texttt{rC} into \texttt{rA}
+			\item Affectable flags:
+				\texttt{Z}, \texttt{N}
+		\end{itemize}
+		\item Opcode \texttt{0x4}:
+			\texttt{\textbf{lur} rA, rC}
+		\begin{itemize}
+			\item Mnemonic for when flags not affected:  \texttt{lur}
+			\item Mnemonic for when flags affected:  \texttt{lur.f}
+			\item Note:  Copy \texttt{b[15:0]} to \texttt{a[31:16]}.
+			Bits \texttt{[15:0]} of \texttt{rA} are not affected.
+			\item Affectable flags:
+				\texttt{Z}, \texttt{N}
+		\end{itemize}
+		\item Opcode \texttt{0x5}:
+			\texttt{\textbf{lsl} rA, rC}
+		\begin{itemize}
+			\item Mnemonic for when flags not affected:  \texttt{lsl}
+			\item Mnemonic for when flags affected:  \texttt{lsl.f}
+			\item Note:  Logical shift left
+			\item Affectable flags:
+				\texttt{Z}, \texttt{N}
+		\end{itemize}
+		\item Opcode \texttt{0x6}:
+			\texttt{\textbf{lsr} rA, rC}
+		\begin{itemize}
+			\item Mnemonic for when flags not affected:  \texttt{lsr}
+			\item Mnemonic for when flags affected:  \texttt{lsr.f}
+			\item Note:  Logical shift right
+			\item Affectable flags:
+				\texttt{Z}, \texttt{N}
+		\end{itemize}
+		\item Opcode \texttt{0x7}:
+			\texttt{\textbf{asr} rA, rC}
+		\begin{itemize}
+			\item Mnemonic for when flags not affected:  \texttt{asr}
+			\item Mnemonic for when flags affected:  \texttt{asr.f}
+			\item Note:  Arithmetic shift right
+			\item Affectable flags:
+				\texttt{Z}, \texttt{N}
+		\end{itemize}
+		\item Opcode \texttt{0x8}:
+			\texttt{\textbf{adc} rA, rC}
+		\begin{itemize}
+			\item Mnemonic for when flags not affected:  \texttt{adc}
+			\item Mnemonic for when flags affected:  \texttt{adc.f}
+			\item Note:  Add with carry
+			\item Affectable flags:
+				\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		\end{itemize}
+		\item Opcode \texttt{0x9}:
+			\texttt{\textbf{sbc} rA, rC}
+		\begin{itemize}
+			\item Mnemonic for when flags not affected:  \texttt{sbc}
+			\item Mnemonic for when flags affected:  \texttt{sbc.f}
+			\item Note:  Subtract with Borrow
+			\item Affectable flags:
+				\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		\end{itemize}
+		\item Opcode \texttt{0xa}:
+			\texttt{\textbf{cmp} rA, rC}
+		\begin{itemize}
+			\item Note:  Compare \texttt{rA} to \texttt{rC}.  \texttt{cmp}
+			\textit{always} is able to affect flags, independent of the
+			encoded \texttt{f} bit of the instruction.
+			\item Affectable flags:
+				\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		\end{itemize}
+		\item Opcode \texttt{0xb}:
+			\texttt{\textbf{and} rA, rC}
+		\begin{itemize}
+			\item Mnemonic for when flags not affected:  \texttt{and}
+			\item Mnemonic for when flags affected:  \texttt{and.f}
+			\item Note:  Bitwise AND
+			\item Affectable flags:
+				\texttt{Z}, \texttt{N}
+		\end{itemize}
+		\item Opcode \texttt{0xc}:
+			\texttt{\textbf{orr} rA, rC}
+		\begin{itemize}
+			\item Mnemonic for when flags not affected:  \texttt{orr}
+			\item Mnemonic for when flags affected:  \texttt{orr.f}
+			\item Note:  Bitwise OR
+			\item Affectable flags:
+				\texttt{Z}, \texttt{N}
+		\end{itemize}
+		\item Opcode \texttt{0xd}:
+			\texttt{\textbf{xor} rA, rC}
+		\begin{itemize}
+			\item Mnemonic for when flags not affected:  \texttt{xor}
+			\item Mnemonic for when flags affected:  \texttt{xor.f}
+			\item Note:  Bitwise XOR
+			\item Affectable flags:
+				\texttt{Z}, \texttt{N}
+		\end{itemize}
+		%\item Opcode \texttt{0xe}:
+		%	\texttt{\textbf{mul} rA, rC}
+		%\begin{itemize}
+		%	\item Mnemonic for when flags not affected:  \texttt{mul}
+		%	\item Mnemonic for when flags affected:  \texttt{mul.f}
+		%	\item Affectable flags:
+		%		\texttt{Z}, \texttt{N}
+		%\end{itemize}
+		\item Opcode \texttt{0xe}:
+			\texttt{\textbf{ludiv} rA}
+		\begin{itemize}
+			\item Mnemonic for when flags not affected:  \texttt{ludiv}
+			\item Mnemonic for when flags affected:  \texttt{ludiv.f}
+			\item Note:  performs a 64-bit by 32-bit unsigned division of
+			\texttt{\{hi, lo\}} by \texttt{rA}, storing result in
+			\texttt{\{hi, lo\}}.
+			\item Affectable flags:
+				\texttt{Z}, \texttt{N}
+		\end{itemize}
+		\item Opcode \texttt{0xf}:
+			\texttt{\textbf{lsdiv} rA}
+		\begin{itemize}
+			\item Mnemonic for when flags not affected:  \texttt{lsdiv}
+			\item Mnemonic for when flags affected:  \texttt{lsdiv.f}
+			\item Note:  performs a 64-bit by 32-bit signed division of
+			\texttt{\{hi, lo\}} by \texttt{rA}, storing result in
+			\texttt{\{hi, lo\}}.
+			\item Affectable flags:
+				\texttt{Z}, \texttt{N}
+		\end{itemize}
+	\end{itemize}
+
+	\doublespacing
+	\subsection{Instruction Group 3:  Pick \texttt{rB}}
+	The following encoding is used, with each character representing one
+	bit:  \\
+	\texttt{0110 0000 0000 bbbb}, where
+
+	\singlespacing
+	\begin{itemize}
+		\item \texttt{b} encodes register \texttt{rB}
+	\end{itemize}
+
+	At the assembly language level, this instruction is simply
+	\texttt{pick rB}, but as with \texttt{pre}, it isn't typical to use
+	this instruction directly in assembly language source code.  Instead,
+	when an instruction is typed as \texttt{instr rA, rB, operand}
+	\textit{and} when \texttt{rA} is not the same register as \texttt{rB},
+	a \texttt{pick rB} instruction will be inserted by the assembler before
+	the instruction in the source code.  As mentioned before, when the
+	instruction previous to the current one is either a \texttt{pre} or a
+	\texttt{pick}, interrupts will not be serviced.  Note that since
+	\texttt{pre}'s 13-bit partial immediate only affects the instruction
+	following the \texttt{pre}, only a 5-bit signed immediate can be used
+	with \texttt{pick}.
+
+	For all instructions, the default value of \texttt{rB} is \texttt{rA},
+	except when the previous instruction was a \texttt{pick} instruction.
+
+	%\subsection{Instruction Group 4:  Relative Branches}
+	%The following encoding is used, with each character representing one
+	%bit:  \\
+	%\texttt{0111 oooo iiii iiii}, where
+
 
 \end{document}
 
