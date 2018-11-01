@@ -468,10 +468,9 @@
 	\texttt{pick}, interrupts will not be serviced.  Note that since
 	\texttt{pre}'s 13-bit partial immediate only affects the instruction
 	following the \texttt{pre}, only a 5-bit signed immediate can be used
-	with \texttt{pick}.
-
-	For all instructions, the default value of \texttt{rB} is \texttt{rA},
-	except when the previous instruction was \texttt{pick}.
+	with \texttt{pick}.  For all instructions, the default value of
+	\texttt{rB} is \texttt{rA}, except when the previous instruction was
+	\texttt{pick}.
 
 	Here is the list of instructions from this encoding group, including
 	\texttt{pick} itself.
