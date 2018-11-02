@@ -15,7 +15,7 @@
 
 
 \title{Flare32 CPU}
-\date{2018-11-1}
+\date{2018-11-2}
 \author{FL4SHK}
 
 %% Hide section, subsection, and subsubsection numbering
@@ -447,7 +447,7 @@
 	\subsection{Instruction Group 3:  Jumps and \texttt{pick}}
 	The following encoding is used, with each character representing one
 	bit:  \\
-	\texttt{0110 oooo 0000 bbbb}, where
+	\texttt{011o ooo0 0000 bbbb}, where
 
 	\singlespacing
 	\begin{itemize}
@@ -457,20 +457,20 @@
 
 	\doublespacing
 
-	At the assembly language level, \texttt{pick} is simply \texttt{pick
-	rB}, but as with \texttt{pre}, it isn't typical to use this instruction
-	directly in assembly language source code.  Instead, when an
-	instruction is typed as \texttt{instr rA, rB, operand} \textit{and}
-	when \texttt{rA} is not the same register as \texttt{rB}, a
-	\texttt{pick rB} instruction will be inserted by the assembler before
+	At the assembly language level, \texttt{pick} is simply
+	\texttt{pick rB}, but as with \texttt{pre}, it isn't typical to use
+	this instruction directly in assembly language source code.  Instead,
+	when an instruction is typed as \texttt{instr rA, rB, operand}
+	\textit{and} when \texttt{rA} is not the same register as \texttt{rB},
+	a \texttt{pick rB} instruction will be inserted by the assembler before
 	the instruction in the source code.  As mentioned before, when the
 	instruction previous to the current one is either a \texttt{pre} or a
 	\texttt{pick}, interrupts will not be serviced.  Note that since
 	\texttt{pre}'s 13-bit partial immediate only affects the instruction
 	following the \texttt{pre}, only a 5-bit signed immediate can be used
-	with \texttt{pick}.  For all instructions, the default value of
-	\texttt{rB} is \texttt{rA}, except when the previous instruction was
-	\texttt{pick}.
+	with \texttt{pick} and an instruction from group 1.  For all
+	instructions, the default value of \texttt{rB} is \texttt{rA}, except
+	when the previous instruction was \texttt{pick}.
 
 	Here is the list of instructions from this encoding group, including
 	\texttt{pick} itself.
@@ -558,12 +558,12 @@
 	\subsection{Instruction Group 4:  Relative Branches}
 	The following encoding is used, with each character representing one
 	bit:  \\
-	\texttt{0111 oooo iiii iiii}, where
+	\texttt{100o oooi iiii iiii}, where
 
 	\singlespacing
 	\begin{itemize}
 		\item \texttt{o} is the opcode
-		\item \texttt{i} is an 8-bit sign-extended immediate, which can
+		\item \texttt{i} is a 9-bit sign-extended immediate, which can
 		still be affected by \texttt{pre}, but when \texttt{pre} is the
 		instruction before this one, only bits \texttt{[4:0]} of the
 		immediate value encoded into this instruction will be used by the
@@ -650,6 +650,96 @@
 				\texttt{if (flags.V) pc <= pc + simm + 2;}
 		\end{itemize}
 	\end{itemize}
+
+	\doublespacing
+	\subsection{Instruction Group 5:  Indexed Load}
+	The following encoding is used, with each character representing one
+	bit:  \\
+	\texttt{101i cccc aaaa iiii}, where
+
+	\singlespacing
+	\begin{itemize}
+		\item \texttt{i} is a 5-bit sign-extended immediate, which can
+		be expanded by \texttt{pre}  
+		\item \texttt{c} encodes register \texttt{rC}
+		\item \texttt{a} encodes register \texttt{rA}
+	\end{itemize}
+	\doublespacing
+
+	The one instruction from this encoding group is
+	\texttt{\textbf{ldr} rA, [rC, simm]}.
+	This is a 32-bit load into \texttt{rA}, where the effective address to
+	load from is computed as \texttt{rC + simm}, using the sign-extended
+	form of \texttt{simm}.  Note that \texttt{pick} does not affect this
+	instruction in any way.
+
+	\subsection{Instruction Group 6:  Indexed Store}
+	The following encoding is used, with each character representing one
+	bit:  \\
+	\texttt{110i cccc aaaa iiii}, where
+
+	\singlespacing
+	\begin{itemize}
+		\item \texttt{i} is a 5-bit sign-extended immediate, which can
+		be expanded by \texttt{pre}  
+		\item \texttt{c} encodes register \texttt{rC}
+		\item \texttt{a} encodes register \texttt{rA}
+	\end{itemize}
+	\doublespacing
+
+	The one instruction from this encoding group is
+	\texttt{\textbf{str} rA, [rC, simm]}.
+	This is a 32-bit store of \texttt{rA}, where the effective address to
+	store to is computed as \texttt{rC + simm}, using the sign-extended
+	form of \texttt{simm}.  Note that \texttt{pick} does not affect this
+	instruction in any way.
+
+	\subsection{Instruction Group 7a:  Other Loads and Stores}
+	The following encoding is used, with each character representing one
+	bit:  \\
+	\texttt{1110 cccc aaaa 00oo}, where
+
+	\singlespacing
+	\begin{itemize}
+		\item \texttt{c} encodes register \texttt{rC}
+		\item \texttt{a} encodes register \texttt{rA}
+		\item \texttt{o} is the opcode
+	\end{itemize}
+	\doublespacing
+
+	Here is a list of instructions from this encoding group.
+
+	\singlespacing
+	\begin{itemize}
+		\item Opcode \texttt{0x0}:
+			\texttt{\textbf{ldb} rA, [rC]}
+		\begin{itemize}
+			\item Effect:  Load a byte from memory at address computed as
+			just the value of \texttt{rC}, zero-extend the byte to 32 bits,
+			then put the zero-extended 32-bit value into \texttt{rA}.
+		\end{itemize}
+		\item Opcode \texttt{0x1}:
+			\texttt{\textbf{ldh} rA, [rC]}
+		\begin{itemize}
+			\item Effect:  Load a 16-bit value from memory at address
+			computed as just the value of \texttt{rC}, zero-extend the
+			16-bit value to 32 bits, then put the zero-extended 32-bit
+			value into \texttt{rA}.
+		\end{itemize}
+		\item Opcode \texttt{0x2}:
+			\texttt{\textbf{stb} rA, [rC]}
+		\begin{itemize}
+			\item Effect:  Store \texttt{rA[7:0]} to memory at the address
+			computed as just the value of \texttt{rC}.
+		\end{itemize}
+		\item Opcode \texttt{0x3}:
+			\texttt{\textbf{sth} rA, [rC]}
+		\begin{itemize}
+			\item Effect:  Store \texttt{rA[15:0]} to memory at the address
+			computed as just the value of \texttt{rC}.
+		\end{itemize}
+	\end{itemize}
+	\doublespacing
 
 
 \end{document}
