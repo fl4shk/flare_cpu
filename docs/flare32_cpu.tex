@@ -267,7 +267,7 @@
 
 	\doublespacing
 
-	\subsection{Instruction Group 2:  ALU Instr without Immediate}
+	\subsection{Instruction Group 2:  ALU/Mul Instr without Immediate}
 	The following encoding is used, with each character representing one
 	bit:  \\
 	\texttt{010o cccc aaaa ooof}, where
@@ -411,36 +411,36 @@
 			\item Affectable flags:
 				\texttt{Z}, \texttt{N}
 		\end{itemize}
+		\item Opcode \texttt{0xe}:
+			\texttt{\textbf{mul} rA, rC}
+		\begin{itemize}
+			\item Mnemonic for when flags not affected:  \texttt{mul}
+			\item Mnemonic for when flags affected:  \texttt{mul.f}
+			\item Affectable flags:
+				\texttt{Z}, \texttt{N}
+		\end{itemize}
 		%\item Opcode \texttt{0xe}:
-		%	\texttt{\textbf{mul} rA, rC}
+		%	\texttt{\textbf{ludiv} rA}
 		%\begin{itemize}
-		%	\item Mnemonic for when flags not affected:  \texttt{mul}
-		%	\item Mnemonic for when flags affected:  \texttt{mul.f}
+		%	\item Mnemonic for when flags not affected:  \texttt{ludiv}
+		%	\item Mnemonic for when flags affected:  \texttt{ludiv.f}
+		%	\item Note:  performs a 64-bit by 32-bit unsigned division of
+		%	\texttt{\{hi, lo\}} by \texttt{rA}, storing result in
+		%	\texttt{\{hi, lo\}}.
 		%	\item Affectable flags:
 		%		\texttt{Z}, \texttt{N}
 		%\end{itemize}
-		\item Opcode \texttt{0xe}:
-			\texttt{\textbf{ludiv} rA}
-		\begin{itemize}
-			\item Mnemonic for when flags not affected:  \texttt{ludiv}
-			\item Mnemonic for when flags affected:  \texttt{ludiv.f}
-			\item Note:  performs a 64-bit by 32-bit unsigned division of
-			\texttt{\{hi, lo\}} by \texttt{rA}, storing result in
-			\texttt{\{hi, lo\}}.
-			\item Affectable flags:
-				\texttt{Z}, \texttt{N}
-		\end{itemize}
-		\item Opcode \texttt{0xf}:
-			\texttt{\textbf{lsdiv} rA}
-		\begin{itemize}
-			\item Mnemonic for when flags not affected:  \texttt{lsdiv}
-			\item Mnemonic for when flags affected:  \texttt{lsdiv.f}
-			\item Note:  performs a 64-bit by 32-bit signed division of
-			\texttt{\{hi, lo\}} by \texttt{rA}, storing result in
-			\texttt{\{hi, lo\}}.
-			\item Affectable flags:
-				\texttt{Z}, \texttt{N}
-		\end{itemize}
+		%\item Opcode \texttt{0xf}:
+		%	\texttt{\textbf{lsdiv} rA}
+		%\begin{itemize}
+		%	\item Mnemonic for when flags not affected:  \texttt{lsdiv}
+		%	\item Mnemonic for when flags affected:  \texttt{lsdiv.f}
+		%	\item Note:  performs a 64-bit by 32-bit signed division of
+		%	\texttt{\{hi, lo\}} by \texttt{rA}, storing result in
+		%	\texttt{\{hi, lo\}}.
+		%	\item Affectable flags:
+		%		\texttt{Z}, \texttt{N}
+		%\end{itemize}
 	\end{itemize}
 
 	\doublespacing
@@ -741,10 +741,10 @@
 	\end{itemize}
 	\doublespacing
 
-	\subsection{Instruction Group 7.1:  Operations using Special Registers}
+	\subsection{Instruction Group 7.1:  Copying to/from Special Registers}
 	The following encoding is used, with each character representing one
 	bit:  \\
-	\texttt{1110 oooo aaaa 0000}, where
+	\texttt{1110 oooo aaaa 0100}, where
 
 	\singlespacing
 	\begin{itemize}
@@ -802,6 +802,53 @@
 			\texttt{\textbf{di}}
 		\begin{itemize}
 			\item Effect:  copy \texttt{0} into \texttt{ie}.
+		\end{itemize}
+	\end{itemize}
+	\doublespacing
+
+	\subsection{Instruction Group 7.2:  Multiplies and Divides}
+	The following encoding is used, with each character representing one
+	bit:  \\
+	\texttt{1110 oooo aaaa 1000}, where
+
+	\singlespacing
+	\begin{itemize}
+		\item \texttt{o} is the opcode
+		\item \texttt{a} encodes register \texttt{rA}
+	\end{itemize}
+	\doublespacing
+
+	Hereis a list of instructions from this encoding group.
+
+	\singlespacing
+	\begin{itemize}
+		\item Opcode \texttt{0x0}:
+			\texttt{\textbf{lumul}}
+		\begin{itemize}
+			\item Note:  This instruction multiplies \texttt{hi} by
+			\texttt{lo}, performing an unsigned 32-bit by 32-bit -> 64-bit
+			multiply, storing result in \texttt{\{hi, lo\}}.
+		\end{itemize}
+		\item Opcode \texttt{0x1}:
+			\texttt{\textbf{lsmul}}
+		\begin{itemize}
+			\item Note:  This instruction multiplies \texttt{hi} by
+			\texttt{lo}, performing a signed 32-bit by 32-bit -> 64-bit
+			multiply, storing result in \texttt{\{hi, lo\}}.
+		\end{itemize}
+		\item Opcode \texttt{0x2}:
+			\texttt{\textbf{ludiv} rA}
+		\begin{itemize}
+			\item Note:  performs a 64-bit by 32-bit unsigned division of
+			\texttt{\{hi, lo\}} by \texttt{rA}, storing 64-bit result in
+			\texttt{\{hi, lo\}}.
+		\end{itemize}
+		\item Opcode \texttt{0x3}:
+			\texttt{\textbf{lsdiv} rA}
+		\begin{itemize}
+			\item Note:  performs a 64-bit by 32-bit signed division of
+			\texttt{\{hi, lo\}} by \texttt{rA}, storing 64-bit result in
+			\texttt{\{hi, lo\}}.
 		\end{itemize}
 	\end{itemize}
 	\doublespacing
