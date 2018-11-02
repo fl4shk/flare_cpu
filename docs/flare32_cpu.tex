@@ -694,7 +694,7 @@
 	form of \texttt{simm}.  Note that \texttt{pick} does not affect this
 	instruction in any way.
 
-	\subsection{Instruction Group 7a:  Other Loads and Stores}
+	\subsection{Instruction Group 7.0:  Other Loads and Stores}
 	The following encoding is used, with each character representing one
 	bit:  \\
 	\texttt{1110 cccc aaaa 00oo}, where
@@ -737,6 +737,71 @@
 		\begin{itemize}
 			\item Effect:  Store \texttt{rA[15:0]} to memory at the address
 			computed as just the value of \texttt{rC}.
+		\end{itemize}
+	\end{itemize}
+	\doublespacing
+
+	\subsection{Instruction Group 7.1:  Operations using Special Registers}
+	The following encoding is used, with each character representing one
+	bit:  \\
+	\texttt{1110 oooo aaaa 0000}, where
+
+	\singlespacing
+	\begin{itemize}
+		\item \texttt{o} is the opcode
+		\item \texttt{a} encodes register \texttt{rA}
+	\end{itemize}
+	\doublespacing
+
+	Here is a list of instructions from this encoding group.
+
+	\singlespacing
+	\begin{itemize}
+		\item Opcode \texttt{0x0}:
+			\texttt{\textbf{cpyspec} hi, rA}
+		\item Opcode \texttt{0x1}:
+			\texttt{\textbf{cpyspec} rA, hi}
+		\item Opcode \texttt{0x2}:
+			\texttt{\textbf{cpyspec} lo, rA}
+		\item Opcode \texttt{0x3}:
+			\texttt{\textbf{cpyspec} rA, lo}
+		\item Opcode \texttt{0x4}:
+			\texttt{\textbf{cpyspec} flags, rA}
+		\begin{itemize}
+			\item Effect:  copy \texttt{rA[3:0]} to \texttt{flags}.
+		\end{itemize}
+		\item Opcode \texttt{0x5}:
+			\texttt{\textbf{cpyspec} rA, flags}
+		\begin{itemize}
+			\item Effect:  copy \texttt{flags} to \texttt{rA}.
+		\end{itemize}
+		\item Opcode \texttt{0x6}:
+			\texttt{\textbf{cpyspec} ids, rA}
+		\item Opcode \texttt{0x7}:
+			\texttt{\textbf{cpyspec} rA, ids}
+		\item Opcode \texttt{0x8}:
+			\texttt{\textbf{cpyspec} ira, rA}
+		\item Opcode \texttt{0x9}:
+			\texttt{\textbf{cpyspec} rA, ira}
+		\item Opcode \texttt{0xa}:
+			\texttt{\textbf{cpyspec} ie, rA}
+		\begin{itemize}
+			\item Effect:  copy \texttt{rA[0]} to \texttt{ie}.
+		\end{itemize}
+		\item Opcode \texttt{0xb}:
+			\texttt{\textbf{cpyspec} rA, ie}
+		\begin{itemize}
+			\item Effect:  copy \texttt{ie} to \texttt{rA}.
+		\end{itemize}
+		\item Opcode \texttt{0xc}:
+			\texttt{\textbf{ei}}
+		\begin{itemize}
+			\item Effect:  copy \texttt{1} into \texttt{ie}.
+		\end{itemize}
+		\item Opcode \texttt{0xd}:
+			\texttt{\textbf{di}}
+		\begin{itemize}
+			\item Effect:  copy \texttt{0} into \texttt{ie}.
 		\end{itemize}
 	\end{itemize}
 	\doublespacing
