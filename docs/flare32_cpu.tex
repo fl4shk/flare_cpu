@@ -806,7 +806,8 @@
 	\end{itemize}
 	\doublespacing
 
-	\subsection{Instruction Group 7.2:  Multiplies and Divides}
+	\subsection{Instruction Group 7.2:  Multiplies, Divides, and
+	Extra Interrupts Stuff}
 	The following encoding is used, with each character representing one
 	bit:  \\
 	\texttt{1110 oooo aaaa 1000}, where
@@ -825,30 +826,57 @@
 		\item Opcode \texttt{0x0}:
 			\texttt{\textbf{lumul}}
 		\begin{itemize}
-			\item Note:  This instruction multiplies \texttt{hi} by
+			\item Effect:  This instruction multiplies \texttt{hi} by
 			\texttt{lo}, performing an unsigned 32-bit by 32-bit -> 64-bit
 			multiply, storing result in \texttt{\{hi, lo\}}.
 		\end{itemize}
 		\item Opcode \texttt{0x1}:
 			\texttt{\textbf{lsmul}}
 		\begin{itemize}
-			\item Note:  This instruction multiplies \texttt{hi} by
+			\item Effect:  This instruction multiplies \texttt{hi} by
 			\texttt{lo}, performing a signed 32-bit by 32-bit -> 64-bit
 			multiply, storing result in \texttt{\{hi, lo\}}.
 		\end{itemize}
 		\item Opcode \texttt{0x2}:
 			\texttt{\textbf{ludiv} rA}
 		\begin{itemize}
-			\item Note:  performs a 64-bit by 32-bit unsigned division of
+			\item Effect:  performs a 64-bit by 32-bit unsigned division of
 			\texttt{\{hi, lo\}} by \texttt{rA}, storing 64-bit result in
 			\texttt{\{hi, lo\}}.
 		\end{itemize}
 		\item Opcode \texttt{0x3}:
 			\texttt{\textbf{lsdiv} rA}
 		\begin{itemize}
-			\item Note:  performs a 64-bit by 32-bit signed division of
+			\item Effect:  performs a 64-bit by 32-bit signed division of
 			\texttt{\{hi, lo\}} by \texttt{rA}, storing 64-bit result in
 			\texttt{\{hi, lo\}}.
+		\end{itemize}
+		\item Opcode \texttt{0x4}:
+			\texttt{\textbf{push} ira, rA}
+		\begin{itemize}
+			\item Effect:  pushes \texttt{ira} onto the stack, using
+			register \texttt{rA} as the stack pointer register.  It is
+			expected that the typical \texttt{rA} will simply be
+			\texttt{sp}.
+		\end{itemize}
+		\item Opcode \texttt{0x5}:
+			\texttt{\textbf{pop} ira, rA}
+		\begin{itemize}
+			\item Effect:  pops \texttt{ira} off the stack, using
+			register \texttt{rA} as the stack pointer register.  It is
+			expected that the typical \texttt{rA} will simply be
+			\texttt{sp}.
+		\end{itemize}
+		\item Opcode \texttt{0x6}:
+			\texttt{\textbf{reti}}
+		\begin{itemize}
+			\item Effect:  enables interrupts and performs
+			\texttt{pc <= ira;}
+		\end{itemize}
+		\item Opcode \texttt{0x7}:
+			\texttt{\textbf{jmp} ira}
+		\begin{itemize}
+			\item Effect:  \texttt{pc <= ira;}
 		\end{itemize}
 	\end{itemize}
 	\doublespacing
