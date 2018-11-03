@@ -12,6 +12,13 @@
 \usepackage{tabularx}
 \usepackage{amsmath}
 %\usepackage{hyperref}
+\usepackage[backend=biber,sorting=none]{biblatex}
+%\usepackage[
+%	backend=biber,
+%	style=ieee,
+%	sorting=none
+%]{biblatex}
+%\addbibresource{project_refs.bib}
 
 
 \title{Flare32 CPU}
@@ -105,10 +112,14 @@
 	\doublespacing
 	\section{Abstract}
 	\setcounter{section}{-1}
-	This is an instruction set designed to be similar to the SuperFX/GSU,
-	while not being binary compatible, nor even assembly language
-	compatible.  It takes some of the ideas from the GSU and runs with
-	them.
+	%This is an instruction set designed to be similar to the SuperFX/GSU,
+	%while not being binary compatible, nor even assembly language
+	%compatible.  It takes some of the ideas from the GSU and runs with
+	%them.
+	This is an instruction set that is basically just my answer to THUMB
+	(especially original THUMB), with some ideas taken from other places as
+	well.  This shows how to get more out of 16-bit instructions than THUMB
+	allows.
 
 	\newpage
 	\singlespacing
@@ -169,8 +180,8 @@
 	immediate value.  The 13-bit constant will be used as bits
 	\texttt{[17:5]} of the immediate value of the following instruction.
 	The full 18-bit immediate value will then be sign extended to 32 bits.
-	Also, if the previous instruction was a \texttt{pre} (or a
-	\texttt{pick}), interrupts will not be serviced.
+	Also, if the previous instruction was a \texttt{pre}, interrupts will
+	not be serviced.
 
 	\subsection{Instruction Group 1:  ALU Instr with Immediate}
 	The following encoding is used, with each character representing one
@@ -267,7 +278,7 @@
 
 	\doublespacing
 
-	\subsection{Instruction Group 2:  ALU/Mul Instr without Immediate}
+	\subsection{Instruction Group 2:  ALU Instr without Immediate}
 	The following encoding is used, with each character representing one
 	bit:  \\
 	\texttt{010o cccc aaaa ooof}, where
@@ -412,13 +423,35 @@
 				\texttt{Z}, \texttt{N}
 		\end{itemize}
 		\item Opcode \texttt{0xe}:
-			\texttt{\textbf{mul} rA, rC}
+			\texttt{\textbf{seb} rA, rC}
 		\begin{itemize}
-			\item Mnemonic for when flags not affected:  \texttt{mul}
-			\item Mnemonic for when flags affected:  \texttt{mul.f}
+			\item Mnemonic when flags not affected:  \texttt{seb}
+			\item Mnemonic when flags affected:  \texttt{seb.f}
+			\item Effect:
+				Sign-extend \texttt{rC[7:0]} to 32 bits, then copy that
+				value to \texttt{rA}
 			\item Affectable flags:
 				\texttt{Z}, \texttt{N}
 		\end{itemize}
+		\item Opcode \texttt{0xf}:
+			\texttt{\textbf{seh} rA, rC}
+		\begin{itemize}
+			\item Mnemonic when flags not affected:  \texttt{seh}
+			\item Mnemonic when flags affected:  \texttt{seh.f}
+			\item Effect:
+				Sign-extend \texttt{rC[15:0]} to 32 bits, then copy that
+				value to \texttt{rA}
+			\item Affectable flags:
+				\texttt{Z}, \texttt{N}
+		\end{itemize}
+		%\item Opcode \texttt{0xe}:
+		%	\texttt{\textbf{mul} rA, rC}
+		%\begin{itemize}
+		%	\item Mnemonic for when flags not affected:  \texttt{mul}
+		%	\item Mnemonic for when flags affected:  \texttt{mul.f}
+		%	\item Affectable flags:
+		%		\texttt{Z}, \texttt{N}
+		%\end{itemize}
 		%\item Opcode \texttt{0xe}:
 		%	\texttt{\textbf{ludiv} rA}
 		%\begin{itemize}
@@ -444,7 +477,7 @@
 	\end{itemize}
 
 	\doublespacing
-	\subsection{Instruction Group 3:  Jumps and \texttt{pick}}
+	\subsection{Instruction Group 3:  Jumps and Stack Stuff}
 	The following encoding is used, with each character representing one
 	bit:  \\
 	\texttt{011o ooo0 0000 bbbb}, where
@@ -457,23 +490,22 @@
 
 	\doublespacing
 
-	At the assembly language level, \texttt{pick} is simply
-	\texttt{pick rB}, but as with \texttt{pre}, it isn't typical to use
-	this instruction directly in assembly language source code.  Instead,
-	when an instruction is typed as \texttt{instr rA, rB, operand}
-	\textit{and} when \texttt{rA} is not the same register as \texttt{rB},
-	a \texttt{pick rB} instruction will be inserted by the assembler before
-	the instruction in the source code.  As mentioned before, when the
-	instruction previous to the current one is either a \texttt{pre} or a
-	\texttt{pick}, interrupts will not be serviced.  Note that since
-	\texttt{pre}'s 13-bit partial immediate only affects the instruction
-	following the \texttt{pre}, only a 5-bit signed immediate can be used
-	with \texttt{pick} and an instruction from group 1.  For all
-	instructions, the default value of \texttt{rB} is \texttt{rA}, except
-	when the previous instruction was \texttt{pick}.
+	%At the assembly language level, \texttt{pick} is simply
+	%\texttt{pick rB}, but as with \texttt{pre}, it isn't typical to use
+	%this instruction directly in assembly language source code.  Instead,
+	%when an instruction is typed as \texttt{instr rA, rB, operand}
+	%\textit{and} when \texttt{rA} is not the same register as \texttt{rB},
+	%a \texttt{pick rB} instruction will be inserted by the assembler before
+	%the instruction in the source code.  As mentioned before, when the
+	%instruction previous to the current one is either a \texttt{pre} or a
+	%\texttt{pick}, interrupts will not be serviced.  Note that since
+	%\texttt{pre}'s 13-bit partial immediate only affects the instruction
+	%following the \texttt{pre}, only a 5-bit signed immediate can be used
+	%with \texttt{pick} and an instruction from group 1.  For all
+	%instructions, the default value of \texttt{rB} is \texttt{rA}, except
+	%when the previous instruction was \texttt{pick}.
 
-	Here is the list of instructions from this encoding group, including
-	\texttt{pick} itself.
+	Here is the list of instructions from this encoding group.
 
 	\singlespacing
 	\begin{itemize}
@@ -549,8 +581,8 @@
 			\item Effect:
 				\texttt{if (flags.V) pc <= rB;}
 		\end{itemize}
-		\item Opcode \texttt{0xc}:
-			\texttt{\textbf{pick} rB}
+		%\item Opcode \texttt{0xc}:
+		%	\texttt{\textbf{pick} rB}
 	\end{itemize}
 
 	\doublespacing
@@ -670,8 +702,8 @@
 	\texttt{\textbf{ldr} rA, [rC, simm]}.
 	This is a 32-bit load into \texttt{rA}, where the effective address to
 	load from is computed as \texttt{rC + simm}, using the sign-extended
-	form of \texttt{simm}.  Note that \texttt{pick} does not affect this
-	instruction in any way.
+	form of \texttt{simm}.
+	%Note that \texttt{pick} does not affect this instruction in any way.
 
 	\subsection{Instruction Group 6:  Indexed Store}
 	The following encoding is used, with each character representing one
@@ -691,8 +723,8 @@
 	\texttt{\textbf{str} rA, [rC, simm]}.
 	This is a 32-bit store of \texttt{rA}, where the effective address to
 	store to is computed as \texttt{rC + simm}, using the sign-extended
-	form of \texttt{simm}.  Note that \texttt{pick} does not affect this
-	instruction in any way.
+	form of \texttt{simm}.
+	%Note that \texttt{pick} does not affect this instruction in any way.
 
 	\subsection{Instruction Group 7.0:  Other Loads and Stores}
 	The following encoding is used, with each character representing one
@@ -803,6 +835,22 @@
 		\begin{itemize}
 			\item Effect:  copy \texttt{0} into \texttt{ie}.
 		\end{itemize}
+		\item Opcode \texttt{0xe}:
+			\texttt{\textbf{push} ira, rA}
+		\begin{itemize}
+			\item Effect:  pushes \texttt{ira} onto the stack, using
+			register \texttt{rA} as the stack pointer register.  It is
+			expected that the typical \texttt{rA} will simply be
+			\texttt{sp}.
+		\end{itemize}
+		\item Opcode \texttt{0xf}:
+			\texttt{\textbf{pop} ira, rA}
+		\begin{itemize}
+			\item Effect:  pops \texttt{ira} off the stack, using
+			register \texttt{rA} as the stack pointer register.  It is
+			expected that the typical \texttt{rA} will simply be
+			\texttt{sp}.
+		\end{itemize}
 	\end{itemize}
 	\doublespacing
 
@@ -852,28 +900,12 @@
 			\texttt{\{hi, lo\}}.
 		\end{itemize}
 		\item Opcode \texttt{0x4}:
-			\texttt{\textbf{push} ira, rA}
-		\begin{itemize}
-			\item Effect:  pushes \texttt{ira} onto the stack, using
-			register \texttt{rA} as the stack pointer register.  It is
-			expected that the typical \texttt{rA} will simply be
-			\texttt{sp}.
-		\end{itemize}
-		\item Opcode \texttt{0x5}:
-			\texttt{\textbf{pop} ira, rA}
-		\begin{itemize}
-			\item Effect:  pops \texttt{ira} off the stack, using
-			register \texttt{rA} as the stack pointer register.  It is
-			expected that the typical \texttt{rA} will simply be
-			\texttt{sp}.
-		\end{itemize}
-		\item Opcode \texttt{0x6}:
 			\texttt{\textbf{reti}}
 		\begin{itemize}
 			\item Effect:  enables interrupts and performs
 			\texttt{pc <= ira;}
 		\end{itemize}
-		\item Opcode \texttt{0x7}:
+		\item Opcode \texttt{0x5}:
 			\texttt{\textbf{jmp} ira}
 		\begin{itemize}
 			\item Effect:  \texttt{pc <= ira;}
@@ -881,6 +913,7 @@
 	\end{itemize}
 	\doublespacing
 
+	%\printbibliography[heading=bibnumbered,title={Bibliography}]
 
 \end{document}
 

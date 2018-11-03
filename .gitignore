@@ -32,10 +32,5 @@ hdl/generated_single_source_file/*
 hdl/generated_single_source_files/*
 *.stp
 algorithm_tests/*
-*.aux
-*.log
-*.toc
-*.pdf
-*.lot
-*.lof
-*.out
+docs/*/build
+docs/*/*.pdf
