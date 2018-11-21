@@ -131,19 +131,19 @@
 	\section{Introduction}
 	\subsection{Registers}
 	There are sixteen general-purpose registers:  \texttt{r0}, \texttt{r1},
-	\texttt{r2}, \texttt{...}, \texttt{r11}, \texttt{rtemp}, \texttt{lr},
+	\texttt{r2}, \texttt{...}, \texttt{r11}, \texttt{r12}, \texttt{lr},
 	\texttt{fp}, \texttt{sp}.  From the hardware's perspective, they are
-	all equivalent, but \texttt{rtemp} is used as a compiler temporary.
-	Each register is 32 bits long.  For special purpose registers, there
-	are also \texttt{pc}, the program counter (which is 32 bits long), and
-	the \texttt{flags}.  Also there are the interrupts-related registers:
-	\texttt{ids} (the destination to go to upon an interrupt happening),
-	\texttt{ira} (the program counter value to return to after an
-	interrupt) and \texttt{ie} (whether or not interrupts are enabled).
-	Two more registers are \texttt{hi} and \texttt{lo}, which are used as
-	the high 32 bits and low 32 bits of the result of a 32 by 32 -> 64
-	multiplication, or as the high 32 bits and low 32 bits of the result of
-	a 64 by 32 -> 64 division.  Here are the flags:
+	all equivalent.  Each register is 32 bits long.  For special purpose
+	registers, there are also \texttt{pc}, the program counter (which is 32
+	bits long), and the \texttt{flags}.  Also there are the
+	interrupts-related registers: \texttt{ids} (the destination to go to
+	upon an interrupt happening), \texttt{ira} (the program counter value
+	to return to after an interrupt) and \texttt{ie} (whether or not
+	interrupts are enabled).  Two more registers are \texttt{hi} and
+	\texttt{lo}, which are used as the high 32 bits and low 32 bits of the
+	result of a 32 by 32 -> 64 multiplication, or as the high 32 bits and
+	low 32 bits of the result of a 64 by 32 -> 64 division.  Here are the
+	flags:
 
 	\begin{table}[H]
 		\begin{center}
