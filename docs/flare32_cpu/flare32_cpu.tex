@@ -872,40 +872,61 @@
 	\singlespacing
 	\begin{itemize}
 		\item Opcode \texttt{0x0}:
-			\texttt{\textbf{lumul}}
+			\texttt{\textbf{mul} rA}
 		\begin{itemize}
-			\item Effect:  This instruction multiplies \texttt{hi} by
-			\texttt{lo}, performing an unsigned 32-bit by 32-bit -> 64-bit
-			multiply, storing result in \texttt{\{hi, lo\}}.
+			\item Effect:  This instruction multiplies \texttt{lo} by
+			\texttt{rA}, performing a 32-bit by 32-bit -> 32-bit multiply,
+			storing result in \texttt{lo}.
 		\end{itemize}
 		\item Opcode \texttt{0x1}:
-			\texttt{\textbf{lsmul}}
+			\texttt{\textbf{udiv} rA}
 		\begin{itemize}
-			\item Effect:  This instruction multiplies \texttt{hi} by
-			\texttt{lo}, performing a signed 32-bit by 32-bit -> 64-bit
-			multiply, storing result in \texttt{\{hi, lo\}}.
+			\item Effect:  This instruction performs a 32-bit by 32-bit ->
+			32-bit unsigned divide of \texttt{lo} by \texttt{rA}, storing
+			result in \texttt{lo}.
 		\end{itemize}
 		\item Opcode \texttt{0x2}:
+			\texttt{\textbf{sdiv} rA}
+		\begin{itemize}
+			\item Effect:  This instruction performs a 32-bit by 32-bit ->
+			32-bit signed divide of \texttt{lo} by \texttt{rA}, storing
+			result in \texttt{lo}.
+		\end{itemize}
+		\item Opcode \texttt{0x3}:
+			\texttt{\textbf{lumul} rA}
+		\begin{itemize}
+			\item Effect:  This instruction multiplies \texttt{lo} by
+			\texttt{rA}, performing an unsigned 32-bit by 32-bit -> 64-bit
+			multiply, storing result in \texttt{\{hi, lo\}}.
+		\end{itemize}
+		\item Opcode \texttt{0x4}:
+			\texttt{\textbf{lsmul} rA}
+		\begin{itemize}
+			\item Effect:  This instruction multiplies \texttt{lo} by
+			\texttt{rA}, performing a signed 32-bit by 32-bit -> 64-bit
+			multiply, storing result in \texttt{\{hi, lo\}}.
+		\end{itemize}
+		\item Opcode \texttt{0x5}:
 			\texttt{\textbf{ludiv} rA}
 		\begin{itemize}
 			\item Effect:  performs a 64-bit by 32-bit unsigned division of
 			\texttt{\{hi, lo\}} by \texttt{rA}, storing 64-bit result in
 			\texttt{\{hi, lo\}}.
 		\end{itemize}
-		\item Opcode \texttt{0x3}:
+		\item Opcode \texttt{0x6}:
 			\texttt{\textbf{lsdiv} rA}
 		\begin{itemize}
 			\item Effect:  performs a 64-bit by 32-bit signed division of
 			\texttt{\{hi, lo\}} by \texttt{rA}, storing 64-bit result in
 			\texttt{\{hi, lo\}}.
 		\end{itemize}
-		\item Opcode \texttt{0x4}:
+		\item Opcode \texttt{0x7}:
 			\texttt{\textbf{reti}}
 		\begin{itemize}
 			\item Effect:  enables interrupts and performs
 			\texttt{pc <= ira;}
 		\end{itemize}
-		\item Opcode \texttt{0x5}:
+		\item Opcode \texttt{0x8}:
 			\texttt{\textbf{jmp} ira}
 		\begin{itemize}
 			\item Effect:  \texttt{pc <= ira;}
