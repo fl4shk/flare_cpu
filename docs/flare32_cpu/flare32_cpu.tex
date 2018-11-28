@@ -243,7 +243,7 @@
 			\item Mnemonic for when flags affected:  \texttt{lui.f}
 			\item Note:  Copy bits \texttt{[15:0]} of the sign-extended
 			immediate value into bits \texttt{[31:16]} of \texttt{rA}.
-			Bits \texttt{[15:0]} of \texttt{rA} are not affected.
+			Bits \texttt{[15:0]} of \texttt{rA} are set to zero.
 			\item Affectable flags:
 				\texttt{Z}, \texttt{N}
 		\end{itemize}
@@ -337,7 +337,7 @@
 			\item Mnemonic for when flags not affected:  \texttt{lur}
 			\item Mnemonic for when flags affected:  \texttt{lur.f}
 			\item Note:  Copy \texttt{b[15:0]} to \texttt{a[31:16]}.
-			Bits \texttt{[15:0]} of \texttt{rA} are not affected.
+			Bits \texttt{[15:0]} of \texttt{rA} are set to zero.
 			\item Affectable flags:
 				\texttt{Z}, \texttt{N}
 		\end{itemize}
