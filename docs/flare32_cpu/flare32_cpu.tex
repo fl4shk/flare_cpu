@@ -186,16 +186,16 @@
 	\subsection{Instruction Group 1:  ALU Instr with Immediate}
 	The following encoding is used, with each character representing one
 	bit:  \\
-	\texttt{001i iiii aaaa ooof}, where
+	\texttt{001i iiii aaaa oooo}, where
 
 	\singlespacing
 	\begin{itemize}
 		\item \texttt{i} is a 5-bit sign-extended immediate
 		\item \texttt{a} encodes register \texttt{rA}
 		\item \texttt{o} is the opcode
-		\item \texttt{f} is \texttt{0} if this instruction cannot affect
-		flags and \texttt{1} if this instruction is permitted to affect
-		flags. 
+		%\item \texttt{f} is \texttt{0} if this instruction cannot affect
+		%flags and \texttt{1} if this instruction is permitted to affect
+		%flags. 
 	\end{itemize}
 	\doublespacing
 
@@ -205,74 +205,116 @@
 	\begin{itemize}
 		\item Opcode \texttt{0x0}:
 			\texttt{\textbf{addi} rA, simm}
-		\begin{itemize}
-			\item Mnemonic for when flags not affected:  \texttt{addi}
-			\item Mnemonic for when flags affected:  \texttt{addi.f}
-			\item Affectable flags:
-				\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
-		\end{itemize}
+		%\begin{itemize}
+		%	\item Mnemonic for when flags not affected:  \texttt{addi}
+		%	\item Mnemonic for when flags affected:  \texttt{addi.f}
+		%	%\item Affectable flags:
+		%	%	\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		%\end{itemize}
 		\item Opcode \texttt{0x1}:
 			\texttt{\textbf{subi} rA, simm}
-		\begin{itemize}
-			\item Mnemonic for when flags not affected:  \texttt{subi}
-			\item Mnemonic for when flags affected:  \texttt{subi.f}
-			\item Affectable flags:
-				\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
-		\end{itemize}
+		%\begin{itemize}
+		%	\item Mnemonic for when flags not affected:  \texttt{subi}
+		%	\item Mnemonic for when flags affected:  \texttt{subi.f}
+		%	%\item Affectable flags:
+		%	%	\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		%\end{itemize}
 		\item Opcode \texttt{0x2}:
 			\texttt{\textbf{addi} rA, pc, simm}
-		\begin{itemize}
-			\item Mnemonic for when flags not affected:  \texttt{addi}
-			\item Mnemonic for when flags affected:  \texttt{addi.f}
-			\item Affectable flags:
-				\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
-		\end{itemize}
+		%\begin{itemize}
+		%	\item Mnemonic for when flags not affected:  \texttt{addi}
+		%	\item Mnemonic for when flags affected:  \texttt{addi.f}
+		%	%\item Affectable flags:
+		%	%	\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		%\end{itemize}
 		\item Opcode \texttt{0x3}:
 			\texttt{\textbf{cpyi} rA, simm}
 		\begin{itemize}
-			\item Mnemonic for when flags not affected:  \texttt{cpyi}
-			\item Mnemonic for when flags affected:  \texttt{cpyi.f}
+			%\item Mnemonic for when flags not affected:  \texttt{cpyi}
+			%\item Mnemonic for when flags affected:  \texttt{cpyi.f}
 			\item Note:  Copy an immediate value into \texttt{rA}
-			\item Affectable flags:
-				\texttt{Z}, \texttt{N}
+			%\item Affectable flags:
+			%	\texttt{Z}, \texttt{N}
 		\end{itemize}
 		\item Opcode \texttt{0x4}:
 			\texttt{\textbf{lui} rA, simm}
 		\begin{itemize}
-			\item Mnemonic for when flags not affected:  \texttt{lui}
-			\item Mnemonic for when flags affected:  \texttt{lui.f}
+			%\item Mnemonic for when flags not affected:  \texttt{lui}
+			%\item Mnemonic for when flags affected:  \texttt{lui.f}
 			\item Note:  Copy bits \texttt{[15:0]} of the sign-extended
 			immediate value into bits \texttt{[31:16]} of \texttt{rA}.
 			Bits \texttt{[15:0]} of \texttt{rA} are set to zero.
-			\item Affectable flags:
-				\texttt{Z}, \texttt{N}
+			%\item Affectable flags:
+			%	\texttt{Z}, \texttt{N}
 		\end{itemize}
 		\item Opcode \texttt{0x5}:
 			\texttt{\textbf{lsli} rA, simm}
 		\begin{itemize}
-			\item Mnemonic for when flags not affected:  \texttt{lsli}
-			\item Mnemonic for when flags affected:  \texttt{lsli.f}
+			%\item Mnemonic for when flags not affected:  \texttt{lsli}
+			%\item Mnemonic for when flags affected:  \texttt{lsli.f}
 			\item Note:  Logical shift left
-			\item Affectable flags:
-				\texttt{Z}, \texttt{N}
+			%\item Affectable flags:
+			%	\texttt{Z}, \texttt{N}
 		\end{itemize}
 		\item Opcode \texttt{0x6}:
 			\texttt{\textbf{lsri} rA, simm}
 		\begin{itemize}
-			\item Mnemonic for when flags not affected:  \texttt{lsri}
-			\item Mnemonic for when flags affected:  \texttt{lsri.f}
+			%\item Mnemonic for when flags not affected:  \texttt{lsri}
+			%\item Mnemonic for when flags affected:  \texttt{lsri.f}
 			\item Note:  Logical shift right
-			\item Affectable flags:
-				\texttt{Z}, \texttt{N}
+			%\item Affectable flags:
+			%	\texttt{Z}, \texttt{N}
 		\end{itemize}
 		\item Opcode \texttt{0x7}:
 			\texttt{\textbf{asri} rA, simm}
 		\begin{itemize}
-			\item Mnemonic for when flags not affected:  \texttt{asri}
-			\item Mnemonic for when flags affected:  \texttt{asri.f}
+			%\item Mnemonic for when flags not affected:  \texttt{asri}
+			%\item Mnemonic for when flags affected:  \texttt{asri.f}
 			\item Note:  Arithmetic shift right
+			%\item Affectable flags:
+			%	\texttt{Z}, \texttt{N}
+		\end{itemize}
+		\item Opcode \texttt{0x8}:
+			\texttt{\textbf{adci} rA, simm}
+		\begin{itemize}
+			\item Note:  Add with Carry
+		\end{itemize}
+		\item Opcode \texttt{0x9}:
+			\texttt{\textbf{sbci} rA, simm}
+		\begin{itemize}
+			\item Note:  Subtract with Borrow
+		\end{itemize}
+		\item Opcode \texttt{0xa}:
+			\texttt{\textbf{cmpi} rA, simm}
+		\begin{itemize}
+			\item Note:  Compare \texttt{rA} to \texttt{simm}.
 			\item Affectable flags:
-				\texttt{Z}, \texttt{N}
+				\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		\end{itemize}
+		\item Opcode \texttt{0xb}:
+			\texttt{\textbf{andi} rA, simm}
+		\begin{itemize}
+			\item Note:  Bitwise AND
+		\end{itemize}
+		\item Opcode \texttt{0xc}:
+			\texttt{\textbf{orri} rA, simm}
+		\begin{itemize}
+			\item Note:  Bitwise OR
+		\end{itemize}
+		\item Opcode \texttt{0xd}:
+			\texttt{\textbf{xori} rA, simm}
+		\begin{itemize}
+			\item Note:  Bitwise XOR
+		\end{itemize}
+		\item Opcode \texttt{0xe}:
+			\texttt{\textbf{zeb} rA}
+		\begin{itemize}
+			\item Effect:  Set \texttt{rA[31:8]} to zero.
+		\end{itemize}
+		\item Opcode \texttt{0xf}:
+			\texttt{\textbf{zeh} rA}
+		\begin{itemize}
+			\item Effect:  Set \texttt{rA[31:16]} to zero.
 		\end{itemize}
 	\end{itemize}
 
