@@ -477,7 +477,7 @@
 	\end{itemize}
 
 	\doublespacing
-	\subsection{Instruction Group 3:  Jumps and Stack Stuff}
+	\subsection{Instruction Group 3:  Jumps}
 	The following encoding is used, with each character representing one
 	bit:  \\
 	\texttt{011o ooo0 0000 bbbb}, where
@@ -515,74 +515,113 @@
 			\item Effect:
 				\texttt{if (0) pc <= rB;} This is a NOP.
 		\end{itemize}
+
 		\item Opcode \texttt{0x1}:
 			\texttt{\textbf{jmp} rB}
 		\begin{itemize}
 			\item Effect:
 				\texttt{if (1) pc <= rB;}
 		\end{itemize}
+
 		\item Opcode \texttt{0x2}:
-			\texttt{\textbf{jge} rB}
-		\begin{itemize}
-			\item Effect:
-				\texttt{if (!(flags.N XOR flags.V)) pc <= rB;}
-		\end{itemize}
-		\item Opcode \texttt{0x3}:
-			\texttt{\textbf{jlt} rB}
-		\begin{itemize}
-			\item Effect:
-				\texttt{if (flags.N XOR flags.V) pc <= rB;}
-		\end{itemize}
-		\item Opcode \texttt{0x4}:
 			\texttt{\textbf{jne} rB}
 		\begin{itemize}
 			\item Effect:
 				\texttt{if (!flags.Z) pc <= rB;}
 		\end{itemize}
-		\item Opcode \texttt{0x5}:
+
+		\item Opcode \texttt{0x3}:
 			\texttt{\textbf{jeq} rB}
 		\begin{itemize}
 			\item Effect:
 				\texttt{if (flags.Z) pc <= rB;}
 		\end{itemize}
-		\item Opcode \texttt{0x6}:
+
+		\item Opcode \texttt{0x4}:
 			\texttt{\textbf{jpl} rB}
 		\begin{itemize}
 			\item Effect:
 				\texttt{if (!flags.N) pc <= rB;}
 		\end{itemize}
-		\item Opcode \texttt{0x7}:
+
+		\item Opcode \texttt{0x5}:
 			\texttt{\textbf{jmi} rB}
 		\begin{itemize}
 			\item Effect:
 				\texttt{if (flags.N) pc <= rB;}
 		\end{itemize}
-		\item Opcode \texttt{0x8}:
-			\texttt{\textbf{jcc} rB}
-		\begin{itemize}
-			\item Effect:
-				\texttt{if (!flags.C) pc <= rB;}
-		\end{itemize}
-		\item Opcode \texttt{0x9}:
-			\texttt{\textbf{jcs} rB}
-		\begin{itemize}
-			\item Effect:
-				\texttt{if (flags.C) pc <= rB;}
-		\end{itemize}
-		\item Opcode \texttt{0xa}:
+
+		\item Opcode \texttt{0x6}:
 			\texttt{\textbf{jvc} rB}
 		\begin{itemize}
 			\item Effect:
 				\texttt{if (!flags.V) pc <= rB;}
 		\end{itemize}
-		\item Opcode \texttt{0xb}:
+
+		\item Opcode \texttt{0x7}:
 			\texttt{\textbf{jvs} rB}
 		\begin{itemize}
 			\item Effect:
 				\texttt{if (flags.V) pc <= rB;}
 		\end{itemize}
-		%\item Opcode \texttt{0xc}:
-		%	\texttt{\textbf{pick} rB}
+
+		\item Opcode \texttt{0x8}:
+			\texttt{\textbf{jgeu} rB}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (flags.C) pc <= rB;}
+		\end{itemize}
+
+		\item Opcode \texttt{0x9}:
+			\texttt{\textbf{jltu} rB}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (!flags.C) pc <= rB;}
+		\end{itemize}
+
+		\item Opcode \texttt{0xa}:
+			\texttt{\textbf{jgtu} rB}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (flags.C AND (!flags.Z)) pc <= rB;}
+		\end{itemize}
+
+		\item Opcode \texttt{0xb}:
+			\texttt{\textbf{jleu} rB}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if ((!flags.C) OR flags.Z) pc <= rB;}
+		\end{itemize}
+
+		\item Opcode \texttt{0xc}:
+			\texttt{\textbf{jges} rB}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (!(flags.N XOR flags.V)) pc <= rB;}
+		\end{itemize}
+
+		\item Opcode \texttt{0xd}:
+			\texttt{\textbf{jlts} rB}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (flags.N XOR flags.V) pc <= rB;}
+		\end{itemize}
+
+		\item Opcode \texttt{0xe}:
+			\texttt{\textbf{jgts} rB}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if ((!(flags.N XOR flags.V)) AND (!flags.Z))
+					pc <= rB;}
+		\end{itemize}
+
+		\item Opcode \texttt{0xf}:
+			\texttt{\textbf{jles} rB}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if ((flags.N XOR flags.V) OR flags.Z)
+					pc <= rB;}
+		\end{itemize}
 	\end{itemize}
 
 	\doublespacing
@@ -609,77 +648,124 @@
 
 	\singlespacing
 	\begin{itemize}
+		%\item Opcode \texttt{0x0}:
+		%	\texttt{\textbf{bnv} simm}
+		%\begin{itemize}
+		%	\item Effect:
+		%		\texttt{if (0) pc <= pc + simm + 2;} This is a NOP.
+		%\end{itemize}
 		\item Opcode \texttt{0x0}:
 			\texttt{\textbf{bnv} simm}
 		\begin{itemize}
 			\item Effect:
 				\texttt{if (0) pc <= pc + simm + 2;} This is a NOP.
 		\end{itemize}
+
 		\item Opcode \texttt{0x1}:
 			\texttt{\textbf{bra} simm}
 		\begin{itemize}
 			\item Effect:
 				\texttt{if (1) pc <= pc + simm + 2;}
 		\end{itemize}
+
 		\item Opcode \texttt{0x2}:
-			\texttt{\textbf{bge} simm}
-		\begin{itemize}
-			\item Effect:
-				\texttt{if (!(flags.N XOR flags.V)) pc <= pc + simm + 2;}
-		\end{itemize}
-		\item Opcode \texttt{0x3}:
-			\texttt{\textbf{blt} simm}
-		\begin{itemize}
-			\item Effect:
-				\texttt{if (flags.N XOR flags.V) pc <= pc + simm + 2;}
-		\end{itemize}
-		\item Opcode \texttt{0x4}:
 			\texttt{\textbf{bne} simm}
 		\begin{itemize}
 			\item Effect:
 				\texttt{if (!flags.Z) pc <= pc + simm + 2;}
 		\end{itemize}
-		\item Opcode \texttt{0x5}:
+
+		\item Opcode \texttt{0x3}:
 			\texttt{\textbf{beq} simm}
 		\begin{itemize}
 			\item Effect:
 				\texttt{if (flags.Z) pc <= pc + simm + 2;}
 		\end{itemize}
-		\item Opcode \texttt{0x6}:
+
+		\item Opcode \texttt{0x4}:
 			\texttt{\textbf{bpl} simm}
 		\begin{itemize}
 			\item Effect:
 				\texttt{if (!flags.N) pc <= pc + simm + 2;}
 		\end{itemize}
-		\item Opcode \texttt{0x7}:
+
+		\item Opcode \texttt{0x5}:
 			\texttt{\textbf{bmi} simm}
 		\begin{itemize}
 			\item Effect:
 				\texttt{if (flags.N) pc <= pc + simm + 2;}
 		\end{itemize}
-		\item Opcode \texttt{0x8}:
-			\texttt{\textbf{bcc} simm}
-		\begin{itemize}
-			\item Effect:
-				\texttt{if (!flags.C) pc <= pc + simm + 2;}
-		\end{itemize}
-		\item Opcode \texttt{0x9}:
-			\texttt{\textbf{bcs} simm}
-		\begin{itemize}
-			\item Effect:
-				\texttt{if (flags.C) pc <= pc + simm + 2;}
-		\end{itemize}
-		\item Opcode \texttt{0xa}:
+
+		\item Opcode \texttt{0x6}:
 			\texttt{\textbf{bvc} simm}
 		\begin{itemize}
 			\item Effect:
 				\texttt{if (!flags.V) pc <= pc + simm + 2;}
 		\end{itemize}
-		\item Opcode \texttt{0xb}:
+
+		\item Opcode \texttt{0x7}:
 			\texttt{\textbf{bvs} simm}
 		\begin{itemize}
 			\item Effect:
 				\texttt{if (flags.V) pc <= pc + simm + 2;}
+		\end{itemize}
+
+		\item Opcode \texttt{0x8}:
+			\texttt{\textbf{bgeu} simm}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (flags.C) pc <= pc + simm + 2;}
+		\end{itemize}
+
+		\item Opcode \texttt{0x9}:
+			\texttt{\textbf{bltu} simm}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (!flags.C) pc <= pc + simm + 2;}
+		\end{itemize}
+
+		\item Opcode \texttt{0xa}:
+			\texttt{\textbf{bgtu} simm}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (flags.C AND (!flags.Z)) pc <= pc + simm + 2;}
+		\end{itemize}
+
+		\item Opcode \texttt{0xb}:
+			\texttt{\textbf{bleu} simm}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if ((!flags.C) OR flags.Z) pc <= pc + simm + 2;}
+		\end{itemize}
+
+		\item Opcode \texttt{0xc}:
+			\texttt{\textbf{bges} simm}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (!(flags.N XOR flags.V)) pc <= pc + simm + 2;}
+		\end{itemize}
+
+		\item Opcode \texttt{0xd}:
+			\texttt{\textbf{blts} simm}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if (flags.N XOR flags.V) pc <= pc + simm + 2;}
+		\end{itemize}
+
+		\item Opcode \texttt{0xe}:
+			\texttt{\textbf{bgts} simm}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if ((!(flags.N XOR flags.V)) AND (!flags.Z))
+					pc <= pc + simm + 2;}
+		\end{itemize}
+
+		\item Opcode \texttt{0xf}:
+			\texttt{\textbf{bles} simm}
+		\begin{itemize}
+			\item Effect:
+				\texttt{if ((flags.N XOR flags.V) OR flags.Z)
+					pc <= pc + simm + 2;}
 		\end{itemize}
 	\end{itemize}
 
