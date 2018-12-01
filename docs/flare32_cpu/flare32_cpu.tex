@@ -1033,17 +1033,17 @@
 			multiply, storing result in \texttt{\{hi, lo\}}.
 		\end{itemize}
 		\item Opcode \texttt{0x5}:
-			\texttt{\textbf{ludiv} rA}
+			\texttt{\textbf{ludiv}}
 		\begin{itemize}
-			\item Effect:  performs a 64-bit by 32-bit unsigned division of
-			\texttt{\{hi, lo\}} by \texttt{rA}, storing 64-bit result in
+			\item Effect:  performs a 64-bit by 64-bit unsigned division of
+			\texttt{\{hi, lo\}} by \texttt{\{r0, r1\}}, storing 64-bit result in
 			\texttt{\{hi, lo\}}.
 		\end{itemize}
 		\item Opcode \texttt{0x6}:
-			\texttt{\textbf{lsdiv} rA}
+			\texttt{\textbf{lsdiv}}
 		\begin{itemize}
-			\item Effect:  performs a 64-bit by 32-bit signed division of
-			\texttt{\{hi, lo\}} by \texttt{rA}, storing 64-bit result in
+			\item Effect:  performs a 64-bit by 64-bit signed division of
+			\texttt{\{hi, lo\}} by \texttt{\{r0, r1\}}, storing 64-bit result in
 			\texttt{\{hi, lo\}}.
 		\end{itemize}
 		\item Opcode \texttt{0x7}:
