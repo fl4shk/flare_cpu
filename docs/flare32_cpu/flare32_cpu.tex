@@ -133,17 +133,18 @@
 	There are sixteen general-purpose registers:  \texttt{r0}, \texttt{r1},
 	\texttt{r2}, \texttt{...}, \texttt{r11}, \texttt{rtemp}, \texttt{lr},
 	\texttt{fp}, \texttt{sp}.  From the hardware's perspective, they are
-	all equivalent.  Each register is 32 bits long.  For special purpose
-	registers, there are also \texttt{pc}, the program counter (which is 32
-	bits long), and the \texttt{flags}.  Also there are the
-	interrupts-related registers: \texttt{ids} (the destination to go to
-	upon an interrupt happening), \texttt{ira} (the program counter value
-	to return to after an interrupt) and \texttt{ie} (whether or not
-	interrupts are enabled).  Two more registers are \texttt{hi} and
-	\texttt{lo}, which are used as the high 32 bits and low 32 bits of the
-	result of a 32 by 32 -> 64 multiplication, or as the high 32 bits and
-	low 32 bits of the result of a 64 by 32 -> 64 division.  Here are the
-	flags:
+	all equivalent, except for \texttt{sp}, which is also used for the
+	address of \texttt{push} and \texttt{pop} instructions.  Each register
+	is 32 bits long.  For special purpose registers, there are also
+	\texttt{pc}, the program counter (which is 32 bits long), and the
+	\texttt{flags}.  Also there are the interrupts-related registers:
+	\texttt{ids} (the destination to go to upon an interrupt happening),
+	\texttt{ira} (the program counter value to return to after an
+	interrupt) and \texttt{ie} (whether or not interrupts are enabled).
+	Two more registers are \texttt{hi} and \texttt{lo}, which are used as
+	the high 32 bits and low 32 bits of the result of a 32 by 32 -> 64
+	multiplication, or as the high 32 bits and low 32 bits of the result of
+	a 64 by 32 -> 64 division.  Here are the flags:
 
 	\begin{table}[H]
 		\begin{center}
@@ -964,26 +965,20 @@
 			\item Effect:  copy \texttt{0} into \texttt{ie}.
 		\end{itemize}
 		\item Opcode \texttt{0xe}:
-			\texttt{\textbf{push} ira, rA}
+			\texttt{\textbf{push} ira}
 		\begin{itemize}
-			\item Effect:  pushes \texttt{ira} onto the stack, using
-			register \texttt{rA} as the stack pointer register.  It is
-			expected that the typical \texttt{rA} will simply be
-			\texttt{sp}.
+			\item Effect:  pushes \texttt{ira} onto the stack.
 		\end{itemize}
 		\item Opcode \texttt{0xf}:
-			\texttt{\textbf{pop} ira, rA}
+			\texttt{\textbf{pop} ira}
 		\begin{itemize}
-			\item Effect:  pops \texttt{ira} off the stack, using
-			register \texttt{rA} as the stack pointer register.  It is
-			expected that the typical \texttt{rA} will simply be
-			\texttt{sp}.
+			\item Effect:  pops \texttt{ira} off the stack.
 		\end{itemize}
 	\end{itemize}
 	\doublespacing
 
-	\subsection{Instruction Group 7.2:  Multiplies, Divides, and
-	Extra Interrupts Stuff}
+	\subsection{Instruction Group 7.2:  Multiplies, Divides,
+	Extra Interrupts Stuff, and Push/Pop}
 	The following encoding is used, with each character representing one
 	bit:  \\
 	\texttt{1110 oooo aaaa 1000}, where
@@ -1058,6 +1053,16 @@
 			\texttt{\textbf{jmp} ira}
 		\begin{itemize}
 			\item Effect:  \texttt{pc <= ira;}
+		\end{itemize}
+		\item Opcode \texttt{0x9}:
+			\texttt{\textbf{push} rA}
+		\begin{itemize}
+			\item Effect:  pushes \texttt{rA} onto the stack.
+		\end{itemize}
+		\item Opcode \texttt{0xa}:
+			\texttt{\textbf{pop} rA}
+		\begin{itemize}
+			\item Effect:  pops \texttt{rA} off the stack.
 		\end{itemize}
 	\end{itemize}
 	\doublespacing
