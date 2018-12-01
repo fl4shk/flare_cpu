@@ -967,12 +967,14 @@
 		\item Opcode \texttt{0xe}:
 			\texttt{\textbf{push} ira}
 		\begin{itemize}
-			\item Effect:  pushes \texttt{ira} onto the stack.
+			\item Effect:  pushes \texttt{ira} onto the stack,
+			post-decrementing \texttt{sp}.
 		\end{itemize}
 		\item Opcode \texttt{0xf}:
 			\texttt{\textbf{pop} ira}
 		\begin{itemize}
-			\item Effect:  pops \texttt{ira} off the stack.
+			\item Effect:  pops \texttt{ira} off the stack,
+			pre-incrementing \texttt{sp}.
 		\end{itemize}
 	\end{itemize}
 	\doublespacing
@@ -986,7 +988,8 @@
 	\singlespacing
 	\begin{itemize}
 		\item \texttt{o} is the opcode
-		\item \texttt{a} encodes register \texttt{rA}
+		\item \texttt{a} encodes register \texttt{rA} or one of registers 
+		\texttt{hi}, \texttt{lo}, \texttt{flags} (denoted \texttt{sA})
 	\end{itemize}
 	\doublespacing
 
@@ -1057,12 +1060,26 @@
 		\item Opcode \texttt{0x9}:
 			\texttt{\textbf{push} rA}
 		\begin{itemize}
-			\item Effect:  pushes \texttt{rA} onto the stack.
+			\item Effect:  pushes \texttt{rA} onto the stack,
+			post-decrementing \texttt{sp}.
 		\end{itemize}
 		\item Opcode \texttt{0xa}:
 			\texttt{\textbf{pop} rA}
 		\begin{itemize}
-			\item Effect:  pops \texttt{rA} off the stack.
+			\item Effect:  pops \texttt{rA} off the stack,
+			pre-incrementing \texttt{sp}.
+		\end{itemize}
+		\item Opcode \texttt{0xb}:
+			\texttt{\textbf{push} sA}
+		\begin{itemize}
+			\item Effect:  pushes \texttt{sA} onto the stack,
+			post-decrementing \texttt{sp}.
+		\end{itemize}
+		\item Opcode \texttt{0xc}:
+			\texttt{\textbf{pop} sA}
+		\begin{itemize}
+			\item Effect:  pops \texttt{sA} off the stack,
+			pre-incrementing \texttt{sp}.
 		\end{itemize}
 	\end{itemize}
 	\doublespacing
