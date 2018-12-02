@@ -173,16 +173,46 @@
 		\item \texttt{i} is a 13-bit constant.
 	\end{itemize}
 
-	At the assembly language level, the instruction is simply
-	\texttt{pre expr}, but it isn't typical to use this instruction
-	directly in assembly language source code.  Instead, when an immediate
-	value will not fit in a 5-bit signed immediate, this instruction will
-	be inserted by the assembler right before the instruction using an
-	immediate value.  The 13-bit constant will be used as bits
-	\texttt{[17:5]} of the immediate value of the following instruction.
-	The full 18-bit immediate value will then be sign extended to 32 bits.
-	Also, if the previous instruction was a \texttt{pre}, interrupts will
-	not be serviced.
+	%At the assembly language level, the instruction is simply
+	%\texttt{pre expr}, but it isn't typical to use this instruction
+	%directly in assembly language source code.  Instead, when an immediate
+	%value will not fit in a 5-bit signed immediate, this instruction will
+	%be inserted by the assembler right before the instruction using an
+	%immediate value.  The 13-bit constant will be used as bits
+	%\texttt{[17:5]} of the immediate value of the following instruction.
+	%The full 18-bit immediate value will then be sign extended to 32 bits.
+	%Also, if the previous instruction was a \texttt{pre}, interrupts will
+	%not be serviced.
+
+	%Multiple \texttt{pre} instructions can be used to form even larger
+	%immediates.  If two \texttt{pre} instructions were used, for example, a
+	%31-bit immediate can be used.  While not needed in most cases, three
+	%\texttt{pre} instructions permit use of 32-bit immediates.
+	\texttt{pre} is a mechanism by which immediates larger than 5-bit can
+	be used, effectively acting as variable width instructions.
+	
+	If one \texttt{pre} instruction is used, the immediate field of the
+	\texttt{pre} instruction will form bits \texttt{[17:5]} of the
+	immediate of the following instruction.  The 18-bit immediate will then
+	be sign-extended to 32 bits.
+
+	If two \texttt{pre} instructions are used, the first \texttt{pre}
+	instruction forms bits \texttt{[17:5]} of the immediate, and the second
+	\texttt{pre} instruction forms bits \texttt{[30:18]} of the immediate.
+	The full 31-bit immediate will be sign-extended to 32 bits.
+
+	If three \texttt{pre} instructions are used, the first and second
+	\texttt{pre} instructions are treated like when there are only two
+	\texttt{pre} instructions, and the final/third \texttt{pre} instruction
+	forms just bit \texttt{[31]} of the 32-bit immediate.  In this case, no
+	sign extension will be performed.
+
+	If four \texttt{pre} instructions are used, the (effectively 64-bit)
+	instruction will be treated as a \texttt{nop}.
+
+	In any of these cases, if \texttt{pre} was the previous instruction,
+	the current instruction cannot be interrupted.
+
 
 	\subsection{Instruction Group 1:  ALU Instr with Immediate}
 	The following encoding is used, with each character representing one
@@ -206,74 +236,38 @@
 	\begin{itemize}
 		\item Opcode \texttt{0x0}:
 			\texttt{\textbf{addi} rA, simm}
-		%\begin{itemize}
-		%	\item Mnemonic for when flags not affected:  \texttt{addi}
-		%	\item Mnemonic for when flags affected:  \texttt{addi.f}
-		%	%\item Affectable flags:
-		%	%	\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
-		%\end{itemize}
 		\item Opcode \texttt{0x1}:
 			\texttt{\textbf{subi} rA, simm}
-		%\begin{itemize}
-		%	\item Mnemonic for when flags not affected:  \texttt{subi}
-		%	\item Mnemonic for when flags affected:  \texttt{subi.f}
-		%	%\item Affectable flags:
-		%	%	\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
-		%\end{itemize}
 		\item Opcode \texttt{0x2}:
 			\texttt{\textbf{addi} rA, pc, simm}
+		%\item Opcode \texttt{0x3}:
+		%	\texttt{\textbf{lui} rA, simm}
 		%\begin{itemize}
-		%	\item Mnemonic for when flags not affected:  \texttt{addi}
-		%	\item Mnemonic for when flags affected:  \texttt{addi.f}
-		%	%\item Affectable flags:
-		%	%	\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		%	\item Note:  Copy bits \texttt{[15:0]} of the sign-extended
+		%	immediate value into bits \texttt{[31:16]} of \texttt{rA}.
+		%	Bits \texttt{[15:0]} of \texttt{rA} are set to zero.
 		%\end{itemize}
 		\item Opcode \texttt{0x3}:
+			\texttt{\textbf{addi} rA, fp, simm}
+		\item Opcode \texttt{0x4}:
 			\texttt{\textbf{cpyi} rA, simm}
 		\begin{itemize}
-			%\item Mnemonic for when flags not affected:  \texttt{cpyi}
-			%\item Mnemonic for when flags affected:  \texttt{cpyi.f}
 			\item Note:  Copy an immediate value into \texttt{rA}
-			%\item Affectable flags:
-			%	\texttt{Z}, \texttt{N}
-		\end{itemize}
-		\item Opcode \texttt{0x4}:
-			\texttt{\textbf{lui} rA, simm}
-		\begin{itemize}
-			%\item Mnemonic for when flags not affected:  \texttt{lui}
-			%\item Mnemonic for when flags affected:  \texttt{lui.f}
-			\item Note:  Copy bits \texttt{[15:0]} of the sign-extended
-			immediate value into bits \texttt{[31:16]} of \texttt{rA}.
-			Bits \texttt{[15:0]} of \texttt{rA} are set to zero.
-			%\item Affectable flags:
-			%	\texttt{Z}, \texttt{N}
 		\end{itemize}
 		\item Opcode \texttt{0x5}:
 			\texttt{\textbf{lsli} rA, simm}
 		\begin{itemize}
-			%\item Mnemonic for when flags not affected:  \texttt{lsli}
-			%\item Mnemonic for when flags affected:  \texttt{lsli.f}
 			\item Note:  Logical shift left
-			%\item Affectable flags:
-			%	\texttt{Z}, \texttt{N}
 		\end{itemize}
 		\item Opcode \texttt{0x6}:
 			\texttt{\textbf{lsri} rA, simm}
 		\begin{itemize}
-			%\item Mnemonic for when flags not affected:  \texttt{lsri}
-			%\item Mnemonic for when flags affected:  \texttt{lsri.f}
 			\item Note:  Logical shift right
-			%\item Affectable flags:
-			%	\texttt{Z}, \texttt{N}
 		\end{itemize}
 		\item Opcode \texttt{0x7}:
 			\texttt{\textbf{asri} rA, simm}
 		\begin{itemize}
-			%\item Mnemonic for when flags not affected:  \texttt{asri}
-			%\item Mnemonic for when flags affected:  \texttt{asri.f}
 			\item Note:  Arithmetic shift right
-			%\item Affectable flags:
-			%	\texttt{Z}, \texttt{N}
 		\end{itemize}
 		\item Opcode \texttt{0x8}:
 			\texttt{\textbf{adci} rA, simm}
@@ -365,22 +359,30 @@
 			\item Affectable flags:
 				\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
 		\end{itemize}
-		\item Opcode \texttt{0x3}:
+		%\item Opcode \texttt{0x3}:
+		%	\texttt{\textbf{lur} rA, rC}
+		%\begin{itemize}
+		%	\item Mnemonic for when flags not affected:  \texttt{lur}
+		%	\item Mnemonic for when flags affected:  \texttt{lur.f}
+		%	\item Note:  Copy \texttt{b[15:0]} to \texttt{a[31:16]}.
+		%	Bits \texttt{[15:0]} of \texttt{rA} are set to zero.
+		%	\item Affectable flags:
+		%		\texttt{Z}, \texttt{N}
+		%\end{itemize}
+		\item Opcode \texttt{0x3}
+			\texttt{\textbf{addi} rA, fp, rC}
+		\begin{itemize}
+			\item Mnemonic for when flags not affected:  \texttt{add}
+			\item Mnemonic for when flags affected:  \texttt{add.f}
+			\item Affectable flags:
+				\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		\end{itemize}
+		\item Opcode \texttt{0x4}:
 			\texttt{\textbf{cpy} rA, rC}
 		\begin{itemize}
 			\item Mnemonic for when flags not affected:  \texttt{cpy}
 			\item Mnemonic for when flags affected:  \texttt{cpy.f}
 			\item Note:  Copy \texttt{rC} into \texttt{rA}
-			\item Affectable flags:
-				\texttt{Z}, \texttt{N}
-		\end{itemize}
-		\item Opcode \texttt{0x4}:
-			\texttt{\textbf{lur} rA, rC}
-		\begin{itemize}
-			\item Mnemonic for when flags not affected:  \texttt{lur}
-			\item Mnemonic for when flags affected:  \texttt{lur.f}
-			\item Note:  Copy \texttt{b[15:0]} to \texttt{a[31:16]}.
-			Bits \texttt{[15:0]} of \texttt{rA} are set to zero.
 			\item Affectable flags:
 				\texttt{Z}, \texttt{N}
 		\end{itemize}
@@ -682,8 +684,9 @@
 		instruction before this one, only bits \texttt{[4:0]} of the
 		immediate value encoded into this instruction will be used by the
 		hardware, with the remaining bits of the immediate coming from
-		\texttt{pre}.  Thus, \texttt{pre} can still only form a 18-bit
-		immediate for relative branches.
+		however many \texttt{pre} instructions were used.  Multiple
+		\texttt{pre} instructions can still form larger than 18-bit branch
+		offsets.
 	\end{itemize}
 	\doublespacing
 
@@ -1036,15 +1039,15 @@
 			\texttt{\textbf{ludiv}}
 		\begin{itemize}
 			\item Effect:  performs a 64-bit by 64-bit unsigned division of
-			\texttt{\{hi, lo\}} by \texttt{\{r0, r1\}}, storing 64-bit result in
-			\texttt{\{hi, lo\}}.
+			\texttt{\{hi, lo\}} by \texttt{\{r0, r1\}}, storing 64-bit
+			result in \texttt{\{hi, lo\}}.
 		\end{itemize}
 		\item Opcode \texttt{0x6}:
 			\texttt{\textbf{lsdiv}}
 		\begin{itemize}
 			\item Effect:  performs a 64-bit by 64-bit signed division of
-			\texttt{\{hi, lo\}} by \texttt{\{r0, r1\}}, storing 64-bit result in
-			\texttt{\{hi, lo\}}.
+			\texttt{\{hi, lo\}} by \texttt{\{r0, r1\}}, storing 64-bit
+			result in \texttt{\{hi, lo\}}.
 		\end{itemize}
 		\item Opcode \texttt{0x7}:
 			\texttt{\textbf{reti}}
