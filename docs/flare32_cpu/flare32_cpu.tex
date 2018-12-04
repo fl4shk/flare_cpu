@@ -219,7 +219,11 @@
 	%\texttt{pre} is in effect will store that \texttt{pre} is no longer in
 	%effect.
 
-	If at least one \texttt{pre} is in effect and there is also a
+	If three \texttt{pre} instructions are in effect and a fourth one is
+	found, it will be treated as a NOP, \texttt{pre} will stop being in
+	effect. 
+
+	If at least one \texttt{pre} is in effect and there is also an
 	\texttt{index} in effect, then if the current instruction is
 	\texttt{index}, the previous \texttt{pre}(s) and \texttt{index} will
 	stop being in effect, and the instruction (which is a second
