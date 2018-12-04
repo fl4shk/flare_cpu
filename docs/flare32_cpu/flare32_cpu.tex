@@ -209,14 +209,15 @@
 	%non-\texttt{index} instruction that is executed while \texttt{pre} is
 	%in effect will store that \texttt{pre} is no longer in effect. 
 
-	If a \texttt{pre} instruction is found when there are three
-	\texttt{pre} instructions in effect, then the instruction will be
-	treated as a NOP.
+	%If a \texttt{pre} instruction is found when there are three
+	%\texttt{pre} instructions in effect, then the instruction will be
+	%treated as a NOP, and both \texttt{pre} and \texttt{index} will stop
+	%being in effect.
 
-	Otherwise, if \texttt{pre} is in effect, then the first
-	non-\texttt{pre}, non-\texttt{index} instruction that is executed while
-	\texttt{pre} is in effect will store that \texttt{pre} is no longer in
-	effect.
+	%Otherwise, if \texttt{pre} is in effect, then the first
+	%non-\texttt{pre}, non-\texttt{index} instruction that is executed while
+	%\texttt{pre} is in effect will store that \texttt{pre} is no longer in
+	%effect.
 
 	If at least one \texttt{pre} is in effect and there is also a
 	\texttt{index} in effect, then if the current instruction is
