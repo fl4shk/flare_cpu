@@ -205,6 +205,8 @@
 	forms just bit \texttt{[31]} of the 32-bit immediate.  In this case, no
 	sign extension will be performed.
 
+	If \texttt{pre} is in effect, interrupts will not be serviced.
+
 	%If \texttt{pre} goes into effect, then the first non-\texttt{pre},
 	%non-\texttt{index} instruction that is executed while \texttt{pre} is
 	%in effect will store that \texttt{pre} is no longer in effect. 
@@ -220,7 +222,7 @@
 	%effect.
 
 	If three \texttt{pre} instructions are in effect and a fourth one is
-	found, it will be treated as a NOP, \texttt{pre} will stop being in
+	found, it will be treated as a NOP, and \texttt{pre} will stop being in
 	effect. 
 
 	If at least one \texttt{pre} is in effect and there is also an
@@ -699,12 +701,12 @@
 			\texttt{ie}) and performs \texttt{pc <= ira;}
 		\end{itemize}
 		\item Opcode \texttt{0x5}:
-			\texttt{\textbf{cpyspec} rA, sC}
+			\texttt{\textbf{cpy} rA, sC}
 		\begin{itemize}
 			\item Effect:  \texttt{rA <= sC;}
 		\end{itemize}
 		\item Opcode \texttt{0x6}:
-			\texttt{\textbf{cpyspec} sA, rC}
+			\texttt{\textbf{cpy} sA, rC}
 		\begin{itemize}
 			\item Effect:  \texttt{sA <= rC;}
 		\end{itemize}
@@ -824,10 +826,13 @@
 			\item Effect:  performs a 64-bit by 64-bit signed division of
 			\texttt{\{hi, lo\}} by \texttt{\{rA, rC\}}, storing 64-bit
 			result in \texttt{\{hi, lo\}}.
+			%\item Note:  This instruction executes more quickly if
+			%\texttt{rA}'s value is either \texttt{0x00000000} or
+			%\texttt{0xffffffff},  i.e. if the operation is actually a
+			%64-bit by 32-bit -> 64-bit signed divide.
 			\item Note:  This instruction executes more quickly if
-			\texttt{rA}'s value is either \texttt{0x00000000} or
-			\texttt{0xffffffff},  i.e. if the operation is actually a
-			64-bit by 32-bit -> 64-bit signed divide.
+			\texttt{rA} is equal to bits \texttt{[63:32]} of
+			\texttt{sign\_extend\_to\_64(rC)}.
 		\end{itemize}
 		\item Opcode \texttt{0x17}:
 			\texttt{\textbf{lumod} rA, rC}
@@ -847,71 +852,64 @@
 			\texttt{\{hi, lo\}} by \texttt{\{rA, rC\}}, storing 64-bit
 			result in \texttt{\{hi, lo\}}.
 			\item Note:  This instruction executes more quickly if
-			\texttt{rA}'s value is either \texttt{0x00000000} or
-			\texttt{0xffffffff},  i.e. if the operation is actually a
-			64-bit by 32-bit -> 64-bit signed modulo.
+			\texttt{rA} is equal to bits \texttt{[63:32]} of
+			\texttt{sign\_extend\_to\_64(rC)}.
 		\end{itemize}
 		\item Opcode \texttt{0x19}:
 			\texttt{\textbf{ldub} rA, [rC]}
 		\begin{itemize}
 			\item Effect:  Load an 8-bit value from memory at address
-			computed as \texttt{<index\_reg> + \texttt{rC}}, zero-extend
+			computed as \texttt{rC + <index\_reg>}, zero-extend
 			the 8-bit value to 32 bits, then put the zero-extended 32-bit
 			value into \texttt{rA}.
 			\item The \texttt{<index\_reg>} value is guaranteed to be zero
-			unless the effects of an \texttt{index <index\_reg>}
-			instruction are around.
+			unless an \texttt{index} is in effect.
 		\end{itemize}
 		\item Opcode \texttt{0x1a}:
 			\texttt{\textbf{ldsb} rA, [rC]}
 		\begin{itemize}
 			\item Effect:  Load an 8-bit value from memory at address
-			computed as \texttt{<index\_reg> + \texttt{rC}}, sign-extend
+			computed as \texttt{rC + <index\_reg>}, sign-extend
 			the 8-bit value to 32 bits, then put the sign-extended 32-bit
 			value into \texttt{rA}.
 			\item The \texttt{<index\_reg>} value is guaranteed to be zero
-			unless the effects of an \texttt{index <index\_reg>}
-			instruction are around.
+			unless an \texttt{index} is in effect.
 		\end{itemize}
 		\item Opcode \texttt{0x1b}:
 			\texttt{\textbf{lduh} rA, [rC]}
 		\begin{itemize}
 			\item Effect:  Load a 16-bit value from memory at address
-			computed as \texttt{<index\_reg> + \texttt{rC}}, zero-extend
+			computed as \texttt{rC + <index\_reg>}, zero-extend
 			the 16-bit value to 32 bits, then put the zero-extended 32-bit
 			value into \texttt{rA}.
 			\item The \texttt{<index\_reg>} value is guaranteed to be zero
-			unless the effects of an \texttt{index <index\_reg>}
-			instruction are around.
+			unless an \texttt{index} is in effect.
 		\end{itemize}
 		\item Opcode \texttt{0x1c}:
 			\texttt{\textbf{ldsh} rA, [rC]}
 		\begin{itemize}
 			\item Effect:  Load a 16-bit value from memory at address
-			computed as \texttt{<index\_reg> + \texttt{rC}}, sign-extend
+			computed as \texttt{rC + <index\_reg>}, sign-extend
 			the 16-bit value to 32 bits, then put the zero-extended 32-bit
 			value into \texttt{rA}.
 			\item The \texttt{<index\_reg>} value is guaranteed to be zero
-			unless the effects of an \texttt{index <index\_reg>}
-			instruction are around.
+			unless an \texttt{index} is in effect.
 		\end{itemize}
 		\item Opcode \texttt{0x1d}:
 			\texttt{\textbf{stb} rA, [rC]}
 		\begin{itemize}
 			\item Effect:  Store \texttt{rA[7:0]} to memory at the address
-			computed as \texttt{<index\_reg> + rC}.
+			computed as \texttt{rC + <index\_reg>}.
 			\item The \texttt{<index\_reg>} value is guaranteed to be zero
-			unless the effects of an \texttt{index <index\_reg>}
-			instruction are around.
+			unless an \texttt{index} is in effect.
 		\end{itemize}
 		\item Opcode \texttt{0x1e}:
 			\texttt{\textbf{sth} rA, [rC]}
 		\begin{itemize}
 			\item Effect:  Store \texttt{rA[15:0]} to memory at the address
-			computed as \texttt{<index\_reg> + rC}.
+			computed as \texttt{rC + <index\_reg>}.
 			\item The \texttt{<index\_reg>} value is guaranteed to be zero
-			unless the effects of an \texttt{index <index\_reg>}
-			instruction are around.
+			unless an \texttt{index} is in effect.
 		\end{itemize}
 
 	\end{itemize}
@@ -934,7 +932,7 @@
 	The one instruction from this encoding group is
 	\texttt{\textbf{ldr} rA, [rC, simm]}.
 	This is a 32-bit load into \texttt{rA}, where the effective address to
-	load from is computed as \texttt{<index\_reg> + rC + simm}, using the
+	load from is computed as \texttt{rC + <index\_reg> + simm}, using the
 	sign-extended form of \texttt{simm}.
 
 	The \texttt{<index\_reg>} value is guaranteed to be zero unless the
