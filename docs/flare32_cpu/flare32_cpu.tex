@@ -864,6 +864,9 @@
 			value into \texttt{rA}.
 			\item The \texttt{<index\_reg>} value is guaranteed to be zero
 			unless an \texttt{index} is in effect.
+			\item Shorthand for having the assembler insert an
+			\texttt{index rB} instruction before this one:
+				\texttt{ldub rA, [rC, index(rB)]}
 		\end{itemize}
 		\item Opcode \texttt{0x1a}:
 			\texttt{\textbf{ldsb} rA, [rC]}
@@ -874,6 +877,9 @@
 			value into \texttt{rA}.
 			\item The \texttt{<index\_reg>} value is guaranteed to be zero
 			unless an \texttt{index} is in effect.
+			\item Shorthand for having the assembler insert an
+			\texttt{index rB} instruction before this one:
+				\texttt{ldsb rA, [rC, index(rB)]}
 		\end{itemize}
 		\item Opcode \texttt{0x1b}:
 			\texttt{\textbf{lduh} rA, [rC]}
@@ -884,6 +890,9 @@
 			value into \texttt{rA}.
 			\item The \texttt{<index\_reg>} value is guaranteed to be zero
 			unless an \texttt{index} is in effect.
+			\item Shorthand for having the assembler insert an
+			\texttt{index rB} instruction before this one:
+				\texttt{lduh rA, [rC, index(rB)]}
 		\end{itemize}
 		\item Opcode \texttt{0x1c}:
 			\texttt{\textbf{ldsh} rA, [rC]}
@@ -894,6 +903,9 @@
 			value into \texttt{rA}.
 			\item The \texttt{<index\_reg>} value is guaranteed to be zero
 			unless an \texttt{index} is in effect.
+			\item Shorthand for having the assembler insert an
+			\texttt{index rB} instruction before this one:
+				\texttt{ldsh rA, [rC, index(rB)]}
 		\end{itemize}
 		\item Opcode \texttt{0x1d}:
 			\texttt{\textbf{stb} rA, [rC]}
@@ -902,6 +914,9 @@
 			computed as \texttt{rC + <index\_reg>}.
 			\item The \texttt{<index\_reg>} value is guaranteed to be zero
 			unless an \texttt{index} is in effect.
+			\item Shorthand for having the assembler insert an
+			\texttt{index rB} instruction before this one:
+				\texttt{stb rA, [rC, index(rB)]}
 		\end{itemize}
 		\item Opcode \texttt{0x1e}:
 			\texttt{\textbf{sth} rA, [rC]}
@@ -910,6 +925,9 @@
 			computed as \texttt{rC + <index\_reg>}.
 			\item The \texttt{<index\_reg>} value is guaranteed to be zero
 			unless an \texttt{index} is in effect.
+			\item Shorthand for having the assembler insert an
+			\texttt{index rB} instruction before this one:
+				\texttt{sth rA, [rC, index(rB)]}
 		\end{itemize}
 
 	\end{itemize}
@@ -935,8 +953,11 @@
 	load from is computed as \texttt{rC + <index\_reg> + simm}, using the
 	sign-extended form of \texttt{simm}.
 
-	The \texttt{<index\_reg>} value is guaranteed to be zero unless the
-	effects of an \texttt{index <index\_reg>} instruction are around.
+	The \texttt{<index\_reg>} value is guaranteed to be zero unless an
+	\texttt{index} is in effect.
+
+	Shorthand for having the assembler insert an \texttt{index rB}
+	instruction before this one: \texttt{ldr rA, [rC, index(rB), simm]}
 
 	%The \texttt{<index\_reg>} value is zero in all cases except
 	%the previous instruction was \texttt{index index\_reg} and if
@@ -962,8 +983,11 @@
 	store to is computed as \texttt{<index\_reg> + rC + simm}, using the
 	sign-extended form of \texttt{simm}.
 
-	The \texttt{<index\_reg>} value is guaranteed to be zero unless the
-	effects of an \texttt{index <index\_reg>} instruction are around.
+	The \texttt{<index\_reg>} value is guaranteed to be zero unless an
+	\texttt{index} is in effect.
+
+	Shorthand for having the assembler insert an \texttt{index rB}
+	instruction before this one: \texttt{str rA, [rC, index(rB), simm]}
 
 	%The \texttt{index\_reg} value is zero in all cases except
 	%the previous instruction was \texttt{index index\_reg} and if
