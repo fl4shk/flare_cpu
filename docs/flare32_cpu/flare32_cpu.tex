@@ -187,7 +187,7 @@
 	%31-bit immediate can be used.  While not needed in most cases, three
 	%\texttt{pre} instructions permit use of 32-bit immediates.
 	\texttt{pre} is a mechanism by which immediates larger than 5-bit can
-	be used, effectively acting as variable width instructions.
+	be used, kind of acting like variable width instructions.
 	
 	If one \texttt{pre} instruction is used, the immediate field of the
 	\texttt{pre} instruction will form bits \texttt{[17:5]} of the
@@ -205,11 +205,29 @@
 	forms just bit \texttt{[31]} of the 32-bit immediate.  In this case, no
 	sign extension will be performed.
 
-	If four \texttt{pre} instructions are used, the (effectively 64-bit)
-	instruction will be treated as a \texttt{nop}.
+	%If \texttt{pre} goes into effect, then the first non-\texttt{pre},
+	%non-\texttt{index} instruction that is executed while \texttt{pre} is
+	%in effect will store that \texttt{pre} is no longer in effect. 
 
-	In any of these cases, if \texttt{pre} was the previous instruction,
-	the current instruction cannot be interrupted.
+	If a \texttt{pre} instruction is found when there are three
+	\texttt{pre} instructions in effect, then 
+
+	Otherwise, if \texttt{pre} is in effect, then the first
+	non-\texttt{pre}, non-\texttt{index} instruction that is executed while
+	\texttt{pre} is in effect will store that \texttt{pre} is no longer in
+	effect.
+
+	If at least one \texttt{pre} is in effect and there is also a
+	\texttt{index} in effect, then if the current instruction is
+	\texttt{index}, the previous \texttt{pre}(s) and \texttt{index} will
+	stop being in effect, and the instruction (which is a second
+	\texttt{index}) will be treated as a NOP.
+
+	%If four \texttt{pre} instructions are used, the (effectively 64-bit)
+	%instruction will be treated as a \texttt{NOP}.
+
+	%In any of these cases, if \texttt{pre} was the previous instruction,
+	%the current instruction cannot be interrupted.
 
 
 	\subsection{Instruction Group 1}
@@ -637,7 +655,7 @@
 		\item \texttt{o} is the opcode
 		\item \texttt{c} encodes register \texttt{rC} or register
 		\texttt{sC}, where \texttt{sC} is one of \texttt{hi}, \texttt{lo},
-		\texttt{flags}, \texttt{ira}, or \texttt{ids}
+		\texttt{flags}, \texttt{ira}, \texttt{ids}, or \texttt{ie}
 		\item \texttt{a} encodes register \texttt{rA} or register
 		\texttt{sA}, where \texttt{sA} is one of \texttt{hi}, \texttt{lo},
 		\texttt{flags}, \texttt{ira}, \texttt{ids}, or \texttt{ie}
@@ -648,17 +666,17 @@
 
 	\singlespacing
 	\begin{itemize}
-		\item Opcode \texttt{0x0}
+		\item Opcode \texttt{0x0}:
 			\texttt{\textbf{jl} rA}
 		\begin{itemize}
 			\item Effect:  \texttt{lr <= pc + 2; pc <= rA;}
 		\end{itemize}
-		\item Opcode \texttt{0x1}
+		\item Opcode \texttt{0x1}:
 			\texttt{\textbf{jmp} rA}
 		\begin{itemize}
 			\item Effect:  \texttt{pc <= rA;}
 		\end{itemize}
-		\item Opcode \texttt{0x2}
+		\item Opcode \texttt{0x2}:
 			\texttt{\textbf{jmp} rA, rC}
 		\begin{itemize}
 			\item Effect:  \texttt{pc <= (rA + rC);}
@@ -694,20 +712,20 @@
 		\begin{itemize}
 			\item Effect:  copy \texttt{0} into \texttt{ie}.
 		\end{itemize}
-		\item Opcode \texttt{0x9}
+		\item Opcode \texttt{0x9}:
 			\texttt{\textbf{push} rA, rC}
 		\begin{itemize}
 			\item Effect:  pushes \texttt{rA} onto the stack, using
 			\texttt{rC} as the stack pointer, post-decrementing
 			\texttt{rC}.
 		\end{itemize}
-		\item Opcode \texttt{0xa}
+		\item Opcode \texttt{0xa}:
 			\texttt{\textbf{pop} rA, rC}
 		\begin{itemize}
 			\item Effect:  pops \texttt{rA} off the stack, using
 			\texttt{rC} as the stack pointer, pre-incrementing \texttt{rC}.
 		\end{itemize}
-		\item Opcode \texttt{0xb}
+		\item Opcode \texttt{0xb}:
 			\texttt{\textbf{push} sA, rC}
 		\begin{itemize}
 			\item Effect:  pushes \texttt{sA} onto the stack, using
@@ -717,7 +735,7 @@
 			purpose of the store to memory and decrementing \texttt{rC},
 			even if \texttt{sA} is \texttt{flags} or \texttt{ie}.
 		\end{itemize}
-		\item Opcode \texttt{0xc}
+		\item Opcode \texttt{0xc}:
 			\texttt{\textbf{pop} sA, rC}
 		\begin{itemize}
 			\item Effect:  pops \texttt{sA} off the stack, using
@@ -726,38 +744,44 @@
 			purpose of the load from memory and incrementing \texttt{rC},
 			even if \texttt{sA} is \texttt{flags} or \texttt{ie}.
 		\end{itemize}
-		\item Opcode \texttt{0xd}
+		\item Opcode \texttt{0xd}:
 			\texttt{\textbf{index} rA}
 		\begin{itemize}
-			\item Effect:  makes it so that a \textit{directly following}
-			load or store instruction adds \texttt{rA} to the address to be
-			loaded from or stored to.  The load or store \textit{must}
-			directly follow this instruction.  Any other instructions
-			directly following this one will not be affected.
-			\item Note:  If the previous instruction was \texttt{index},
-			the current instruction cannot be interrupted.
+			\item Effect:  Performs \texttt{<index\_reg> <= rA;} and stores
+			that \texttt{index} is in effect.
+			\item Note:  If \texttt{index} is in effect and the current
+			instruction is \texttt{index}, the current instruction will be
+			treated as a NOP, and \texttt{index} will stop being in effect.
+			\item Note:  \texttt{pre} and \texttt{index} can be combined
+			with one another (though this is only useful for \texttt{ldr}
+			and \texttt{str}).
+			\item Note:  A non-\texttt{pre} instruction following
+			\texttt{index} will store that that \texttt{index} is not in
+			effect any more.
+			\item Note:  If \texttt{index} is in effect, the current
+			instruction cannot be interrupted.
 		\end{itemize}
-		\item Opcode \texttt{0xe}
+		\item Opcode \texttt{0xe}:
 			\texttt{\textbf{mul} rA, rC}
 		\begin{itemize}
 			\item Effect:  \texttt{rA <= rA * rC;}
 		\end{itemize}
-		\item Opcode \texttt{0xf}
+		\item Opcode \texttt{0xf}:
 			\texttt{\textbf{udiv} rA, rC}
 		\begin{itemize}
 			\item Effect:  \texttt{rA <= u32(rA) / u32(rC);}
 		\end{itemize}
-		\item Opcode \texttt{0x10}
+		\item Opcode \texttt{0x10}:
 			\texttt{\textbf{sdiv} rA, rC}
 		\begin{itemize}
 			\item Effect:  \texttt{rA <= s32(rA) / s32(rC);}
 		\end{itemize}
-		\item Opcode \texttt{0x11}
+		\item Opcode \texttt{0x11}:
 			\texttt{\textbf{umod} rA, rC}
 		\begin{itemize}
 			\item Effect:  \texttt{rA <= u32(rA) \% u32(rC);}
 		\end{itemize}
-		\item Opcode \texttt{0x12}
+		\item Opcode \texttt{0x12}:
 			\texttt{\textbf{smod} rA, rC}
 		\begin{itemize}
 			\item Effect:  \texttt{rA <= s32(rA) \% s32(rC);}
@@ -824,63 +848,63 @@
 			\texttt{\textbf{ldub} rA, [rC]}
 		\begin{itemize}
 			\item Effect:  Load an 8-bit value from memory at address
-			computed as \texttt{index\_reg + \texttt{rC}}, zero-extend the
-			8-bit value to 32 bits, then put the zero-extended 32-bit
+			computed as \texttt{<index\_reg> + \texttt{rC}}, zero-extend
+			the 8-bit value to 32 bits, then put the zero-extended 32-bit
 			value into \texttt{rA}.
-			\item The \texttt{index\_reg} value is zero in all cases except
-			the previous instruction was \texttt{index index\_reg} and if
-			\texttt{index\_reg}'s value was non-zero. 
+			\item The \texttt{<index\_reg>} value is guaranteed to be zero
+			unless the effects of an \texttt{index <index\_reg>}
+			instruction are around.
 		\end{itemize}
 		\item Opcode \texttt{0x1a}:
 			\texttt{\textbf{ldsb} rA, [rC]}
 		\begin{itemize}
 			\item Effect:  Load an 8-bit value from memory at address
-			computed as \texttt{index\_reg + \texttt{rC}}, sign-extend the
-			8-bit value to 32 bits, then put the sign-extended 32-bit
+			computed as \texttt{<index\_reg> + \texttt{rC}}, sign-extend
+			the 8-bit value to 32 bits, then put the sign-extended 32-bit
 			value into \texttt{rA}.
-			\item The \texttt{index\_reg} value is zero in all cases except
-			the previous instruction was \texttt{index index\_reg} and if
-			\texttt{index\_reg}'s value was non-zero. 
+			\item The \texttt{<index\_reg>} value is guaranteed to be zero
+			unless the effects of an \texttt{index <index\_reg>}
+			instruction are around.
 		\end{itemize}
 		\item Opcode \texttt{0x1b}:
 			\texttt{\textbf{lduh} rA, [rC]}
 		\begin{itemize}
 			\item Effect:  Load a 16-bit value from memory at address
-			computed as \texttt{index\_reg + \texttt{rC}}, zero-extend the
-			16-bit value to 32 bits, then put the zero-extended 32-bit
+			computed as \texttt{<index\_reg> + \texttt{rC}}, zero-extend
+			the 16-bit value to 32 bits, then put the zero-extended 32-bit
 			value into \texttt{rA}.
-			\item The \texttt{index\_reg} value is zero in all cases except
-			the previous instruction was \texttt{index index\_reg} and if
-			\texttt{index\_reg}'s value was non-zero. 
+			\item The \texttt{<index\_reg>} value is guaranteed to be zero
+			unless the effects of an \texttt{index <index\_reg>}
+			instruction are around.
 		\end{itemize}
 		\item Opcode \texttt{0x1c}:
 			\texttt{\textbf{ldsh} rA, [rC]}
 		\begin{itemize}
 			\item Effect:  Load a 16-bit value from memory at address
-			computed as \texttt{index\_reg + \texttt{rC}}, sign-extend the
-			16-bit value to 32 bits, then put the zero-extended 32-bit
+			computed as \texttt{<index\_reg> + \texttt{rC}}, sign-extend
+			the 16-bit value to 32 bits, then put the zero-extended 32-bit
 			value into \texttt{rA}.
-			\item The \texttt{index\_reg} value is zero in all cases except
-			the previous instruction was \texttt{index index\_reg} and if
-			\texttt{index\_reg}'s value was non-zero. 
+			\item The \texttt{<index\_reg>} value is guaranteed to be zero
+			unless the effects of an \texttt{index <index\_reg>}
+			instruction are around.
 		\end{itemize}
 		\item Opcode \texttt{0x1d}:
 			\texttt{\textbf{stb} rA, [rC]}
 		\begin{itemize}
 			\item Effect:  Store \texttt{rA[7:0]} to memory at the address
-			computed as \texttt{index\_reg + rC}.
-			\item The \texttt{index\_reg} value is zero in all cases except
-			the previous instruction was \texttt{index index\_reg} and if
-			\texttt{index\_reg}'s value was non-zero. 
+			computed as \texttt{<index\_reg> + rC}.
+			\item The \texttt{<index\_reg>} value is guaranteed to be zero
+			unless the effects of an \texttt{index <index\_reg>}
+			instruction are around.
 		\end{itemize}
 		\item Opcode \texttt{0x1e}:
 			\texttt{\textbf{sth} rA, [rC]}
 		\begin{itemize}
 			\item Effect:  Store \texttt{rA[15:0]} to memory at the address
-			computed as \texttt{index\_reg + rC}.
-			\item The \texttt{index\_reg} value is zero in all cases except
-			the previous instruction was \texttt{index index\_reg} and if
-			\texttt{index\_reg}'s value was non-zero. 
+			computed as \texttt{<index\_reg> + rC}.
+			\item The \texttt{<index\_reg>} value is guaranteed to be zero
+			unless the effects of an \texttt{index <index\_reg>}
+			instruction are around.
 		\end{itemize}
 
 	\end{itemize}
@@ -906,9 +930,12 @@
 	load from is computed as \texttt{<index\_reg> + rC + simm}, using the
 	sign-extended form of \texttt{simm}.
 
-	The \texttt{index\_reg} value is zero in all cases except
-	the previous instruction was \texttt{index index\_reg} and if
-	\texttt{index\_reg}'s value was non-zero. 
+	The \texttt{<index\_reg>} value is guaranteed to be zero unless the
+	effects of an \texttt{index <index\_reg>} instruction are around.
+
+	%The \texttt{<index\_reg>} value is zero in all cases except
+	%the previous instruction was \texttt{index index\_reg} and if
+	%\texttt{index\_reg}'s value was non-zero. 
 
 	\subsection{Instruction Group 6:  Immediate Indexed Store}
 	The following encoding is used, with each character representing one
@@ -930,9 +957,12 @@
 	store to is computed as \texttt{<index\_reg> + rC + simm}, using the
 	sign-extended form of \texttt{simm}.
 
-	The \texttt{index\_reg} value is zero in all cases except
-	the previous instruction was \texttt{index index\_reg} and if
-	\texttt{index\_reg}'s value was non-zero. 
+	The \texttt{<index\_reg>} value is guaranteed to be zero unless the
+	effects of an \texttt{index <index\_reg>} instruction are around.
+
+	%The \texttt{index\_reg} value is zero in all cases except
+	%the previous instruction was \texttt{index index\_reg} and if
+	%\texttt{index\_reg}'s value was non-zero. 
 
 	%\subsection{Instruction Group 7.0:  Other Loads and Stores}
 	%The following encoding is used, with each character representing one
