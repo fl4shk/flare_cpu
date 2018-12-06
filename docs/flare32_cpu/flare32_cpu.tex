@@ -161,93 +161,92 @@
 	%While this machine takes inspiration from the GSU, it uses 16-bit
 	%instructions rather than 8-bit ones.
 
-	\subsection{Instruction Group 0:  The \texttt{pre} Instruction}
-	The following encoding is used, with each character representing one
-	bit:  \\
-	\texttt{000i iiii iiii iiii}, where 
+	\subsection{Instruction Group 0:  \texttt{pre} and \texttt{lpre}}
+	For \texttt{pre}, the following encoding is used, with each character
+	representing one bit:  \\
+	\texttt{0000 iiii iiii iiii}, where 
 	
 	\singlespacing
 	\begin{itemize}
-		\item \texttt{i} is a 13-bit constant.
+		\item \texttt{i} is a 12-bit constant.
 	\end{itemize}
 
-	%At the assembly language level, the instruction is simply
-	%\texttt{pre expr}, but it isn't typical to use this instruction
-	%directly in assembly language source code.  Instead, when an immediate
-	%value will not fit in a 5-bit signed immediate, this instruction will
-	%be inserted by the assembler right before the instruction using an
-	%immediate value.  The 13-bit constant will be used as bits
-	%\texttt{[17:5]} of the immediate value of the following instruction.
-	%The full 18-bit immediate value will then be sign extended to 32 bits.
-	%Also, if the previous instruction was a \texttt{pre}, interrupts will
-	%not be serviced.
+	For \texttt{lpre}, the following encoding is used, with each character
+	representing one bit:  \\
+	\texttt{0001 0iii iiii iiii  iiii iiii iiii iiii}, where
 
-	%Multiple \texttt{pre} instructions can be used to form even larger
-	%immediates.  If two \texttt{pre} instructions were used, for example, a
-	%31-bit immediate can be used.  While not needed in most cases, three
-	%\texttt{pre} instructions permit use of 32-bit immediates.
-	\texttt{pre} is a mechanism by which immediates larger than 5-bit can
-	be used, kind of acting like variable width instructions.
+	\singlespacing
+	\begin{itemize}
+		\item \texttt{i} is a 27-bit constant.
+	\end{itemize}
+
+	\texttt{pre} and \texttt{lpre} are mechanisms by which immediates
+	larger than normal can be used, essentially acting like variable width
+	instructions.
+
+	There is no mechanism in the assembly language itself to use
+	\texttt{pre} or \texttt{lpre} as instructions.  Instead, it is expected
+	that the assembler or linker will be the one to insert \texttt{pre} or
+	\texttt{lpre} as needed if an immediate is too large for a particular
+	instruction.  
+
 	
-	If one \texttt{pre} instruction is used, the immediate field of the
-	\texttt{pre} instruction will form bits \texttt{[17:5]} of the
-	immediate of the following instruction.  The 18-bit immediate will then
-	be sign-extended to 32 bits.
+	If \texttt{pre} is used, the immediate field of the
+	\texttt{pre} instruction will form bits \texttt{[16:5]} of the
+	immediate of the next non-\texttt{index} instruction.  The 17-bit
+	immediate will then be sign-extended to 32 bits.
 
-	If two \texttt{pre} instructions are used, the first \texttt{pre}
-	instruction forms bits \texttt{[17:5]} of the immediate, and the second
-	\texttt{pre} instruction forms bits \texttt{[30:18]} of the immediate.
-	The full 31-bit immediate will be sign-extended to 32 bits.
+	On the other hand, if \texttt{lpre} is used, the immediate field of the
+	\texttt{lpre} instruction will form bits \texttt{[31:5]} of the
+	immediate of the next non-\texttt{index} instruction.
 
-	If three \texttt{pre} instructions are used, the first and second
-	\texttt{pre} instructions are treated like when there are only two
-	\texttt{pre} instructions, and the final/third \texttt{pre} instruction
-	forms just bit \texttt{[31]} of the 32-bit immediate.  In this case, no
-	sign extension will be performed.
+	Instructions that use an immediate value, other than \texttt{pre},
+	\texttt{lpre}, and relative branches normally have 5-bit immediates.
+	Relative branches normally have 9-bit branch offsets.  if \texttt{pre}
+	or \texttt{lpre} is used with a relative branch, bits \texttt{[9:5]} of
+	the branch offset that is encoded directly into a relative branch
+	instruction will be ignored, and the immediate field of the
+	\texttt{pre} or \texttt{lpre} instruction will be used to determine
+	bits \texttt{[9:5]} of the branch offset..
 
-	It is expected that the assembler (or linker) will be the one to insert
-	\texttt{pre} instructions as needed.  When a \texttt{pre} instruction
-	happens, \texttt{pre} is considered to be "in effect" and will stick
-	around until certain conditions are met.  Also, if \texttt{pre} is in
-	effect, interrupts will not be serviced.
+	\subsubsection{Handling of \texttt{pre}, \texttt{lpre}, and
+	\texttt{index}}
 
-	Any time \texttt{pre} stops being in effect, \texttt{index} will stop
-	being in effect as well.  \texttt{index} is defined later.
+	When a \texttt{pre} or \texttt{lpre} instruction is found, \texttt{pre}
+	or \texttt{lpre} will be considered to be "in effect".  This condition
+	lasts for one or two instructions after the \texttt{pre} or
+	\texttt{lpre} instruction, depending on whether or not \texttt{index}
+	was in effect.
 
-	%If \texttt{pre} goes into effect, then the first non-\texttt{pre},
-	%non-\texttt{index} instruction that is executed while \texttt{pre} is
-	%in effect will store that \texttt{pre} is no longer in effect. 
+	\texttt{index} is an instruction (defined later) that allows a
+	subsequent load or store instruction to perform \texttt{base\_reg +
+	index\_reg} indexing.  When an \texttt{index} instruction is found, it
+	is considered to be in effect.  Like \texttt{pre} and \texttt{lpre},
+	\texttt{index} is inserted automatically by the assembler.
 
-	%If a \texttt{pre} instruction is found when there are three
-	%\texttt{pre} instructions in effect, then the instruction will be
-	%treated as a NOP, and both \texttt{pre} and \texttt{index} will stop
-	%being in effect.
+	\texttt{index} can be combined with \texttt{pre} or \texttt{lpre}, and
+	it does not matter whether \texttt{index} or the
+	\texttt{pre}/\texttt{lpre} instruction came first.
 
-	%Otherwise, if \texttt{pre} is in effect, then the first
-	%non-\texttt{pre}, non-\texttt{index} instruction that is executed while
-	%\texttt{pre} is in effect will store that \texttt{pre} is no longer in
-	%effect.
+	%\texttt{pre} and \texttt{lpre} cannot both be combined in the same
+	%instruction.  If this is attempted, the hardware will treat the
+	%instruction as a NOP, and \texttt{pre}, \texttt{lpre}, and
+	%\texttt{index} will all stop being in effect.
 
-	If three \texttt{pre} instructions are in effect and a fourth one is
-	found, it will be treated as a NOP, and \texttt{pre} will stop being in
-	effect. 
+	%Two \texttt{pre} or \texttt{lpre} instructions also cannot both be
+	%combined.  If this is attempted, the hardware will treat the
+	%instruction as a NOP, and \texttt{pre}, \texttt{lpre}, and
+	%\texttt{index} will all stop being in effect.
 
-	If at least one \texttt{pre} is in effect and there is also an
-	\texttt{index} in effect, then if the current instruction is
-	\texttt{index}, the previous \texttt{pre}(s) and \texttt{index} will
-	stop being in effect, and the instruction (which is a second
-	\texttt{index}) will be treated as a NOP.
+	When \texttt{pre}, \texttt{lpre}, or \texttt{index} is in effect,
+	interrupts will not be serviced.
 
-	In other cases, once a non-\texttt{pre}, non-\texttt{index} instruction
-	is found, \texttt{pre} will stop being in effect, regardless of whether
-	or not its value was used for the instruction.  The same is true if
-	\texttt{index} was in effect.
+	Pseudo code for handling the how \texttt{pre}, \texttt{lpre}, and
+	\texttt{index} are to be handled regarding whether or not they are "in
+	effect" is as follows:
 
-	%If four \texttt{pre} instructions are used, the (effectively 64-bit)
-	%instruction will be treated as a \texttt{NOP}.
+	\VerbatimInput{verbatim_input/pre_lpre_index.txt}
 
-	%In any of these cases, if \texttt{pre} was the previous instruction,
-	%the current instruction cannot be interrupted.
 
 
 	\subsection{Instruction Group 1}
@@ -272,54 +271,54 @@
 	\singlespacing
 	\begin{itemize}
 		\item Opcode \texttt{0x0}:
-			\texttt{\textbf{addi} rA, \#simm}
+			\texttt{\textbf{add} rA, \#simm}
 		\item Opcode \texttt{0x1}:
 			% subi was deemed useless given that immediates are
 			% sign-extended.
-			\texttt{\textbf{addi} rA, pc, \#simm}
+			\texttt{\textbf{add} rA, pc, \#simm}
 		\item Opcode \texttt{0x2}
-			\texttt{\textbf{addi} rA, sp, \#simm}
+			\texttt{\textbf{add} rA, sp, \#simm}
 		\item Opcode \texttt{0x3}:
-			\texttt{\textbf{addi} rA, fp, \#simm}
+			\texttt{\textbf{add} rA, fp, \#simm}
 		\item Opcode \texttt{0x4}:
-			\texttt{\textbf{cmpi} rA, \#simm}
+			\texttt{\textbf{cmp} rA, \#simm}
 		\begin{itemize}
 			\item Note:  Compare \texttt{rA} to \texttt{simm}.
 			\item Affectable flags:
 				\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
 		\end{itemize}
 		\item Opcode \texttt{0x5}:
-			\texttt{\textbf{cpyi} rA, \#simm}
+			\texttt{\textbf{cpy} rA, \#simm}
 		\begin{itemize}
 			\item Note:  Copy an immediate value into \texttt{rA}
 		\end{itemize}
 		\item Opcode \texttt{0x6}:
-			\texttt{\textbf{lsli} rA, \#simm}
+			\texttt{\textbf{lsl} rA, \#simm}
 		\begin{itemize}
 			\item Note:  Logical shift left
 		\end{itemize}
 		\item Opcode \texttt{0x7}:
-			\texttt{\textbf{lsri} rA, \#simm}
+			\texttt{\textbf{lsr} rA, \#simm}
 		\begin{itemize}
 			\item Note:  Logical shift right
 		\end{itemize}
 		\item Opcode \texttt{0x8}:
-			\texttt{\textbf{asri} rA, \#simm}
+			\texttt{\textbf{asr} rA, \#simm}
 		\begin{itemize}
 			\item Note:  Arithmetic shift right
 		\end{itemize}
 		\item Opcode \texttt{0x9}:
-			\texttt{\textbf{andi} rA, \#simm}
+			\texttt{\textbf{and} rA, \#simm}
 		\begin{itemize}
 			\item Note:  Bitwise AND
 		\end{itemize}
 		\item Opcode \texttt{0xa}:
-			\texttt{\textbf{orri} rA, \#simm}
+			\texttt{\textbf{orr} rA, \#simm}
 		\begin{itemize}
 			\item Note:  Bitwise OR
 		\end{itemize}
 		\item Opcode \texttt{0xb}:
-			\texttt{\textbf{xori} rA, \#simm}
+			\texttt{\textbf{xor} rA, \#simm}
 		\begin{itemize}
 			\item Note:  Bitwise XOR
 		\end{itemize}
@@ -973,7 +972,7 @@
 	\texttt{index} is in effect.
 
 	Shorthand for having the assembler insert an \texttt{index rB}
-	instruction before this one: \texttt{ldr rA, [rC, rB, simm]}
+	instruction before this one: \texttt{ldr rA, [rC, rB, \#simm]}
 
 	%The \texttt{<index\_reg>} value is zero in all cases except
 	%the previous instruction was \texttt{index index\_reg} and if
@@ -1009,608 +1008,6 @@
 	%the previous instruction was \texttt{index index\_reg} and if
 	%\texttt{index\_reg}'s value was non-zero. 
 
-	%\subsection{Instruction Group 7.0:  Other Loads and Stores}
-	%The following encoding is used, with each character representing one
-	%bit:  \\
-	%\texttt{1110 cccc aaaa 00oo}, where
-
-	%\singlespacing
-	%\begin{itemize}
-	%	\item \texttt{c} encodes register \texttt{rC}
-	%	\item \texttt{a} encodes register \texttt{rA}
-	%	\item \texttt{o} is the opcode
-	%\end{itemize}
-	%\doublespacing
-
-	%Here is a list of instructions from this encoding group.
-
-	%\singlespacing
-	%\begin{itemize}
-	%	\item Opcode \texttt{0x0}:
-	%		\texttt{\textbf{ldb} rA, [rC]}
-	%	\begin{itemize}
-	%		\item Effect:  Load a byte from memory at address computed as
-	%		just the value of \texttt{rC}, zero-extend the byte to 32 bits,
-	%		then put the zero-extended 32-bit value into \texttt{rA}.
-	%	\end{itemize}
-	%	\item Opcode \texttt{0x1}:
-	%		\texttt{\textbf{ldh} rA, [rC]}
-	%	\begin{itemize}
-	%		\item Effect:  Load a 16-bit value from memory at address
-	%		computed as just the value of \texttt{rC}, zero-extend the
-	%		16-bit value to 32 bits, then put the zero-extended 32-bit
-	%		value into \texttt{rA}.
-	%	\end{itemize}
-	%	\item Opcode \texttt{0x2}:
-	%		\texttt{\textbf{stb} rA, [rC]}
-	%	\begin{itemize}
-	%		\item Effect:  Store \texttt{rA[7:0]} to memory at the address
-	%		computed as just the value of \texttt{rC}.
-	%	\end{itemize}
-	%	\item Opcode \texttt{0x3}:
-	%		\texttt{\textbf{sth} rA, [rC]}
-	%	\begin{itemize}
-	%		\item Effect:  Store \texttt{rA[15:0]} to memory at the address
-	%		computed as just the value of \texttt{rC}.
-	%	\end{itemize}
-	%\end{itemize}
-	%\doublespacing
-
-
-	%\doublespacing
-	%\subsection{Instruction Group 3:  Jumps}
-	%The following encoding is used, with each character representing one
-	%bit:  \\
-	%\texttt{011o ooo0 0000 bbbb}, where
-
-	%\singlespacing
-	%\begin{itemize}
-	%	\item \texttt{o} is the opcode
-	%	\item \texttt{b} encodes register \texttt{rB}
-	%\end{itemize}
-
-	%\doublespacing
-
-	%%At the assembly language level, \texttt{pick} is simply
-	%%\texttt{pick rB}, but as with \texttt{pre}, it isn't typical to use
-	%%this instruction directly in assembly language source code.  Instead,
-	%%when an instruction is typed as \texttt{instr rA, rB, operand}
-	%%\textit{and} when \texttt{rA} is not the same register as \texttt{rB},
-	%%a \texttt{pick rB} instruction will be inserted by the assembler before
-	%%the instruction in the source code.  As mentioned before, when the
-	%%instruction previous to the current one is either a \texttt{pre} or a
-	%%\texttt{pick}, interrupts will not be serviced.  Note that since
-	%%\texttt{pre}'s 13-bit partial immediate only affects the instruction
-	%%following the \texttt{pre}, only a 5-bit signed immediate can be used
-	%%with \texttt{pick} and an instruction from group 1.  For all
-	%%instructions, the default value of \texttt{rB} is \texttt{rA}, except
-	%%when the previous instruction was \texttt{pick}.
-
-	%Here is the list of instructions from this encoding group.
-
-	%\singlespacing
-	%\begin{itemize}
-	%	\item Opcode \texttt{0x0}:
-	%		\texttt{\textbf{jnv} rB}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if (0) pc <= rB;} This is a NOP.
-	%	\end{itemize}
-
-	%	\item Opcode \texttt{0x1}:
-	%		\texttt{\textbf{jmp} rB}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if (1) pc <= rB;}
-	%	\end{itemize}
-
-	%	\item Opcode \texttt{0x2}:
-	%		\texttt{\textbf{jne} rB}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if (!flags.Z) pc <= rB;}
-	%	\end{itemize}
-
-	%	\item Opcode \texttt{0x3}:
-	%		\texttt{\textbf{jeq} rB}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if (flags.Z) pc <= rB;}
-	%	\end{itemize}
-
-	%	\item Opcode \texttt{0x4}:
-	%		\texttt{\textbf{jpl} rB}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if (!flags.N) pc <= rB;}
-	%	\end{itemize}
-
-	%	\item Opcode \texttt{0x5}:
-	%		\texttt{\textbf{jmi} rB}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if (flags.N) pc <= rB;}
-	%	\end{itemize}
-
-	%	\item Opcode \texttt{0x6}:
-	%		\texttt{\textbf{jvc} rB}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if (!flags.V) pc <= rB;}
-	%	\end{itemize}
-
-	%	\item Opcode \texttt{0x7}:
-	%		\texttt{\textbf{jvs} rB}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if (flags.V) pc <= rB;}
-	%	\end{itemize}
-
-	%	\item Opcode \texttt{0x8}:
-	%		\texttt{\textbf{jgeu} rB}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if (flags.C) pc <= rB;}
-	%	\end{itemize}
-
-	%	\item Opcode \texttt{0x9}:
-	%		\texttt{\textbf{jltu} rB}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if (!flags.C) pc <= rB;}
-	%	\end{itemize}
-
-	%	\item Opcode \texttt{0xa}:
-	%		\texttt{\textbf{jgtu} rB}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if (flags.C AND (!flags.Z)) pc <= rB;}
-	%	\end{itemize}
-
-	%	\item Opcode \texttt{0xb}:
-	%		\texttt{\textbf{jleu} rB}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if ((!flags.C) OR flags.Z) pc <= rB;}
-	%	\end{itemize}
-
-	%	\item Opcode \texttt{0xc}:
-	%		\texttt{\textbf{jges} rB}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if (!(flags.N XOR flags.V)) pc <= rB;}
-	%	\end{itemize}
-
-	%	\item Opcode \texttt{0xd}:
-	%		\texttt{\textbf{jlts} rB}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if (flags.N XOR flags.V) pc <= rB;}
-	%	\end{itemize}
-
-	%	\item Opcode \texttt{0xe}:
-	%		\texttt{\textbf{jgts} rB}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if ((!(flags.N XOR flags.V)) AND (!flags.Z))
-	%				pc <= rB;}
-	%	\end{itemize}
-
-	%	\item Opcode \texttt{0xf}:
-	%		\texttt{\textbf{jles} rB}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if ((flags.N XOR flags.V) OR flags.Z)
-	%				pc <= rB;}
-	%	\end{itemize}
-	%\end{itemize}
-
-	%\doublespacing
-
-	%\subsection{Instruction Group 4:  Relative Branches}
-	%The following encoding is used, with each character representing one
-	%bit:  \\
-	%\texttt{100o oooi iiii iiii}, where
-
-	%\singlespacing
-	%\begin{itemize}
-	%	\item \texttt{o} is the opcode
-	%	\item \texttt{i} is a 9-bit sign-extended immediate, which can
-	%	still be affected by \texttt{pre}, but when \texttt{pre} is the
-	%	instruction before this one, only bits \texttt{[4:0]} of the
-	%	immediate value encoded into this instruction will be used by the
-	%	hardware, with the remaining bits of the immediate coming from
-	%	however many \texttt{pre} instructions were used.  Multiple
-	%	\texttt{pre} instructions can still form larger than 18-bit branch
-	%	offsets.
-	%\end{itemize}
-	%\doublespacing
-
-	%Here is a list of instructions from this encoding group.
-
-	%\singlespacing
-	%\begin{itemize}
-	%	%\item Opcode \texttt{0x0}:
-	%	%	\texttt{\textbf{bnv} simm}
-	%	%\begin{itemize}
-	%	%	\item Effect:
-	%	%		\texttt{if (0) pc <= pc + simm + 2;} This is a NOP.
-	%	%\end{itemize}
-	%	\item Opcode \texttt{0x0}:
-	%		\texttt{\textbf{bnv} simm}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if (0) pc <= pc + simm + 2;} This is a NOP.
-	%	\end{itemize}
-
-	%	\item Opcode \texttt{0x1}:
-	%		\texttt{\textbf{bra} simm}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if (1) pc <= pc + simm + 2;}
-	%	\end{itemize}
-
-	%	\item Opcode \texttt{0x2}:
-	%		\texttt{\textbf{bne} simm}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if (!flags.Z) pc <= pc + simm + 2;}
-	%	\end{itemize}
-
-	%	\item Opcode \texttt{0x3}:
-	%		\texttt{\textbf{beq} simm}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if (flags.Z) pc <= pc + simm + 2;}
-	%	\end{itemize}
-
-	%	\item Opcode \texttt{0x4}:
-	%		\texttt{\textbf{bpl} simm}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if (!flags.N) pc <= pc + simm + 2;}
-	%	\end{itemize}
-
-	%	\item Opcode \texttt{0x5}:
-	%		\texttt{\textbf{bmi} simm}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if (flags.N) pc <= pc + simm + 2;}
-	%	\end{itemize}
-
-	%	\item Opcode \texttt{0x6}:
-	%		\texttt{\textbf{bvc} simm}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if (!flags.V) pc <= pc + simm + 2;}
-	%	\end{itemize}
-
-	%	\item Opcode \texttt{0x7}:
-	%		\texttt{\textbf{bvs} simm}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if (flags.V) pc <= pc + simm + 2;}
-	%	\end{itemize}
-
-	%	\item Opcode \texttt{0x8}:
-	%		\texttt{\textbf{bgeu} simm}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if (flags.C) pc <= pc + simm + 2;}
-	%	\end{itemize}
-
-	%	\item Opcode \texttt{0x9}:
-	%		\texttt{\textbf{bltu} simm}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if (!flags.C) pc <= pc + simm + 2;}
-	%	\end{itemize}
-
-	%	\item Opcode \texttt{0xa}:
-	%		\texttt{\textbf{bgtu} simm}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if (flags.C AND (!flags.Z)) pc <= pc + simm + 2;}
-	%	\end{itemize}
-
-	%	\item Opcode \texttt{0xb}:
-	%		\texttt{\textbf{bleu} simm}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if ((!flags.C) OR flags.Z) pc <= pc + simm + 2;}
-	%	\end{itemize}
-
-	%	\item Opcode \texttt{0xc}:
-	%		\texttt{\textbf{bges} simm}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if (!(flags.N XOR flags.V)) pc <= pc + simm + 2;}
-	%	\end{itemize}
-
-	%	\item Opcode \texttt{0xd}:
-	%		\texttt{\textbf{blts} simm}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if (flags.N XOR flags.V) pc <= pc + simm + 2;}
-	%	\end{itemize}
-
-	%	\item Opcode \texttt{0xe}:
-	%		\texttt{\textbf{bgts} simm}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if ((!(flags.N XOR flags.V)) AND (!flags.Z))
-	%				pc <= pc + simm + 2;}
-	%	\end{itemize}
-
-	%	\item Opcode \texttt{0xf}:
-	%		\texttt{\textbf{bles} simm}
-	%	\begin{itemize}
-	%		\item Effect:
-	%			\texttt{if ((flags.N XOR flags.V) OR flags.Z)
-	%				pc <= pc + simm + 2;}
-	%	\end{itemize}
-	%\end{itemize}
-
-	%\doublespacing
-	%\subsection{Instruction Group 5:  Indexed Load}
-	%The following encoding is used, with each character representing one
-	%bit:  \\
-	%\texttt{101i cccc aaaa iiii}, where
-
-	%\singlespacing
-	%\begin{itemize}
-	%	\item \texttt{i} is a 5-bit sign-extended immediate, which can
-	%	be expanded by \texttt{pre}  
-	%	\item \texttt{c} encodes register \texttt{rC}
-	%	\item \texttt{a} encodes register \texttt{rA}
-	%\end{itemize}
-	%\doublespacing
-
-	%The one instruction from this encoding group is
-	%\texttt{\textbf{ldr} rA, [rC, simm]}.
-	%This is a 32-bit load into \texttt{rA}, where the effective address to
-	%load from is computed as \texttt{rC + simm}, using the sign-extended
-	%form of \texttt{simm}.
-	%%Note that \texttt{pick} does not affect this instruction in any way.
-
-	%\subsection{Instruction Group 6:  Indexed Store}
-	%The following encoding is used, with each character representing one
-	%bit:  \\
-	%\texttt{110i cccc aaaa iiii}, where
-
-	%\singlespacing
-	%\begin{itemize}
-	%	\item \texttt{i} is a 5-bit sign-extended immediate, which can
-	%	be expanded by \texttt{pre}  
-	%	\item \texttt{c} encodes register \texttt{rC}
-	%	\item \texttt{a} encodes register \texttt{rA}
-	%\end{itemize}
-	%\doublespacing
-
-	%The one instruction from this encoding group is
-	%\texttt{\textbf{str} rA, [rC, simm]}.
-	%This is a 32-bit store of \texttt{rA}, where the effective address to
-	%store to is computed as \texttt{rC + simm}, using the sign-extended
-	%form of \texttt{simm}.
-	%%Note that \texttt{pick} does not affect this instruction in any way.
-
-	%\subsection{Instruction Group 7.0:  Other Loads and Stores}
-	%The following encoding is used, with each character representing one
-	%bit:  \\
-	%\texttt{1110 cccc aaaa 00oo}, where
-
-	%\singlespacing
-	%\begin{itemize}
-	%	\item \texttt{c} encodes register \texttt{rC}
-	%	\item \texttt{a} encodes register \texttt{rA}
-	%	\item \texttt{o} is the opcode
-	%\end{itemize}
-	%\doublespacing
-
-	%Here is a list of instructions from this encoding group.
-
-	%\singlespacing
-	%\begin{itemize}
-	%	\item Opcode \texttt{0x0}:
-	%		\texttt{\textbf{ldb} rA, [rC]}
-	%	\begin{itemize}
-	%		\item Effect:  Load a byte from memory at address computed as
-	%		just the value of \texttt{rC}, zero-extend the byte to 32 bits,
-	%		then put the zero-extended 32-bit value into \texttt{rA}.
-	%	\end{itemize}
-	%	\item Opcode \texttt{0x1}:
-	%		\texttt{\textbf{ldh} rA, [rC]}
-	%	\begin{itemize}
-	%		\item Effect:  Load a 16-bit value from memory at address
-	%		computed as just the value of \texttt{rC}, zero-extend the
-	%		16-bit value to 32 bits, then put the zero-extended 32-bit
-	%		value into \texttt{rA}.
-	%	\end{itemize}
-	%	\item Opcode \texttt{0x2}:
-	%		\texttt{\textbf{stb} rA, [rC]}
-	%	\begin{itemize}
-	%		\item Effect:  Store \texttt{rA[7:0]} to memory at the address
-	%		computed as just the value of \texttt{rC}.
-	%	\end{itemize}
-	%	\item Opcode \texttt{0x3}:
-	%		\texttt{\textbf{sth} rA, [rC]}
-	%	\begin{itemize}
-	%		\item Effect:  Store \texttt{rA[15:0]} to memory at the address
-	%		computed as just the value of \texttt{rC}.
-	%	\end{itemize}
-	%\end{itemize}
-	%\doublespacing
-
-	%\subsection{Instruction Group 7.1:  Copying to/from Special Registers}
-	%The following encoding is used, with each character representing one
-	%bit:  \\
-	%\texttt{1110 oooo aaaa 0100}, where
-
-	%\singlespacing
-	%\begin{itemize}
-	%	\item \texttt{o} is the opcode
-	%	\item \texttt{a} encodes register \texttt{rA}
-	%\end{itemize}
-	%\doublespacing
-
-	%Here is a list of instructions from this encoding group.
-
-	%\singlespacing
-	%\begin{itemize}
-	%	\item Opcode \texttt{0x0}:
-	%		\texttt{\textbf{cpyspec} hi, rA}
-	%	\item Opcode \texttt{0x1}:
-	%		\texttt{\textbf{cpyspec} rA, hi}
-	%	\item Opcode \texttt{0x2}:
-	%		\texttt{\textbf{cpyspec} lo, rA}
-	%	\item Opcode \texttt{0x3}:
-	%		\texttt{\textbf{cpyspec} rA, lo}
-	%	\item Opcode \texttt{0x4}:
-	%		\texttt{\textbf{cpyspec} flags, rA}
-	%	\begin{itemize}
-	%		\item Effect:  copy \texttt{rA[3:0]} to \texttt{flags}.
-	%	\end{itemize}
-	%	\item Opcode \texttt{0x5}:
-	%		\texttt{\textbf{cpyspec} rA, flags}
-	%	\begin{itemize}
-	%		\item Effect:  copy \texttt{flags} to \texttt{rA}.
-	%	\end{itemize}
-	%	\item Opcode \texttt{0x6}:
-	%		\texttt{\textbf{cpyspec} ids, rA}
-	%	\item Opcode \texttt{0x7}:
-	%		\texttt{\textbf{cpyspec} rA, ids}
-	%	\item Opcode \texttt{0x8}:
-	%		\texttt{\textbf{cpyspec} ira, rA}
-	%	\item Opcode \texttt{0x9}:
-	%		\texttt{\textbf{cpyspec} rA, ira}
-	%	\item Opcode \texttt{0xa}:
-	%		\texttt{\textbf{cpyspec} ie, rA}
-	%	\begin{itemize}
-	%		\item Effect:  copy \texttt{rA[0]} to \texttt{ie}.
-	%	\end{itemize}
-	%	\item Opcode \texttt{0xb}:
-	%		\texttt{\textbf{cpyspec} rA, ie}
-	%	\begin{itemize}
-	%		\item Effect:  copy \texttt{ie} to \texttt{rA}.
-	%	\end{itemize}
-	%	\item Opcode \texttt{0xc}:
-	%		\texttt{\textbf{ei}}
-	%	\begin{itemize}
-	%		\item Effect:  copy \texttt{1} into \texttt{ie}.
-	%	\end{itemize}
-	%	\item Opcode \texttt{0xd}:
-	%		\texttt{\textbf{di}}
-	%	\begin{itemize}
-	%		\item Effect:  copy \texttt{0} into \texttt{ie}.
-	%	\end{itemize}
-	%	\item Opcode \texttt{0xe}:
-	%		\texttt{\textbf{push} ira}
-	%	\begin{itemize}
-	%		\item Effect:  pushes \texttt{ira} onto the stack,
-	%		post-decrementing \texttt{sp}.
-	%	\end{itemize}
-	%	\item Opcode \texttt{0xf}:
-	%		\texttt{\textbf{pop} ira}
-	%	\begin{itemize}
-	%		\item Effect:  pops \texttt{ira} off the stack,
-	%		pre-incrementing \texttt{sp}.
-	%	\end{itemize}
-	%\end{itemize}
-	%\doublespacing
-
-	%\subsection{Instruction Group 7.2:  Multiplies, Divides,
-	%Extra Interrupts Stuff, Push/Pop, and Index}
-	%The following encoding is used, with each character representing one
-	%bit:  \\
-	%\texttt{1110 oooo aaaa 1000}, where
-
-	%\singlespacing
-	%\begin{itemize}
-	%	\item \texttt{o} is the opcode
-	%	\item \texttt{a} encodes register \texttt{rA} or one of registers 
-	%	\texttt{hi}, \texttt{lo}, \texttt{flags}, denoted \texttt{sA},
-	%	where \texttt{hi} is encoded as \texttt{0x0}, \texttt{lo} is
-	%	encoded as \texttt{0x1}, and \texttt{flags} is encoded as
-	%	\texttt{0x2}.
-	%\end{itemize}
-	%\doublespacing
-
-	%Here is a list of instructions from this encoding group.
-
-	%\singlespacing
-	%\begin{itemize}
-	%	\item Opcode \texttt{0x0}:
-	%		\texttt{\textbf{mul} rA}
-	%	\begin{itemize}
-	%		\item Effect:  This instruction multiplies \texttt{lo} by
-	%		\texttt{rA}, performing a 32-bit by 32-bit -> 32-bit multiply,
-	%		storing result in \texttt{lo}.
-	%	\end{itemize}
-	%	\item Opcode \texttt{0x1}:
-	%		\texttt{\textbf{udiv} rA}
-	%	\begin{itemize}
-	%		\item Effect:  This instruction performs a 32-bit by 32-bit ->
-	%		32-bit unsigned divide of \texttt{lo} by \texttt{rA}, storing
-	%		result in \texttt{lo}.
-	%	\end{itemize}
-	%	\item Opcode \texttt{0x2}:
-	%		\texttt{\textbf{sdiv} rA}
-	%	\begin{itemize}
-	%		\item Effect:  This instruction performs a 32-bit by 32-bit ->
-	%		32-bit signed divide of \texttt{lo} by \texttt{rA}, storing
-	%		result in \texttt{lo}.
-	%	\end{itemize}
-	%	\item Opcode \texttt{0x3}:
-	%		\texttt{\textbf{lumul} rA}
-	%	\begin{itemize}
-	%		\item Effect:  This instruction multiplies \texttt{lo} by
-	%		\texttt{rA}, performing an unsigned 32-bit by 32-bit -> 64-bit
-	%		multiply, storing result in \texttt{\{hi, lo\}}.
-	%	\end{itemize}
-	%	\item Opcode \texttt{0x4}:
-	%		\texttt{\textbf{lsmul} rA}
-	%	\begin{itemize}
-	%		\item Effect:  This instruction multiplies \texttt{lo} by
-	%		\texttt{rA}, performing a signed 32-bit by 32-bit -> 64-bit
-	%		multiply, storing result in \texttt{\{hi, lo\}}.
-	%	\end{itemize}
-	%	\item Opcode \texttt{0x5}:
-	%		\texttt{\textbf{reti}}
-	%	\begin{itemize}
-	%		\item Effect:  enables interrupts and performs
-	%		\texttt{pc <= ira;}
-	%	\end{itemize}
-	%	\item Opcode \texttt{0x6}:
-	%		\texttt{\textbf{jmp} ira}
-	%	\begin{itemize}
-	%		\item Effect:  \texttt{pc <= ira;}
-	%	\end{itemize}
-	%	\item Opcode \texttt{0x7}:
-	%		\texttt{\textbf{push} rA}
-	%	\begin{itemize}
-	%		\item Effect:  pushes \texttt{rA} onto the stack,
-	%		post-decrementing \texttt{sp}.
-	%	\end{itemize}
-	%	\item Opcode \texttt{0x8}:
-	%		\texttt{\textbf{pop} rA}
-	%	\begin{itemize}
-	%		\item Effect:  pops \texttt{rA} off the stack,
-	%		pre-incrementing \texttt{sp}.
-	%	\end{itemize}
-	%	\item Opcode \texttt{0x9}:
-	%		\texttt{\textbf{push} sA}
-	%	\begin{itemize}
-	%		\item Effect:  pushes \texttt{sA} onto the stack,
-	%		post-decrementing \texttt{sp}.
-	%	\end{itemize}
-	%	\item Opcode \texttt{0xa}:
-	%		\texttt{\textbf{pop} sA}
-	%	\begin{itemize}
-	%		\item Effect:  pops \texttt{sA} off the stack,
-	%		pre-incrementing \texttt{sp}.
-	%	\end{itemize}
-	%\end{itemize}
-	%\doublespacing
 
 	%\printbibliography[heading=bibnumbered,title={Bibliography}]
 
