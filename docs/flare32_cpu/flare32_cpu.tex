@@ -142,7 +142,7 @@
 	Two more registers are \texttt{hi} and \texttt{lo}, which are used as
 	the high 32 bits and low 32 bits of the result of a 32 by 32 -> 64
 	multiplication, or as the high 32 bits and low 32 bits of the result of
-	a 64 by 32 -> 64 division.  Here are the flags:
+	a 64 by 64 -> 64 division.  Here are the flags:
 
 	\begin{table}[H]
 		\begin{center}
@@ -551,105 +551,105 @@
 		%		\texttt{if (0) pc <= pc + simm + 2;} This is a NOP.
 		%\end{itemize}
 		\item Opcode \texttt{0x0}:
-			\texttt{\textbf{bl} \#simm}
+			\texttt{\textbf{bl} simm}
 		\begin{itemize}
 			\item Effect:
 				\texttt{lr <= pc + 2; pc <= pc + simm + 2;}
 		\end{itemize}
 
 		\item Opcode \texttt{0x1}:
-			\texttt{\textbf{bra} \#simm}
+			\texttt{\textbf{bra} simm}
 		\begin{itemize}
 			\item Effect:
 				\texttt{pc <= pc + simm + 2;}
 		\end{itemize}
 
 		\item Opcode \texttt{0x2}:
-			\texttt{\textbf{bne} \#simm}
+			\texttt{\textbf{bne} simm}
 		\begin{itemize}
 			\item Effect:
 				\texttt{if (!flags.Z) pc <= pc + simm + 2;}
 		\end{itemize}
 
 		\item Opcode \texttt{0x3}:
-			\texttt{\textbf{beq} \#simm}
+			\texttt{\textbf{beq} simm}
 		\begin{itemize}
 			\item Effect:
 				\texttt{if (flags.Z) pc <= pc + simm + 2;}
 		\end{itemize}
 
 		\item Opcode \texttt{0x4}:
-			\texttt{\textbf{bpl} \#simm}
+			\texttt{\textbf{bpl} simm}
 		\begin{itemize}
 			\item Effect:
 				\texttt{if (!flags.N) pc <= pc + simm + 2;}
 		\end{itemize}
 
 		\item Opcode \texttt{0x5}:
-			\texttt{\textbf{bmi} \#simm}
+			\texttt{\textbf{bmi} simm}
 		\begin{itemize}
 			\item Effect:
 				\texttt{if (flags.N) pc <= pc + simm + 2;}
 		\end{itemize}
 
 		\item Opcode \texttt{0x6}:
-			\texttt{\textbf{bvc} \#simm}
+			\texttt{\textbf{bvc} simm}
 		\begin{itemize}
 			\item Effect:
 				\texttt{if (!flags.V) pc <= pc + simm + 2;}
 		\end{itemize}
 
 		\item Opcode \texttt{0x7}:
-			\texttt{\textbf{bvs} \#simm}
+			\texttt{\textbf{bvs} simm}
 		\begin{itemize}
 			\item Effect:
 				\texttt{if (flags.V) pc <= pc + simm + 2;}
 		\end{itemize}
 
 		\item Opcode \texttt{0x8}:
-			\texttt{\textbf{bgeu} \#simm}
+			\texttt{\textbf{bgeu} simm}
 		\begin{itemize}
 			\item Effect:
 				\texttt{if (flags.C) pc <= pc + simm + 2;}
 		\end{itemize}
 
 		\item Opcode \texttt{0x9}:
-			\texttt{\textbf{bltu} \#simm}
+			\texttt{\textbf{bltu} simm}
 		\begin{itemize}
 			\item Effect:
 				\texttt{if (!flags.C) pc <= pc + simm + 2;}
 		\end{itemize}
 
 		\item Opcode \texttt{0xa}:
-			\texttt{\textbf{bgtu} \#simm}
+			\texttt{\textbf{bgtu} simm}
 		\begin{itemize}
 			\item Effect:
 				\texttt{if (flags.C AND (!flags.Z)) pc <= pc + simm + 2;}
 		\end{itemize}
 
 		\item Opcode \texttt{0xb}:
-			\texttt{\textbf{bleu} \#simm}
+			\texttt{\textbf{bleu} simm}
 		\begin{itemize}
 			\item Effect:
 				\texttt{if ((!flags.C) OR flags.Z) pc <= pc + simm + 2;}
 		\end{itemize}
 
 		\item Opcode \texttt{0xc}:
-			\texttt{\textbf{bges} \#simm}
+			\texttt{\textbf{bges} simm}
 		\begin{itemize}
 			\item Effect:
 				\texttt{if (!(flags.N XOR flags.V)) pc <= pc + simm + 2;}
 		\end{itemize}
 
 		\item Opcode \texttt{0xd}:
-			\texttt{\textbf{blts} \#simm}
+			\texttt{\textbf{blts} simm}
 		\begin{itemize}
 			\item Effect:
 				\texttt{if (flags.N XOR flags.V) pc <= pc + simm + 2;}
 		\end{itemize}
 
 		\item Opcode \texttt{0xe}:
-			\texttt{\textbf{bgts} \#simm}
+			\texttt{\textbf{bgts} simm}
 		\begin{itemize}
 			\item Effect:
 				\texttt{if ((!(flags.N XOR flags.V)) AND (!flags.Z))
@@ -657,7 +657,7 @@
 		\end{itemize}
 
 		\item Opcode \texttt{0xf}:
-			\texttt{\textbf{bles} \#simm}
+			\texttt{\textbf{bles} simm}
 		\begin{itemize}
 			\item Effect:
 				\texttt{if ((flags.N XOR flags.V) OR flags.Z)
