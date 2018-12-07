@@ -739,12 +739,16 @@
 			\item Effect:  pushes \texttt{rA} onto the stack, using
 			\texttt{rC} as the stack pointer, post-decrementing
 			\texttt{rC}.
+			\item This instruction does nothing when \texttt{rA} is the
+			same register as \texttt{rC}. 
 		\end{itemize}
 		\item Opcode \texttt{0xa}:
 			\texttt{\textbf{pop} rA, rC}
 		\begin{itemize}
 			\item Effect:  pops \texttt{rA} off the stack, using
 			\texttt{rC} as the stack pointer, pre-incrementing \texttt{rC}.
+			\item This instruction does nothing when \texttt{rA} is the
+			same register as \texttt{rC}. 
 		\end{itemize}
 		\item Opcode \texttt{0xb}:
 			\texttt{\textbf{push} sA, rC}
