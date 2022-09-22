@@ -33,4 +33,3 @@ hdl/generated_single_source_files/*
 *.stp
 algorithm_tests/*
 docs/*/build
-docs/*/*.pdf
