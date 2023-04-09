@@ -657,7 +657,7 @@
 		\begin{itemize}
 			\item Name: Branch if Greater Than Unsigned
 			\item Effect:
-				\texttt{if (flags.C AND (!flags.Z)) pc <= pc + simm + 2;}
+				\texttt{if (flags.C AND !flags.Z) pc <= pc + simm + 2;}
 		\end{itemize}
 
 		\item Opcode \texttt{0xb}:
@@ -665,7 +665,7 @@
 		\begin{itemize}
 			\item Name: Branch if Less than or Equal Unsigned
 			\item Effect:
-				\texttt{if ((!flags.C) OR flags.Z) pc <= pc + simm + 2;}
+				\texttt{if (!flags.C OR flags.Z) pc <= pc + simm + 2;}
 		\end{itemize}
 
 		\item Opcode \texttt{0xc}:
@@ -689,7 +689,7 @@
 		\begin{itemize}
 			\item Name: Branch if Greater Than Signed
 			\item Effect:
-				\texttt{if ((!(flags.N XOR flags.V)) AND (!flags.Z))
+				\texttt{if ((!(flags.N XOR flags.V)) AND !flags.Z)
 					pc <= pc + simm + 2;}
 		\end{itemize}
 
