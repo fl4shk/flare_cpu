@@ -114,11 +114,11 @@
 	%\setcounter{section}{-1}
 	%%This is an instruction set designed to be similar to the SuperFX/GSU,
 	%%while not being binary compatible, nor even assembly language
-	%%compatible.  It takes some of the ideas from the GSU and runs with
+	%%compatible. It takes some of the ideas from the GSU and runs with
 	%%them.
 	%This is an instruction set that is basically just my answer to THUMB
 	%(especially original THUMB), with some ideas taken from other places as
-	%well.  This shows how to get more out of 16-bit instructions than THUMB
+	%well. This shows how to get more out of 16-bit instructions than THUMB
 	%allows.
 
 	\newpage
@@ -132,17 +132,17 @@
 	\subsection{Registers}
 	There are sixteen general-purpose registers: \texttt{r0}, \texttt{r1},
 	\texttt{r2}, \texttt{...}, \texttt{r11}, \texttt{r12}, \texttt{lr},
-	\texttt{fp}, \texttt{sp}.  Each register
-	is 32 bits long.  For special purpose registers, there are also
+	\texttt{fp}, \texttt{sp}. Each register
+	is 32 bits long. For special purpose registers, there are also
 	\texttt{pc}, the program counter (which is 32 bits long), and the
-	\texttt{flags}.  Also there are the interrupts-related registers:
+	\texttt{flags}. Also there are the interrupts-related registers:
 	\texttt{ids} (the destination to go to upon an interrupt happening),
 	\texttt{ira} (the program counter value to return to after an
 	interrupt) and \texttt{ie} (whether or not interrupts are enabled).
 	Two more registers are \texttt{hi} and \texttt{lo}, which are used as
 	the high 32 bits and low 32 bits of the result of a 32 by 32 -> 64
 	multiplication, or as the high 32 bits and low 32 bits of the result of
-	a 64 by 64 -> 64 division.  Here are the flags:
+	a 64 by 64 -> 64 division. Here are the flags:
 
 	\begin{table}[H]
 		\begin{center}
@@ -185,24 +185,42 @@
 	instructions.
 
 	There is no mechanism in the assembly language itself to use
-	\texttt{pre} or \texttt{lpre} as instructions.  Instead, it is expected
+	\texttt{pre} or \texttt{lpre} as instructions. Instead, it is expected
 	that the assembler or linker will be the one to insert \texttt{pre} or
 	\texttt{lpre} as needed if an immediate is too large for a particular
-	instruction.  
+	instruction.
 
-	
-	If \texttt{pre} is used, the immediate field of the
-	\texttt{pre} instruction will form bits \texttt{[16:5]} of the
-	immediate of the next non-\texttt{index} instruction.  The 17-bit
-	immediate will then be sign-extended to 32 bits.
+	For non-branch instructions:
+	\begin{itemize}
+		\item If \texttt{pre} is used, the immediate field of the
+		\texttt{pre} instruction will form bits \texttt{[16:5]} of the
+		immediate of the next non-\texttt{index} instruction. The 17-bit
+		immediate will then be sign-extended to 32 bits.
 
-	On the other hand, if \texttt{lpre} is used, the immediate field of the
-	\texttt{lpre} instruction will form bits \texttt{[31:5]} of the
-	immediate of the next non-\texttt{index} instruction.
+		\item On the other hand, if \texttt{lpre} is used, the immediate
+		field of the \texttt{lpre} instruction will form bits
+		\texttt{[31:5]} of the immediate of the next non-\texttt{index}
+		instruction.
+	\end{itemize}
+
+
+	For branch instructions (group 3):
+	\begin{itemize}
+		\item if \texttt{pre} is used, the
+		immediate field of the \texttt{pre} instruction will form bits
+		\texttt{[23:9]} of the immediate of the next non-\texttt{index}
+		instruction. The 23-bit immediate will then be sign-extended to 32
+		bits.
+
+		\item On the other hand, if \texttt{lpre} is used, the immediate
+		field of the \texttt{lpre} instruction will form bits
+		\texttt{[31:9]} of the immediate of the next non-\texttt{index}
+		instruction.
+	\end{itemize}
 
 	Instructions that use an immediate value, other than \texttt{pre},
 	\texttt{lpre}, and relative branches normally have 5-bit immediates.
-	Relative branches normally have 9-bit branch offsets.  if \texttt{pre}
+	Relative branches normally have 9-bit branch offsets. if \texttt{pre}
 	or \texttt{lpre} is used with a relative branch, bits \texttt{[9:5]} of
 	the branch offset that is encoded directly into a relative branch
 	instruction will be ignored, and the immediate field of the
@@ -213,15 +231,15 @@
 	\texttt{index}}
 
 	When a \texttt{pre} or \texttt{lpre} instruction is found, \texttt{pre}
-	or \texttt{lpre} will be considered to be "in effect".  This condition
+	or \texttt{lpre} will be considered to be "in effect". This condition
 	lasts for one or two instructions after the \texttt{pre} or
 	\texttt{lpre} instruction, depending on whether or not \texttt{index}
 	was in effect.
 
 	\texttt{index} is an instruction (defined later) that allows a
 	subsequent load or store instruction to perform \texttt{base\_reg +
-	index\_reg} indexing.  When an \texttt{index} instruction is found, it
-	is considered to be in effect.  Like \texttt{pre} and \texttt{lpre},
+	index\_reg} indexing. When an \texttt{index} instruction is found, it
+	is considered to be in effect. Like \texttt{pre} and \texttt{lpre},
 	\texttt{index} is inserted automatically by the assembler.
 
 	\texttt{index} can be combined with \texttt{pre} or \texttt{lpre}, and
@@ -229,12 +247,12 @@
 	\texttt{pre}/\texttt{lpre} instruction came first.
 
 	%\texttt{pre} and \texttt{lpre} cannot both be combined in the same
-	%instruction.  If this is attempted, the hardware will treat the
+	%instruction. If this is attempted, the hardware will treat the
 	%instruction as a NOP, and \texttt{pre}, \texttt{lpre}, and
 	%\texttt{index} will all stop being in effect.
 
 	%Two \texttt{pre} or \texttt{lpre} instructions also cannot both be
-	%combined.  If this is attempted, the hardware will treat the
+	%combined. If this is attempted, the hardware will treat the
 	%instruction as a NOP, and \texttt{pre}, \texttt{lpre}, and
 	%\texttt{index} will all stop being in effect.
 
@@ -362,7 +380,7 @@
 		\item \texttt{a} encodes register \texttt{rA}
 		\item \texttt{f} is encoded as \texttt{0} if this instruction
 		cannot affect flags and encoded \texttt{1} if this instruction is
-		permitted to affect flags.  Note that \texttt{cmp} is permitted to
+		permitted to affect flags. Note that \texttt{cmp} is permitted to
 		affect flags regardless of this bit.
 	\end{itemize}
 	\doublespacing
@@ -406,7 +424,7 @@
 		\item Opcode \texttt{0x4}:
 			\texttt{\textbf{cmp} rA, rC}
 		\begin{itemize}
-			\item Note: Compare \texttt{rA} to \texttt{rC}.  \texttt{cmp}
+			\item Note: Compare \texttt{rA} to \texttt{rC}. \texttt{cmp}
 			is \textit{always} able to affect flags, independent of the
 			encoded \texttt{f} bit of the instruction.
 			\item Affectable flags:
@@ -528,15 +546,17 @@
 
 	\singlespacing
 	\begin{itemize}
+		\item \texttt{i} is a 9-bit sign-extended immediate, and is denoted
+		\texttt{simm}
 		\item \texttt{o} is the opcode
-		\item \texttt{i} is a 9-bit sign-extended immediate, which can
-		still be affected by \texttt{pre}, but when \texttt{pre} is the
-		instruction before this one, only bits \texttt{[4:0]} of the
-		immediate value encoded into this instruction will be used by the
-		hardware, with the remaining bits of the immediate coming from
-		however many \texttt{pre} instructions were used.  Multiple
-		\texttt{pre} instructions can still form larger than 18-bit branch
-		offsets.  This immediate is denoted \texttt{simm}.
+		%\item \texttt{i} is a 9-bit sign-extended immediate, which can
+		%still be affected by \texttt{pre}, but when \texttt{pre} is the
+		%instruction before this one, only bits \texttt{[4:0]} of the
+		%immediate value encoded into this instruction will be used by the
+		%hardware, with the remaining bits of the immediate coming from
+		%however many \texttt{pre} instructions were used. Multiple
+		%\texttt{pre} instructions can still form larger than 18-bit branch
+		%offsets. This immediate is denoted \texttt{simm}.
 	\end{itemize}
 	\doublespacing
 
@@ -553,62 +573,73 @@
 		\item Opcode \texttt{0x0}:
 			\texttt{\textbf{bl} simm}
 		\begin{itemize}
-			\item Effect:
+			\item Name: Branch and Link
+			\item Description: Relative call
+			\item In-Depth Effect:
 				\texttt{lr <= pc + 2; pc <= pc + simm + 2;}
 		\end{itemize}
 
 		\item Opcode \texttt{0x1}:
 			\texttt{\textbf{bra} simm}
 		\begin{itemize}
+			\item Name: BRanch Always
+			\item Description: Relative branch always
 			\item Effect:
 				\texttt{pc <= pc + simm + 2;}
 		\end{itemize}
 
 		\item Opcode \texttt{0x2}:
-			\texttt{\textbf{bne} simm}
-		\begin{itemize}
-			\item Effect:
-				\texttt{if (!flags.Z) pc <= pc + simm + 2;}
-		\end{itemize}
-
-		\item Opcode \texttt{0x3}:
 			\texttt{\textbf{beq} simm}
 		\begin{itemize}
+			\item Name: Branch if EQual
 			\item Effect:
 				\texttt{if (flags.Z) pc <= pc + simm + 2;}
 		\end{itemize}
 
-		\item Opcode \texttt{0x4}:
-			\texttt{\textbf{bpl} simm}
+		\item Opcode \texttt{0x3}:
+			\texttt{\textbf{bne} simm}
 		\begin{itemize}
+			\item Name: Branch if Not Equal
 			\item Effect:
-				\texttt{if (!flags.N) pc <= pc + simm + 2;}
+				\texttt{if (!flags.Z) pc <= pc + simm + 2;}
 		\end{itemize}
 
-		\item Opcode \texttt{0x5}:
+		\item Opcode \texttt{0x4}:
 			\texttt{\textbf{bmi} simm}
 		\begin{itemize}
+			\item Name: Branch if MInus
 			\item Effect:
 				\texttt{if (flags.N) pc <= pc + simm + 2;}
 		\end{itemize}
 
-		\item Opcode \texttt{0x6}:
-			\texttt{\textbf{bvc} simm}
+		\item Opcode \texttt{0x5}:
+			\texttt{\textbf{bpl} simm}
 		\begin{itemize}
+			\item Name: Branch if PLus
 			\item Effect:
-				\texttt{if (!flags.V) pc <= pc + simm + 2;}
+				\texttt{if (!flags.N) pc <= pc + simm + 2;}
+		\end{itemize}
+
+		\item Opcode \texttt{0x6}:
+			\texttt{\textbf{bvs} simm}
+		\begin{itemize}
+			\item Name: Branch if oVerflow Set
+			\item Effect:
+				\texttt{if (flags.V) pc <= pc + simm + 2;}
 		\end{itemize}
 
 		\item Opcode \texttt{0x7}:
-			\texttt{\textbf{bvs} simm}
+			\texttt{\textbf{bvc} simm}
 		\begin{itemize}
+			\item Name: Branch if oVerflow Clear
 			\item Effect:
-				\texttt{if (flags.V) pc <= pc + simm + 2;}
+				\texttt{if (!flags.V) pc <= pc + simm + 2;}
 		\end{itemize}
 
 		\item Opcode \texttt{0x8}:
 			\texttt{\textbf{bgeu} simm}
 		\begin{itemize}
+			\item Name: Branch if Greater than or Equal Unsigned
 			\item Effect:
 				\texttt{if (flags.C) pc <= pc + simm + 2;}
 		\end{itemize}
@@ -616,6 +647,7 @@
 		\item Opcode \texttt{0x9}:
 			\texttt{\textbf{bltu} simm}
 		\begin{itemize}
+			\item Name: Branch if Less Than Unsigned
 			\item Effect:
 				\texttt{if (!flags.C) pc <= pc + simm + 2;}
 		\end{itemize}
@@ -623,6 +655,7 @@
 		\item Opcode \texttt{0xa}:
 			\texttt{\textbf{bgtu} simm}
 		\begin{itemize}
+			\item Name: Branch if Greater Than Unsigned
 			\item Effect:
 				\texttt{if (flags.C AND (!flags.Z)) pc <= pc + simm + 2;}
 		\end{itemize}
@@ -630,6 +663,7 @@
 		\item Opcode \texttt{0xb}:
 			\texttt{\textbf{bleu} simm}
 		\begin{itemize}
+			\item Name: Branch if Less than or Equal Unsigned
 			\item Effect:
 				\texttt{if ((!flags.C) OR flags.Z) pc <= pc + simm + 2;}
 		\end{itemize}
@@ -637,6 +671,7 @@
 		\item Opcode \texttt{0xc}:
 			\texttt{\textbf{bges} simm}
 		\begin{itemize}
+			\item Name: Branch if Greater than or Equal Signed
 			\item Effect:
 				\texttt{if (!(flags.N XOR flags.V)) pc <= pc + simm + 2;}
 		\end{itemize}
@@ -644,6 +679,7 @@
 		\item Opcode \texttt{0xd}:
 			\texttt{\textbf{blts} simm}
 		\begin{itemize}
+			\item Name: Branch if Less Than Signed
 			\item Effect:
 				\texttt{if (flags.N XOR flags.V) pc <= pc + simm + 2;}
 		\end{itemize}
@@ -651,6 +687,7 @@
 		\item Opcode \texttt{0xe}:
 			\texttt{\textbf{bgts} simm}
 		\begin{itemize}
+			\item Name: Branch if Greater Than Signed
 			\item Effect:
 				\texttt{if ((!(flags.N XOR flags.V)) AND (!flags.Z))
 					pc <= pc + simm + 2;}
@@ -659,6 +696,7 @@
 		\item Opcode \texttt{0xf}:
 			\texttt{\textbf{bles} simm}
 		\begin{itemize}
+			\item Name: Branch if Less than or Equal Signed
 			\item Effect:
 				\texttt{if ((flags.N XOR flags.V) OR flags.Z)
 					pc <= pc + simm + 2;}
@@ -782,7 +820,7 @@
 			and \texttt{str}).
 			\item Note: A non-\texttt{pre} instruction following
 			\texttt{index} will store that that \texttt{index} is not in
-			effect any more.  (It will also store that \texttt{pre} is not
+			effect any more. (It will also store that \texttt{pre} is not
 			in effect any more).
 			\item Note: If \texttt{index} is in effect, the current
 			instruction cannot be interrupted.

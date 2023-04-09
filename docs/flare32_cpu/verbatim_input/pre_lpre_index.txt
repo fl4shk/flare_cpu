@@ -1,9 +1,6 @@
-function handle_pre_lpre_index(input in, output out)
-{
-    if (in.instruction.is_pre())
-    {
-        if (in.state.pre.have || in.state.lpre.have)
-        {
+function handle_pre_lpre_index(input in, output out) {
+    if (in.instruction.is_pre()) {
+        if (in.state.pre.have || in.state.lpre.have) {
             out.state.can_service_interrupts = false;
 
             // Instruction was a NOP
@@ -11,25 +8,17 @@ function handle_pre_lpre_index(input in, output out)
             out.state.lpre.have = false;
             out.state.index.have = false;
             out.instruction = nop;
-        }
-        else
-        {
-            if (in.state.index.have)
-            {
+        } else {
+            if (in.state.index.have) {
                 out.state.can_service_interrupts = false;
-            }
-            else
-            {
+            } else {
                 out.state.can_service_interrupts = true;
             }
             out.state.pre.set_have(true);
             out.instruction = in.instruction;
         }
-    }
-    else if (in.instruction.is_lpre())
-    {
-        if (in.state.pre.have || in.state.lpre.have)
-        {
+    } else if (in.instruction.is_lpre()) {
+        if (in.state.pre.have || in.state.lpre.have) {
             out.state.can_service_interrupts = false;
 
             // Instruction was a NOP
@@ -37,25 +26,17 @@ function handle_pre_lpre_index(input in, output out)
             out.state.lpre.have = false;
             out.state.index.have = false;
             out.instruction = nop;
-        }
-        else
-        {
-            if (in.state.index.have)
-            {
+        } else {
+            if (in.state.index.have) {
                 out.state.can_service_interrupts = false;
-            }
-            else
-            {
+            } else {
                 out.state.can_service_interrupts = true;
             }
             out.state.lpre.set_have(true);
             out.instruction = in.instruction;
         }
-    }
-    else if (in.instruction.is_index())
-    {
-        if (in.state.index.have)
-        {
+    } else if (in.instruction.is_index()) {
+        if (in.state.index.have) {
             out.state.can_service_interrupts = false;
 
             // Instruction was a NOP
@@ -63,29 +44,21 @@ function handle_pre_lpre_index(input in, output out)
             out.state.lpre.have = false;
             out.state.index.have = false;
             out.instruction = nop;
-        }
-        else
-        {
-            if (in.state.pre.have || in.state.lpre.have)
-            {
+        } else {
+            if (in.state.pre.have || in.state.lpre.have) {
                 out.state.can_service_interrupts = false;
-            }
-            else
-            {
+            } else {
                 out.state.can_service_interrupts = true;
             }
             out.state.index.have = true;
             out.instruction = in.instruction;
         }
-    }
-    else
-    {
-        if (in.state.pre.have || in.state.lpre.have || in.state.index.have)
-        {
+    } else {
+        if (
+            in.state.pre.have || in.state.lpre.have || in.state.index.have
+        ) {
             out.state.can_service_interrupts = false;
-        }
-        else
-        {
+        } else {
             out.state.can_service_interrupts = true;
         }
         out.instruction = instruction;
