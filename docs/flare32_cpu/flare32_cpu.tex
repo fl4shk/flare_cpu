@@ -689,7 +689,7 @@
 		\begin{itemize}
 			\item Name: Branch if Greater Than Signed
 			\item Effect:
-				\texttt{if ((!(flags.N XOR flags.V)) AND !flags.Z)
+				\texttt{if (!(flags.N XOR flags.V) AND !flags.Z)
 					pc <= pc + simm + 2;}
 		\end{itemize}
 
