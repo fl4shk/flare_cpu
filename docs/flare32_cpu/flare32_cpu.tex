@@ -127,34 +127,91 @@
 	\tableofcontents
 	\newpage
 
-	\doublespacing
 	\section{Introduction}
-	\subsection{Registers}
-	There are sixteen general-purpose registers: \texttt{r0}, \texttt{r1},
-	\texttt{r2}, \texttt{...}, \texttt{r11}, \texttt{r12}, \texttt{lr},
-	\texttt{fp}, \texttt{sp}. Each register
-	is 32 bits long. For special purpose registers, there are also
-	\texttt{pc}, the program counter (which is 32 bits long), and the
-	\texttt{flags}. Also there are the interrupts-related registers:
-	\texttt{ids} (the destination to go to upon an interrupt happening),
-	\texttt{ira} (the program counter value to return to after an
-	interrupt) and \texttt{ie} (whether or not interrupts are enabled).
-	Two more registers are \texttt{hi} and \texttt{lo}, which are used as
-	the high 32 bits and low 32 bits of the result of a 32 by 32 -> 64
-	multiplication, or as the high 32 bits and low 32 bits of the result of
-	a 64 by 64 -> 64 division. Here are the flags:
 
-	\begin{table}[H]
-		\begin{center}
-			\caption{The Flags}
-			\label{tab:flags}
-			\begin{tabular}{|c|c|c|c|}
-				\hline
-				Zero (Z) & Carry (C) & oVerflow (V) & Negative (N)\\
-				\hline
-			\end{tabular}
-		\end{center}
-	\end{table}
+	\subsection{General Information}
+		\begin{itemize}
+		%--------
+		\item Addresses are 32-bit.
+		\item Big-endian byte ordering is used. 
+		\item Bytes are octets (8 bits).
+		\item Instructions must be aligned to 16 bits, so jump and
+			branch targets must also be aligned to 16 bits.
+			\begin{itemize}
+			%--------
+			\item Branch offsets encoded into instructions must be
+				16-bit aligned, or in other words bit 0 of the branch
+				offset must be \texttt{0b0}
+			%--------
+			\end{itemize}
+		%--------
+		\end{itemize}
+
+	\subsection{Registers}
+
+	\doublespacing
+	There are sixteen general-purpose registers (all of which are 32-bit):
+	\texttt{r0}, \texttt{r1},
+	\texttt{r2}, \texttt{...}, \texttt{r11}, \texttt{r12}, \texttt{lr},
+	\texttt{fp} (frame pointer), \texttt{sp} (stack pointer).
+
+	The program counter, \texttt{pc}, is 32 bits long, as addresses are
+	32-bit.
+
+	Here are the special-purpose registers:
+	\singlespacing
+	\begin{itemize}
+	%--------
+	\item \texttt{flags}: arithmetic/logic FLAGS;
+		(reg encoding: \texttt{0x0})
+	\item \texttt{ids}: Interrupt DeStination:
+		the address to jump to upon an interrupt
+		being serviced (also known as the interrupt vector);
+		(reg encoding \texttt{0x1})
+	\item \texttt{ira}: Interrupt Return Address:
+		the address that was jumped from upon an interrupt being
+			serviced;
+		(reg encoding \texttt(0x2))
+	\item \texttt{ie}: Interrupt Enable flag:
+		flag indicating whether interrupts are
+			enabled (0x1) or disabled (0x0)
+		note that interrupts start off as disabled;
+		(reg encoding 0x3)
+	\item \texttt{hi}:
+		HIgh 32 bits of instructions that produce 64-bit results;
+		(reg encoding 0x4)
+	\item \texttt{lo}:
+		LOw 32 bits of instructions that produce 64-bit results;
+		(reg encoding 0x5)
+	\item Note:
+		All other encodings for special-purpose registers are reserved.
+	%--------
+	\end{itemize}
+	\doublespacing
+	Here are the bits of \texttt{flags}:
+	\singlespacing
+	\begin{itemize}
+	%--------
+	\item Zero (Z): (\texttt{flags} bit 0)
+	\item Carry (C): (\texttt{flags} bit 1)
+	\item oVerflow (V): (\texttt{flags} bit 2)
+	\item Negative (N): (\texttt{flags} bit 3)
+	\item Note:
+		All other bit positions of \texttt{flags} are reserved.
+	%--------
+	\end{itemize}
+
+	%\begin{table}[H]
+	%	\begin{center}
+	%		\caption{The Flags}
+	%		\label{tab:flags}
+	%		\begin{tabular}{|c|c|c|c|}
+	%			\hline
+	%			Zero (Z) & Carry (C) & oVerflow (V) & Negative (N)\\
+	%			\hline
+	%		\end{tabular}
+	%	\end{center}
+	%\end{table}
 
 	\newpage
 	\section{Instruction Set}
@@ -168,7 +225,9 @@
 	
 	\singlespacing
 	\begin{itemize}
-		\item \texttt{i} is a 12-bit constant.
+	%--------
+	\item \texttt{i} is a 12-bit constant.
+	%--------
 	\end{itemize}
 
 	For \texttt{lpre}, the following encoding is used, with each character
@@ -177,7 +236,9 @@
 
 	\singlespacing
 	\begin{itemize}
-		\item \texttt{i} is a 27-bit constant.
+	%--------
+	\item \texttt{i} is a 27-bit constant.
+	%--------
 	\end{itemize}
 
 	\texttt{pre} and \texttt{lpre} are mechanisms by which immediates
@@ -192,30 +253,34 @@
 
 	For non-branch instructions:
 	\begin{itemize}
-		\item If \texttt{pre} is used, the immediate field of the
-		\texttt{pre} instruction will form bits \texttt{[16:5]} of the
-		immediate of the next non-\texttt{index} instruction. The 17-bit
-		immediate will then be sign-extended to 32 bits.
+	%--------
+	\item If \texttt{pre} is used, the immediate field of the
+	\texttt{pre} instruction will form bits \texttt{[16:5]} of the
+	immediate of the next non-\texttt{index} instruction. The 17-bit
+	immediate will then be sign-extended to 32 bits.
 
-		\item On the other hand, if \texttt{lpre} is used, the immediate
-		field of the \texttt{lpre} instruction will form bits
-		\texttt{[31:5]} of the immediate of the next non-\texttt{index}
-		instruction.
+	\item On the other hand, if \texttt{lpre} is used, the immediate
+	field of the \texttt{lpre} instruction will form bits
+	\texttt{[31:5]} of the immediate of the next non-\texttt{index}
+	instruction.
+	%--------
 	\end{itemize}
 
 
 	For branch instructions (group 3):
 	\begin{itemize}
-		\item if \texttt{pre} is used, the
-		immediate field of the \texttt{pre} instruction will form bits
-		\texttt{[20:9]} of the immediate of the next non-\texttt{index}
-		instruction. The 21-bit immediate will then be sign-extended to 32
-		bits.
+	%--------
+	\item if \texttt{pre} is used, the
+	immediate field of the \texttt{pre} instruction will form bits
+	\texttt{[20:9]} of the immediate of the next non-\texttt{index}
+	instruction. The 21-bit immediate will then be sign-extended to 32
+	bits.
 
-		\item On the other hand, if \texttt{lpre} is used, the immediate
-		field of the \texttt{lpre} instruction will form bits
-		\texttt{[31:9]} of the immediate of the next non-\texttt{index}
-		instruction.
+	\item On the other hand, if \texttt{lpre} is used, the immediate
+	field of the \texttt{lpre} instruction will form bits
+	\texttt{[31:9]} of the immediate of the next non-\texttt{index}
+	instruction.
+	%--------
 	\end{itemize}
 
 	Instructions that use an immediate value, other than \texttt{pre},
@@ -274,13 +339,15 @@
 
 	\singlespacing
 	\begin{itemize}
-		\item \texttt{i} is a 5-bit sign-extended immediate, and is denoted
-		\texttt{simm}
-		\item \texttt{a} encodes register \texttt{rA}
-		\item \texttt{o} is the opcode
-		%\item \texttt{f} is \texttt{0} if this instruction cannot affect
-		%flags and \texttt{1} if this instruction is permitted to affect
-		%flags. 
+	%--------
+	\item \texttt{i} is a 5-bit sign-extended immediate, and is denoted
+	\texttt{simm}
+	\item \texttt{a} encodes register \texttt{rA}
+	\item \texttt{o} is the opcode
+	%\item \texttt{f} is \texttt{0} if this instruction cannot affect
+	%flags and \texttt{1} if this instruction is permitted to affect
+	%flags. 
+	%--------
 	\end{itemize}
 	\doublespacing
 
@@ -288,81 +355,106 @@
 
 	\singlespacing
 	\begin{itemize}
-		\item Opcode \texttt{0x0}:
-			\texttt{\textbf{add} rA, \#simm}
-		\item Opcode \texttt{0x1}:
-			% subi was deemed useless given that immediates are
-			% sign-extended.
-			\texttt{\textbf{add} rA, pc, \#simm}
-		\item Opcode \texttt{0x2}:
-			\texttt{\textbf{add} rA, sp, \#simm}
-		\item Opcode \texttt{0x3}:
-			\texttt{\textbf{add} rA, fp, \#simm}
-		\item Opcode \texttt{0x4}:
-			\texttt{\textbf{cmp} rA, \#simm}
+	%--------
+	\item Opcode \texttt{0x0}:
+		\texttt{\textbf{add} rA, \#simm}
+	\item Opcode \texttt{0x1}:
+		% subi was deemed useless given that immediates are
+		% sign-extended.
+		\texttt{\textbf{add} rA, pc, \#simm}
+	\item Opcode \texttt{0x2}:
+		\texttt{\textbf{add} rA, sp, \#simm}
+	\item Opcode \texttt{0x3}:
+		\texttt{\textbf{add} rA, fp, \#simm}
+	\item Opcode \texttt{0x4}:
+		\texttt{\textbf{cmp} rA, \#simm}
 		\begin{itemize}
-			\item Note: Compare \texttt{rA} to \texttt{simm}.
-			\item Affectable flags:
-				\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		%--------
+		\item Note: Compare \texttt{rA} to \texttt{simm}.
+		\item Affectable flags:
+			\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x5}:
-			\texttt{\textbf{cpy} rA, \#simm}
+	\item Opcode \texttt{0x5}:
+		\texttt{\textbf{cpy} rA, \#simm}
 		\begin{itemize}
-			\item Note: Copy an immediate value into \texttt{rA}
+		%--------
+		\item Note: Copy an immediate value into \texttt{rA}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x6}:
-			\texttt{\textbf{lsl} rA, \#simm}
+	\item Opcode \texttt{0x6}:
+		\texttt{\textbf{lsl} rA, \#simm}
 		\begin{itemize}
-			\item Note: Logical shift left
+		%--------
+		\item Note: Logical shift left
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x7}:
-			\texttt{\textbf{lsr} rA, \#simm}
+	\item Opcode \texttt{0x7}:
+		\texttt{\textbf{lsr} rA, \#simm}
 		\begin{itemize}
-			\item Note: Logical shift right
+		%--------
+		\item Note: Logical shift right
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x8}:
-			\texttt{\textbf{asr} rA, \#simm}
+	\item Opcode \texttt{0x8}:
+		\texttt{\textbf{asr} rA, \#simm}
 		\begin{itemize}
-			\item Note: Arithmetic shift right
+		%--------
+		\item Note: Arithmetic shift right
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x9}:
-			\texttt{\textbf{and} rA, \#simm}
+	\item Opcode \texttt{0x9}:
+		\texttt{\textbf{and} rA, \#simm}
 		\begin{itemize}
-			\item Note: Bitwise AND
+		%--------
+		\item Note: Bitwise AND
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0xa}:
-			\texttt{\textbf{orr} rA, \#simm}
+	\item Opcode \texttt{0xa}:
+		\texttt{\textbf{orr} rA, \#simm}
 		\begin{itemize}
-			\item Note: Bitwise OR
+		%--------
+		\item Note: Bitwise OR
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0xb}:
-			\texttt{\textbf{xor} rA, \#simm}
+	\item Opcode \texttt{0xb}:
+		\texttt{\textbf{xor} rA, \#simm}
 		\begin{itemize}
-			\item Note: Bitwise XOR
+		%--------
+		\item Note: Bitwise XOR
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0xc}:
-			\texttt{\textbf{zeb} rA}
+	\item Opcode \texttt{0xc}:
+		\texttt{\textbf{zeb} rA}
 		\begin{itemize}
-			\item Effect: Set \texttt{rA[31:8]} to zero.
+		%--------
+		\item Effect: Set \texttt{rA[31:8]} to zero.
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0xd}:
-			\texttt{\textbf{zeh} rA}
+	\item Opcode \texttt{0xd}:
+		\texttt{\textbf{zeh} rA}
 		\begin{itemize}
-			\item Effect: Set \texttt{rA[31:16]} to zero.
+		%--------
+		\item Effect: Set \texttt{rA[31:16]} to zero.
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0xe}:
-			\texttt{\textbf{seb} rA}
+	\item Opcode \texttt{0xe}:
+		\texttt{\textbf{seb} rA}
 		\begin{itemize}
-			\item Effect:
-				Sign-extend \texttt{rA[7:0]} to 32 bits, then copy that
-				value to \texttt{rA}
+		%--------
+		\item Effect:
+			Sign-extend \texttt{rA[7:0]} to 32 bits, then copy that
+			value to \texttt{rA}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0xf}:
-			\texttt{\textbf{seh} rA}
+	\item Opcode \texttt{0xf}:
+		\texttt{\textbf{seh} rA}
 		\begin{itemize}
-			\item Effect:
-				Sign-extend \texttt{rA[15:0]} to 32 bits, then copy that
-				value to \texttt{rA}
+		%--------
+		\item Effect:
+			Sign-extend \texttt{rA[15:0]} to 32 bits, then copy that
+			value to \texttt{rA}
+		%--------
 		\end{itemize}
 	\end{itemize}
 
@@ -375,13 +467,15 @@
 
 	\singlespacing
 	\begin{itemize}
-		\item \texttt{o} is the opcode
-		\item \texttt{c} encodes register \texttt{rC}
-		\item \texttt{a} encodes register \texttt{rA}
-		\item \texttt{f} is encoded as \texttt{0} if this instruction
-		cannot affect flags and encoded \texttt{1} if this instruction is
-		permitted to affect flags. Note that \texttt{cmp} is permitted to
-		affect flags regardless of this bit.
+	%--------
+	\item \texttt{o} is the opcode
+	\item \texttt{c} encodes register \texttt{rC}
+	\item \texttt{a} encodes register \texttt{rA}
+	\item \texttt{f} is encoded as \texttt{0} if this instruction
+	cannot affect flags and encoded \texttt{1} if this instruction is
+	permitted to affect flags. Note that \texttt{cmp} is permitted to
+	affect flags regardless of this bit.
+	%--------
 	\end{itemize}
 	\doublespacing
 
@@ -389,153 +483,185 @@
 
 	\singlespacing
 	\begin{itemize}
-		\item Opcode \texttt{0x0}:
-			\texttt{\textbf{add} rA, rC}
+	%--------
+	\item Opcode \texttt{0x0}:
+		\texttt{\textbf{add} rA, rC}
 		\begin{itemize}
-			\item Mnemonic for when flags not affected: \texttt{add}
-			\item Mnemonic for when flags affected: \texttt{add.f}
-			\item Affectable flags:
-				\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		%--------
+		\item Mnemonic for when flags not affected: \texttt{add}
+		\item Mnemonic for when flags affected: \texttt{add.f}
+		\item Affectable flags:
+			\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x1}:
-			\texttt{\textbf{sub} rA, rC}
+	\item Opcode \texttt{0x1}:
+		\texttt{\textbf{sub} rA, rC}
 		\begin{itemize}
-			\item Mnemonic for when flags not affected: \texttt{sub}
-			\item Mnemonic for when flags affected: \texttt{sub.f}
-			\item Affectable flags:
-				\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		%--------
+		\item Mnemonic for when flags not affected: \texttt{sub}
+		\item Mnemonic for when flags affected: \texttt{sub.f}
+		\item Affectable flags:
+			\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x2}:
-			\texttt{\textbf{add} rA, sp, rC}
+	\item Opcode \texttt{0x2}:
+		\texttt{\textbf{add} rA, sp, rC}
 		\begin{itemize}
-			\item Mnemonic for when flags not affected: \texttt{add}
-			\item Mnemonic for when flags affected: \texttt{add.f}
-			\item Affectable flags:
-				\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		%--------
+		\item Mnemonic for when flags not affected: \texttt{add}
+		\item Mnemonic for when flags affected: \texttt{add.f}
+		\item Affectable flags:
+			\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x3}
-			\texttt{\textbf{add} rA, fp, rC}
+	\item Opcode \texttt{0x3}
+		\texttt{\textbf{add} rA, fp, rC}
 		\begin{itemize}
-			\item Mnemonic for when flags not affected: \texttt{add}
-			\item Mnemonic for when flags affected: \texttt{add.f}
-			\item Affectable flags:
-				\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		%--------
+		\item Mnemonic for when flags not affected: \texttt{add}
+		\item Mnemonic for when flags affected: \texttt{add.f}
+		\item Affectable flags:
+			\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x4}:
-			\texttt{\textbf{cmp} rA, rC}
+	\item Opcode \texttt{0x4}:
+		\texttt{\textbf{cmp} rA, rC}
 		\begin{itemize}
-			\item Note: Compare \texttt{rA} to \texttt{rC}. \texttt{cmp}
-			is \textit{always} able to affect flags, independent of the
-			encoded \texttt{f} bit of the instruction.
-			\item Affectable flags:
-				\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		%--------
+		\item Note: Compare \texttt{rA} to \texttt{rC}. \texttt{cmp}
+		is \textit{always} able to affect flags, independent of the
+		encoded \texttt{f} bit of the instruction.
+		\item Affectable flags:
+			\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x5}:
-			\texttt{\textbf{cpy} rA, rC}
+	\item Opcode \texttt{0x5}:
+		\texttt{\textbf{cpy} rA, rC}
 		\begin{itemize}
-			\item Mnemonic for when flags not affected: \texttt{cpy}
-			\item Mnemonic for when flags affected: \texttt{cpy.f}
-			\item Note: Copy \texttt{rC} into \texttt{rA}
-			\item Affectable flags:
-				\texttt{Z}, \texttt{N}
+		%--------
+		\item Mnemonic for when flags not affected: \texttt{cpy}
+		\item Mnemonic for when flags affected: \texttt{cpy.f}
+		\item Note: Copy \texttt{rC} into \texttt{rA}
+		\item Affectable flags:
+			\texttt{Z}, \texttt{N}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x6}:
-			\texttt{\textbf{lsl} rA, rC}
+	\item Opcode \texttt{0x6}:
+		\texttt{\textbf{lsl} rA, rC}
 		\begin{itemize}
-			\item Mnemonic for when flags not affected: \texttt{lsl}
-			\item Mnemonic for when flags affected: \texttt{lsl.f}
-			\item Note: Logical shift left
-			\item Affectable flags:
-				\texttt{Z}, \texttt{N}
+		%--------
+		\item Mnemonic for when flags not affected: \texttt{lsl}
+		\item Mnemonic for when flags affected: \texttt{lsl.f}
+		\item Note: Logical shift left
+		\item Affectable flags:
+			\texttt{Z}, \texttt{N}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x7}:
-			\texttt{\textbf{lsr} rA, rC}
+	\item Opcode \texttt{0x7}:
+		\texttt{\textbf{lsr} rA, rC}
 		\begin{itemize}
-			\item Mnemonic for when flags not affected: \texttt{lsr}
-			\item Mnemonic for when flags affected: \texttt{lsr.f}
-			\item Note: Logical shift right
-			\item Affectable flags:
-				\texttt{Z}, \texttt{N}
+		%--------
+		\item Mnemonic for when flags not affected: \texttt{lsr}
+		\item Mnemonic for when flags affected: \texttt{lsr.f}
+		\item Note: Logical shift right
+		\item Affectable flags:
+			\texttt{Z}, \texttt{N}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x8}:
-			\texttt{\textbf{asr} rA, rC}
+	\item Opcode \texttt{0x8}:
+		\texttt{\textbf{asr} rA, rC}
 		\begin{itemize}
-			\item Mnemonic for when flags not affected: \texttt{asr}
-			\item Mnemonic for when flags affected: \texttt{asr.f}
-			\item Note: Arithmetic shift right
-			\item Affectable flags:
-				\texttt{Z}, \texttt{N}
+		%--------
+		\item Mnemonic for when flags not affected: \texttt{asr}
+		\item Mnemonic for when flags affected: \texttt{asr.f}
+		\item Note: Arithmetic shift right
+		\item Affectable flags:
+			\texttt{Z}, \texttt{N}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x9}:
-			\texttt{\textbf{and} rA, rC}
+	\item Opcode \texttt{0x9}:
+		\texttt{\textbf{and} rA, rC}
 		\begin{itemize}
-			\item Mnemonic for when flags not affected: \texttt{and}
-			\item Mnemonic for when flags affected: \texttt{and.f}
-			\item Note: Bitwise AND
-			\item Affectable flags:
-				\texttt{Z}, \texttt{N}
+		%--------
+		\item Mnemonic for when flags not affected: \texttt{and}
+		\item Mnemonic for when flags affected: \texttt{and.f}
+		\item Note: Bitwise AND
+		\item Affectable flags:
+			\texttt{Z}, \texttt{N}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0xa}:
-			\texttt{\textbf{orr} rA, rC}
+	\item Opcode \texttt{0xa}:
+		\texttt{\textbf{orr} rA, rC}
 		\begin{itemize}
-			\item Mnemonic for when flags not affected: \texttt{orr}
-			\item Mnemonic for when flags affected: \texttt{orr.f}
-			\item Note: Bitwise OR
-			\item Affectable flags:
-				\texttt{Z}, \texttt{N}
+		%--------
+		\item Mnemonic for when flags not affected: \texttt{orr}
+		\item Mnemonic for when flags affected: \texttt{orr.f}
+		\item Note: Bitwise OR
+		\item Affectable flags:
+			\texttt{Z}, \texttt{N}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0xb}:
-			\texttt{\textbf{xor} rA, rC}
+	\item Opcode \texttt{0xb}:
+		\texttt{\textbf{xor} rA, rC}
 		\begin{itemize}
-			\item Mnemonic for when flags not affected: \texttt{xor}
-			\item Mnemonic for when flags affected: \texttt{xor.f}
-			\item Note: Bitwise XOR
-			\item Affectable flags:
-				\texttt{Z}, \texttt{N}
+		%--------
+		\item Mnemonic for when flags not affected: \texttt{xor}
+		\item Mnemonic for when flags affected: \texttt{xor.f}
+		\item Note: Bitwise XOR
+		\item Affectable flags:
+			\texttt{Z}, \texttt{N}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0xc}:
-			\texttt{\textbf{adc} rA, rC}
+	\item Opcode \texttt{0xc}:
+		\texttt{\textbf{adc} rA, rC}
 		\begin{itemize}
-			\item Mnemonic for when flags not affected: \texttt{adc}
-			\item Mnemonic for when flags affected: \texttt{adc.f}
-			\item Note: Add with Carry
-			\item Affectable flags:
-				\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		%--------
+		\item Mnemonic for when flags not affected: \texttt{adc}
+		\item Mnemonic for when flags affected: \texttt{adc.f}
+		\item Note: Add with Carry
+		\item Affectable flags:
+			\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0xd}:
-			\texttt{\textbf{sbc} rA, rC}
+	\item Opcode \texttt{0xd}:
+		\texttt{\textbf{sbc} rA, rC}
 		\begin{itemize}
-			\item Mnemonic for when flags not affected: \texttt{sbc}
-			\item Mnemonic for when flags affected: \texttt{sbc.f}
-			\item Note: Subtract with Borrow
-			\item Affectable flags:
-				\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		%--------
+		\item Mnemonic for when flags not affected: \texttt{sbc}
+		\item Mnemonic for when flags affected: \texttt{sbc.f}
+		\item Note: Subtract with Borrow
+		\item Affectable flags:
+			\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		%--------
 		\end{itemize}
-		%\item Opcode \texttt{0xe}:
-		%	\texttt{\textbf{ludiv} rA, rC}
-		%\begin{itemize}
-		%	\item Effect: performs a 64-bit by 64-bit unsigned division of
-		%	\texttt{\{hi, lo\}} by \texttt{\{rA, rC\}}, storing 64-bit
-		%	result in \texttt{\{hi, lo\}}.
-		%	\item Note: This instruction executes more quickly if
-		%	\texttt{rA}'s value is \texttt{0x00000000}, i.e. if the
-		%	operation is actually a 64-bit by 32-bit -> 64-bit unsigned
-		%	divide.
-		%\end{itemize}
-		%\item Opcode \texttt{0xf}:
-		%	\texttt{\textbf{lsdiv} rA, rB}
-		%\begin{itemize}
-		%	\item Effect: performs a 64-bit by 64-bit signed division of
-		%	\texttt{\{hi, lo\}} by \texttt{\{rA, rC\}}, storing 64-bit
-		%	result in \texttt{\{hi, lo\}}.
-		%	\item Note: This instruction executes more quickly if
-		%	\texttt{rA}'s value is either \texttt{0x00000000} or
-		%	\texttt{0xffffffff},  i.e. if the operation is actually a
-		%	64-bit by 32-bit -> 64-bit signed divide.
-		%\end{itemize}
+	%\item Opcode \texttt{0xe}:
+	%	\texttt{\textbf{ludiv} rA, rC}
+	%	\begin{itemize}
+	%	%--------
+	%	\item Effect: performs a 64-bit by 64-bit unsigned division of
+	%	\texttt{\{hi, lo\}} by \texttt{\{rA, rC\}}, storing 64-bit
+	%	result in \texttt{\{hi, lo\}}.
+	%	\item Note: This instruction executes more quickly if
+	%	\texttt{rA}'s value is \texttt{0x00000000}, i.e. if the
+	%	operation is actually a 64-bit by 32-bit -> 64-bit unsigned
+	%	divide.
+	%	%--------
+	%	\end{itemize}
+	%\item Opcode \texttt{0xf}:
+	%	\texttt{\textbf{lsdiv} rA, rB}
+	%	\begin{itemize}
+	%	%--------
+	%	\item Effect: performs a 64-bit by 64-bit signed division of
+	%	\texttt{\{hi, lo\}} by \texttt{\{rA, rC\}}, storing 64-bit
+	%	result in \texttt{\{hi, lo\}}.
+	%	\item Note: This instruction executes more quickly if
+	%	\texttt{rA}'s value is either \texttt{0x00000000} or
+	%	\texttt{0xffffffff},  i.e. if the operation is actually a
+	%	64-bit by 32-bit -> 64-bit signed divide.
+	%	%--------
+	%	\end{itemize}
+	%--------
 	\end{itemize}
-
-
 
 
 	\doublespacing
@@ -546,17 +672,19 @@
 
 	\singlespacing
 	\begin{itemize}
-		\item \texttt{i} is a 9-bit sign-extended immediate, and is denoted
-		\texttt{simm}
-		\item \texttt{o} is the opcode
-		%\item \texttt{i} is a 9-bit sign-extended immediate, which can
-		%still be affected by \texttt{pre}, but when \texttt{pre} is the
-		%instruction before this one, only bits \texttt{[4:0]} of the
-		%immediate value encoded into this instruction will be used by the
-		%hardware, with the remaining bits of the immediate coming from
-		%however many \texttt{pre} instructions were used. Multiple
-		%\texttt{pre} instructions can still form larger than 18-bit branch
-		%offsets. This immediate is denoted \texttt{simm}.
+	%--------
+	\item \texttt{i} is a 9-bit sign-extended immediate, and is denoted
+	\texttt{simm}
+	\item \texttt{o} is the opcode
+	%\item \texttt{i} is a 9-bit sign-extended immediate, which can
+	%still be affected by \texttt{pre}, but when \texttt{pre} is the
+	%instruction before this one, only bits \texttt{[4:0]} of the
+	%immediate value encoded into this instruction will be used by the
+	%hardware, with the remaining bits of the immediate coming from
+	%however many \texttt{pre} instructions were used. Multiple
+	%\texttt{pre} instructions can still form larger than 18-bit branch
+	%offsets. This immediate is denoted \texttt{simm}.
+	%--------
 	\end{itemize}
 	\doublespacing
 
@@ -564,143 +692,179 @@
 
 	\singlespacing
 	\begin{itemize}
-		%\item Opcode \texttt{0x0}:
-		%	\texttt{\textbf{bnv} simm}
-		%\begin{itemize}
-		%	\item Effect:
-		%		\texttt{if (0) pc <= pc + simm + 2;} This is a NOP.
-		%\end{itemize}
-		\item Opcode \texttt{0x0}:
-			\texttt{\textbf{bl} simm}
+	%--------
+	%\item Opcode \texttt{0x0}:
+	%	\texttt{\textbf{bnv} simm}
+	%	\begin{itemize}
+	%	%--------
+	%	\item Effect:
+	%		\texttt{if (0) pc <= pc + simm + 2;} This is a NOP.
+	%	%--------
+	%	\end{itemize}
+	\item Opcode \texttt{0x0}:
+		\texttt{\textbf{bl} simm}
 		\begin{itemize}
-			\item Name: Branch and Link
-			\item Description: Relative call
-			\item In-Depth Effect:
-				\texttt{lr <= pc + 2; pc <= pc + simm + 2;}
+		%--------
+		\item Name: Branch and Link
+		\item Description: Relative call
+		\item In-Depth Effect:
+			\texttt{lr <= pc + 2; pc <= pc + simm + 2;}
+		%--------
 		\end{itemize}
 
-		\item Opcode \texttt{0x1}:
-			\texttt{\textbf{bra} simm}
+	\item Opcode \texttt{0x1}:
+		\texttt{\textbf{bra} simm}
 		\begin{itemize}
-			\item Name: BRanch Always
-			\item Description: Relative branch always
-			\item Effect:
-				\texttt{pc <= pc + simm + 2;}
+		%--------
+		\item Name: BRanch Always
+		\item Description: Relative branch always
+		\item Effect:
+			\texttt{pc <= pc + simm + 2;}
+		%--------
 		\end{itemize}
 
-		\item Opcode \texttt{0x2}:
-			\texttt{\textbf{beq} simm}
+	\item Opcode \texttt{0x2}:
+		\texttt{\textbf{beq} simm}
 		\begin{itemize}
-			\item Name: Branch if EQual
-			\item Effect:
-				\texttt{if (flags.Z) pc <= pc + simm + 2;}
+		%--------
+		\item Name: Branch if EQual
+		\item Effect:
+			\texttt{if (flags.Z) pc <= pc + simm + 2;}
+		%--------
 		\end{itemize}
 
-		\item Opcode \texttt{0x3}:
-			\texttt{\textbf{bne} simm}
+	\item Opcode \texttt{0x3}:
+		\texttt{\textbf{bne} simm}
 		\begin{itemize}
-			\item Name: Branch if Not Equal
-			\item Effect:
-				\texttt{if (!flags.Z) pc <= pc + simm + 2;}
+		%--------
+		\item Name: Branch if Not Equal
+		\item Effect:
+			\texttt{if (!flags.Z) pc <= pc + simm + 2;}
+		%--------
 		\end{itemize}
 
-		\item Opcode \texttt{0x4}:
-			\texttt{\textbf{bmi} simm}
+	\item Opcode \texttt{0x4}:
+		\texttt{\textbf{bmi} simm}
 		\begin{itemize}
-			\item Name: Branch if MInus
-			\item Effect:
-				\texttt{if (flags.N) pc <= pc + simm + 2;}
+		%--------
+		\item Name: Branch if MInus
+		\item Effect:
+			\texttt{if (flags.N) pc <= pc + simm + 2;}
+		%--------
 		\end{itemize}
 
-		\item Opcode \texttt{0x5}:
-			\texttt{\textbf{bpl} simm}
+	\item Opcode \texttt{0x5}:
+		\texttt{\textbf{bpl} simm}
 		\begin{itemize}
-			\item Name: Branch if PLus
-			\item Effect:
-				\texttt{if (!flags.N) pc <= pc + simm + 2;}
+		%--------
+		\item Name: Branch if PLus
+		\item Effect:
+			\texttt{if (!flags.N) pc <= pc + simm + 2;}
+		%--------
 		\end{itemize}
 
-		\item Opcode \texttt{0x6}:
-			\texttt{\textbf{bvs} simm}
+	\item Opcode \texttt{0x6}:
+		\texttt{\textbf{bvs} simm}
 		\begin{itemize}
-			\item Name: Branch if oVerflow Set
-			\item Effect:
-				\texttt{if (flags.V) pc <= pc + simm + 2;}
+		%--------
+		\item Name: Branch if oVerflow Set
+		\item Effect:
+			\texttt{if (flags.V) pc <= pc + simm + 2;}
+		%--------
 		\end{itemize}
 
-		\item Opcode \texttt{0x7}:
-			\texttt{\textbf{bvc} simm}
+	\item Opcode \texttt{0x7}:
+		\texttt{\textbf{bvc} simm}
 		\begin{itemize}
-			\item Name: Branch if oVerflow Clear
-			\item Effect:
-				\texttt{if (!flags.V) pc <= pc + simm + 2;}
+		%--------
+		\item Name: Branch if oVerflow Clear
+		\item Effect:
+			\texttt{if (!flags.V) pc <= pc + simm + 2;}
+		%--------
 		\end{itemize}
 
-		\item Opcode \texttt{0x8}:
-			\texttt{\textbf{bgeu} simm}
+	\item Opcode \texttt{0x8}:
+		\texttt{\textbf{bgeu} simm}
 		\begin{itemize}
-			\item Name: Branch if Greater than or Equal Unsigned
-			\item Effect:
-				\texttt{if (flags.C) pc <= pc + simm + 2;}
+		%--------
+		\item Name: Branch if Greater than or Equal Unsigned
+		\item Effect:
+			\texttt{if (flags.C) pc <= pc + simm + 2;}
+		%--------
 		\end{itemize}
 
-		\item Opcode \texttt{0x9}:
-			\texttt{\textbf{bltu} simm}
+	\item Opcode \texttt{0x9}:
+		\texttt{\textbf{bltu} simm}
 		\begin{itemize}
-			\item Name: Branch if Less Than Unsigned
-			\item Effect:
-				\texttt{if (!flags.C) pc <= pc + simm + 2;}
+		%--------
+		\item Name: Branch if Less Than Unsigned
+		\item Effect:
+			\texttt{if (!flags.C) pc <= pc + simm + 2;}
+		%--------
 		\end{itemize}
 
-		\item Opcode \texttt{0xa}:
-			\texttt{\textbf{bgtu} simm}
+	\item Opcode \texttt{0xa}:
+		\texttt{\textbf{bgtu} simm}
 		\begin{itemize}
-			\item Name: Branch if Greater Than Unsigned
-			\item Effect:
-				\texttt{if (flags.C AND !flags.Z) pc <= pc + simm + 2;}
+		%--------
+		\item Name: Branch if Greater Than Unsigned
+		\item Effect:
+			\texttt{if (flags.C AND !flags.Z) pc <= pc + simm + 2;}
+		%--------
 		\end{itemize}
 
-		\item Opcode \texttt{0xb}:
-			\texttt{\textbf{bleu} simm}
+	\item Opcode \texttt{0xb}:
+		\texttt{\textbf{bleu} simm}
 		\begin{itemize}
-			\item Name: Branch if Less than or Equal Unsigned
-			\item Effect:
-				\texttt{if (!flags.C OR flags.Z) pc <= pc + simm + 2;}
+		%--------
+		\item Name: Branch if Less than or Equal Unsigned
+		\item Effect:
+			\texttt{if (!flags.C OR flags.Z) pc <= pc + simm + 2;}
+		%--------
 		\end{itemize}
 
-		\item Opcode \texttt{0xc}:
-			\texttt{\textbf{bges} simm}
+	\item Opcode \texttt{0xc}:
+		\texttt{\textbf{bges} simm}
 		\begin{itemize}
-			\item Name: Branch if Greater than or Equal Signed
-			\item Effect:
-				\texttt{if (!(flags.N XOR flags.V)) pc <= pc + simm + 2;}
+		%--------
+		\item Name: Branch if Greater than or Equal Signed
+		\item Effect:
+			\texttt{if (!(flags.N XOR flags.V)) pc <= pc + simm + 2;}
+		%--------
 		\end{itemize}
 
-		\item Opcode \texttt{0xd}:
-			\texttt{\textbf{blts} simm}
+	\item Opcode \texttt{0xd}:
+		\texttt{\textbf{blts} simm}
 		\begin{itemize}
-			\item Name: Branch if Less Than Signed
-			\item Effect:
-				\texttt{if (flags.N XOR flags.V) pc <= pc + simm + 2;}
+		%--------
+		\item Name: Branch if Less Than Signed
+		\item Effect:
+			\texttt{if (flags.N XOR flags.V) pc <= pc + simm + 2;}
+		%--------
 		\end{itemize}
 
-		\item Opcode \texttt{0xe}:
-			\texttt{\textbf{bgts} simm}
+	\item Opcode \texttt{0xe}:
+		\texttt{\textbf{bgts} simm}
 		\begin{itemize}
-			\item Name: Branch if Greater Than Signed
-			\item Effect:
-				\texttt{if (!(flags.N XOR flags.V) AND !flags.Z)
-					pc <= pc + simm + 2;}
+		%--------
+		\item Name: Branch if Greater Than Signed
+		\item Effect:
+			\texttt{if (!(flags.N XOR flags.V) AND !flags.Z)
+				pc <= pc + simm + 2;}
+		%--------
 		\end{itemize}
 
-		\item Opcode \texttt{0xf}:
-			\texttt{\textbf{bles} simm}
+	\item Opcode \texttt{0xf}:
+		\texttt{\textbf{bles} simm}
 		\begin{itemize}
-			\item Name: Branch if Less than or Equal Signed
-			\item Effect:
-				\texttt{if ((flags.N XOR flags.V) OR flags.Z)
-					pc <= pc + simm + 2;}
+		%--------
+		\item Name: Branch if Less than or Equal Signed
+		\item Effect:
+			\texttt{if ((flags.N XOR flags.V) OR flags.Z)
+				pc <= pc + simm + 2;}
+		%--------
 		\end{itemize}
+	%--------
 	\end{itemize}
 
 	\doublespacing
@@ -711,13 +875,15 @@
 
 	\singlespacing
 	\begin{itemize}
-		\item \texttt{o} is the opcode
-		\item \texttt{c} encodes register \texttt{rC} or register
-		\texttt{sC}, where \texttt{sC} is one of \texttt{hi}, \texttt{lo},
-		\texttt{flags}, \texttt{ira}, \texttt{ids}, or \texttt{ie}
-		\item \texttt{a} encodes register \texttt{rA} or register
-		\texttt{sA}, where \texttt{sA} is one of \texttt{hi}, \texttt{lo},
-		\texttt{flags}, \texttt{ira}, \texttt{ids}, or \texttt{ie}
+	%--------
+	\item \texttt{o} is the opcode
+	\item \texttt{c} encodes register \texttt{rC} or register
+	\texttt{sC}, where \texttt{sC} is one of \texttt{hi}, \texttt{lo},
+	\texttt{flags}, \texttt{ira}, \texttt{ids}, or \texttt{ie}
+	\item \texttt{a} encodes register \texttt{rA} or register
+	\texttt{sA}, where \texttt{sA} is one of \texttt{hi}, \texttt{lo},
+	\texttt{flags}, \texttt{ira}, \texttt{ids}, or \texttt{ie}
+	%--------
 	\end{itemize}
 	\doublespacing
 
@@ -725,268 +891,330 @@
 
 	\singlespacing
 	\begin{itemize}
-		\item Opcode \texttt{0x0}:
-			\texttt{\textbf{jl} rA}
+	%--------
+	\item Opcode \texttt{0x0}:
+		\texttt{\textbf{jl} rA}
 		\begin{itemize}
-			\item Effect: \texttt{lr <= pc + 2; pc <= rA;}
+		%--------
+		\item Effect: \texttt{lr <= pc + 2; pc <= rA;}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x1}:
-			\texttt{\textbf{jmp} rA}
+	\item Opcode \texttt{0x1}:
+		\texttt{\textbf{jmp} rA}
 		\begin{itemize}
-			\item Effect: \texttt{pc <= rA;}
+		%--------
+		\item Effect: \texttt{pc <= rA;}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x2}:
-			\texttt{\textbf{jmp} rA, rC}
+	\item Opcode \texttt{0x2}:
+		\texttt{\textbf{jmp} rA, rC}
 		\begin{itemize}
-			\item Effect: \texttt{pc <= (rA + rC);}
+		%--------
+		\item Effect: \texttt{pc <= (rA + rC);}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x3}:
-			\texttt{\textbf{jmp} ira}
+	\item Opcode \texttt{0x3}:
+		\texttt{\textbf{jmp} ira}
 		\begin{itemize}
-			\item Effect: \texttt{pc <= ira;}
+		%--------
+		\item Effect: \texttt{pc <= ira;}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x4}:
-			\texttt{\textbf{reti}}
+	\item Opcode \texttt{0x4}:
+		\texttt{\textbf{reti}}
 		\begin{itemize}
-			\item Effect: enables interrupts (by copying \texttt{1} into
-			\texttt{ie}) and performs \texttt{pc <= ira;}
+		%--------
+		\item Effect: enables interrupts (by copying \texttt{1} into
+		\texttt{ie}) and performs \texttt{pc <= ira;}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x5}:
-			\texttt{\textbf{cpy} rA, sC}
+	\item Opcode \texttt{0x5}:
+		\texttt{\textbf{cpy} rA, sC}
 		\begin{itemize}
-			\item Effect: \texttt{rA <= sC;}
+		%--------
+		\item Effect: \texttt{rA <= sC;}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x6}:
-			\texttt{\textbf{cpy} sA, rC}
+	\item Opcode \texttt{0x6}:
+		\texttt{\textbf{cpy} sA, rC}
 		\begin{itemize}
-			\item Effect: \texttt{sA <= rC;}
+		%--------
+		\item Effect: \texttt{sA <= rC;}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x7}:
-			\texttt{\textbf{ei}}
+	\item Opcode \texttt{0x7}:
+		\texttt{\textbf{ei}}
 		\begin{itemize}
-			\item Effect: copy \texttt{1} into \texttt{ie}.
+		%--------
+		\item Effect: copy \texttt{1} into \texttt{ie}.
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x8}:
-			\texttt{\textbf{di}}
+	\item Opcode \texttt{0x8}:
+		\texttt{\textbf{di}}
 		\begin{itemize}
-			\item Effect: copy \texttt{0} into \texttt{ie}.
+		%--------
+		\item Effect: copy \texttt{0} into \texttt{ie}.
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x9}:
-			\texttt{\textbf{push} rA, rC}
+	\item Opcode \texttt{0x9}:
+		\texttt{\textbf{push} rA, rC}
 		\begin{itemize}
-			\item Effect: pushes \texttt{rA} onto the stack, using
-			\texttt{rC} as the stack pointer, post-decrementing
-			\texttt{rC}.
-			\item This instruction does nothing when \texttt{rA} is the
-			same register as \texttt{rC}. 
+		%--------
+		\item Effect: pushes \texttt{rA} onto the stack, using
+		\texttt{rC} as the stack pointer, post-decrementing
+		\texttt{rC}.
+		\item This instruction does nothing when \texttt{rA} is the
+		same register as \texttt{rC}. 
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0xa}:
-			\texttt{\textbf{pop} rA, rC}
+	\item Opcode \texttt{0xa}:
+		\texttt{\textbf{pop} rA, rC}
 		\begin{itemize}
-			\item Effect: pops \texttt{rA} off the stack, using
-			\texttt{rC} as the stack pointer, pre-incrementing \texttt{rC}.
-			\item This instruction does nothing when \texttt{rA} is the
-			same register as \texttt{rC}. 
+		%--------
+		\item Effect: pops \texttt{rA} off the stack, using
+		\texttt{rC} as the stack pointer, pre-incrementing \texttt{rC}.
+		\item This instruction does nothing when \texttt{rA} is the
+		same register as \texttt{rC}. 
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0xb}:
-			\texttt{\textbf{push} sA, rC}
+	\item Opcode \texttt{0xb}:
+		\texttt{\textbf{push} sA, rC}
 		\begin{itemize}
-			\item Effect: pushes \texttt{sA} onto the stack, using
-			\texttt{rC} as the stack pointer, post-decrementing
-			\texttt{rC}.
-			\item Note that \texttt{sA} is considered to be 32-bit for the
-			purpose of the store to memory and decrementing \texttt{rC},
-			even if \texttt{sA} is \texttt{flags} or \texttt{ie}.
+		%--------
+		\item Effect: pushes \texttt{sA} onto the stack, using
+		\texttt{rC} as the stack pointer, post-decrementing
+		\texttt{rC}.
+		\item Note that \texttt{sA} is considered to be 32-bit for the
+		purpose of the store to memory and decrementing \texttt{rC},
+		even if \texttt{sA} is \texttt{flags} or \texttt{ie}.
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0xc}:
-			\texttt{\textbf{pop} sA, rC}
+	\item Opcode \texttt{0xc}:
+		\texttt{\textbf{pop} sA, rC}
 		\begin{itemize}
-			\item Effect: pops \texttt{sA} off the stack, using
-			\texttt{rC} as the stack pointer, pre-incrementing \texttt{rC}.
-			\item Note that \texttt{sA} is considered to be 32-bit for the
-			purpose of the load from memory and incrementing \texttt{rC},
-			even if \texttt{sA} is \texttt{flags} or \texttt{ie}.
+		%--------
+		\item Effect: pops \texttt{sA} off the stack, using
+		\texttt{rC} as the stack pointer, pre-incrementing \texttt{rC}.
+		\item Note that \texttt{sA} is considered to be 32-bit for the
+		purpose of the load from memory and incrementing \texttt{rC},
+		even if \texttt{sA} is \texttt{flags} or \texttt{ie}.
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0xd}:
-			\texttt{\textbf{index} rA}
+	\item Opcode \texttt{0xd}:
+		\texttt{\textbf{index} rA}
 		\begin{itemize}
-			\item Effect: Performs \texttt{<index\_reg> <= rA;} and stores
-			that \texttt{index} is in effect.
-			\item Note: If \texttt{index} is in effect and the current
-			instruction is \texttt{index}, the current instruction will be
-			treated as a NOP, and \texttt{index} will stop being in effect.
-			\item Note: \texttt{pre} and \texttt{index} can be combined
-			with one another (though this is only useful for \texttt{ldr}
-			and \texttt{str}).
-			\item Note: A non-\texttt{pre} instruction following
-			\texttt{index} will store that that \texttt{index} is not in
-			effect any more. (It will also store that \texttt{pre} is not
-			in effect any more).
-			\item Note: If \texttt{index} is in effect, the current
-			instruction cannot be interrupted.
-			\item Note: Any time \texttt{index} stops being in effect,
-			\texttt{pre} will stop being in effect as well.
+		%--------
+		\item Effect: Performs \texttt{<index\_reg> <= rA;} and stores
+		that \texttt{index} is in effect.
+		\item Note: If \texttt{index} is in effect and the current
+		instruction is \texttt{index}, the current instruction will be
+		treated as a NOP, and \texttt{index} will stop being in effect.
+		\item Note: \texttt{pre} and \texttt{index} can be combined
+		with one another (though this is only useful for \texttt{ldr}
+		and \texttt{str}).
+		\item Note: A non-\texttt{pre} instruction following
+		\texttt{index} will store that that \texttt{index} is not in
+		effect any more. (It will also store that \texttt{pre} is not
+		in effect any more).
+		\item Note: If \texttt{index} is in effect, the current
+		instruction cannot be interrupted.
+		\item Note: Any time \texttt{index} stops being in effect,
+		\texttt{pre} will stop being in effect as well.
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0xe}:
-			\texttt{\textbf{mul} rA, rC}
+	\item Opcode \texttt{0xe}:
+		\texttt{\textbf{mul} rA, rC}
 		\begin{itemize}
-			\item Effect: \texttt{rA <= rA * rC;}
+		%--------
+		\item Effect: \texttt{rA <= rA * rC;}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0xf}:
-			\texttt{\textbf{udiv} rA, rC}
+	\item Opcode \texttt{0xf}:
+		\texttt{\textbf{udiv} rA, rC}
 		\begin{itemize}
-			\item Effect: \texttt{rA <= u32(rA) / u32(rC);}
+		%--------
+		\item Effect: \texttt{rA <= u32(rA) / u32(rC);}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x10}:
-			\texttt{\textbf{sdiv} rA, rC}
+	\item Opcode \texttt{0x10}:
+		\texttt{\textbf{sdiv} rA, rC}
 		\begin{itemize}
-			\item Effect: \texttt{rA <= s32(rA) / s32(rC);}
+		%--------
+		\item Effect: \texttt{rA <= s32(rA) / s32(rC);}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x11}:
-			\texttt{\textbf{umod} rA, rC}
+	\item Opcode \texttt{0x11}:
+		\texttt{\textbf{umod} rA, rC}
 		\begin{itemize}
-			\item Effect: \texttt{rA <= u32(rA) \% u32(rC);}
+		%--------
+		\item Effect: \texttt{rA <= u32(rA) \% u32(rC);}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x12}:
-			\texttt{\textbf{smod} rA, rC}
+	\item Opcode \texttt{0x12}:
+		\texttt{\textbf{smod} rA, rC}
 		\begin{itemize}
-			\item Effect: \texttt{rA <= s32(rA) \% s32(rC);}
+		%--------
+		\item Effect: \texttt{rA <= s32(rA) \% s32(rC);}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x13}:
-			\texttt{\textbf{lumul} rA, rC}
+	\item Opcode \texttt{0x13}:
+		\texttt{\textbf{lumul} rA, rC}
 		\begin{itemize}
-			\item Effect: This instruction multiplies \texttt{rA} by
-			\texttt{rC}, performing an unsigned 32-bit by 32-bit -> 64-bit
-			multiply, storing result in \texttt{\{hi, lo\}}.
+		%--------
+		\item Effect: This instruction multiplies \texttt{rA} by
+		\texttt{rC}, performing an unsigned 32-bit by 32-bit -> 64-bit
+		multiply, storing result in \texttt{\{hi, lo\}}.
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x14}:
-			\texttt{\textbf{lsmul} rA, rC}
+	\item Opcode \texttt{0x14}:
+		\texttt{\textbf{lsmul} rA, rC}
 		\begin{itemize}
-			\item Effect: This instruction multiplies \texttt{rA} by
-			\texttt{rC}, performing a signed 32-bit by 32-bit -> 64-bit
-			multiply, storing result in \texttt{\{hi, lo\}}.
+		%--------
+		\item Effect: This instruction multiplies \texttt{rA} by
+		\texttt{rC}, performing a signed 32-bit by 32-bit -> 64-bit
+		multiply, storing result in \texttt{\{hi, lo\}}.
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x15}:
-			\texttt{\textbf{ludiv} rA, rC}
+	\item Opcode \texttt{0x15}:
+		\texttt{\textbf{ludiv} rA, rC}
 		\begin{itemize}
-			\item Effect: performs a 64-bit by 64-bit unsigned division of
-			\texttt{\{hi, lo\}} by \texttt{\{rA, rC\}}, storing 64-bit
-			result in \texttt{\{hi, lo\}}.
-			\item Note: This instruction executes more quickly if
-			\texttt{rA}'s value is \texttt{0x00000000}, i.e. if the
-			operation is actually a 64-bit by 32-bit -> 64-bit unsigned
-			divide.
+		%--------
+		\item Effect: performs a 64-bit by 64-bit unsigned division of
+		\texttt{\{hi, lo\}} by \texttt{\{rA, rC\}}, storing 64-bit
+		result in \texttt{\{hi, lo\}}.
+		\item Note: This instruction executes more quickly if
+		\texttt{rA}'s value is \texttt{0x00000000}, i.e. if the
+		operation is actually a 64-bit by 32-bit -> 64-bit unsigned
+		divide.
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x16}:
-			\texttt{\textbf{lsdiv} rA, rC}
+	\item Opcode \texttt{0x16}:
+		\texttt{\textbf{lsdiv} rA, rC}
 		\begin{itemize}
-			\item Effect: performs a 64-bit by 64-bit signed division of
-			\texttt{\{hi, lo\}} by \texttt{\{rA, rC\}}, storing 64-bit
-			result in \texttt{\{hi, lo\}}.
-			%\item Note: This instruction executes more quickly if
-			%\texttt{rA}'s value is either \texttt{0x00000000} or
-			%\texttt{0xffffffff},  i.e. if the operation is actually a
-			%64-bit by 32-bit -> 64-bit signed divide.
-			\item Note: This instruction executes more quickly if
-			\texttt{rA} is equal to bits \texttt{[63:32]} of
-			\texttt{sign\_extend\_to\_64(rC)}.
+		%--------
+		\item Effect: performs a 64-bit by 64-bit signed division of
+		\texttt{\{hi, lo\}} by \texttt{\{rA, rC\}}, storing 64-bit
+		result in \texttt{\{hi, lo\}}.
+		%\item Note: This instruction executes more quickly if
+		%\texttt{rA}'s value is either \texttt{0x00000000} or
+		%\texttt{0xffffffff},  i.e. if the operation is actually a
+		%64-bit by 32-bit -> 64-bit signed divide.
+		\item Note: This instruction executes more quickly if
+		\texttt{rA} is equal to bits \texttt{[63:32]} of
+		\texttt{sign\_extend\_to\_64(rC)}.
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x17}:
-			\texttt{\textbf{lumod} rA, rC}
+	\item Opcode \texttt{0x17}:
+		\texttt{\textbf{lumod} rA, rC}
 		\begin{itemize}
-			\item Effect: performs a 64-bit by 64-bit unsigned modulo of
-			\texttt{\{hi, lo\}} by \texttt{\{rA, rC\}}, storing 64-bit
-			result in \texttt{\{hi, lo\}}.
-			\item Note: This instruction executes more quickly if
-			\texttt{rA}'s value is \texttt{0x00000000}, i.e. if the
-			operation is actually a 64-bit by 32-bit -> 64-bit unsigned
-			modulo.
+		%--------
+		\item Effect: performs a 64-bit by 64-bit unsigned modulo of
+		\texttt{\{hi, lo\}} by \texttt{\{rA, rC\}}, storing 64-bit
+		result in \texttt{\{hi, lo\}}.
+		\item Note: This instruction executes more quickly if
+		\texttt{rA}'s value is \texttt{0x00000000}, i.e. if the
+		operation is actually a 64-bit by 32-bit -> 64-bit unsigned
+		modulo.
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x18}:
-			\texttt{\textbf{lsmod} rA, rC}
+	\item Opcode \texttt{0x18}:
+		\texttt{\textbf{lsmod} rA, rC}
 		\begin{itemize}
-			\item Effect: performs a 64-bit by 64-bit signed modulo of
-			\texttt{\{hi, lo\}} by \texttt{\{rA, rC\}}, storing 64-bit
-			result in \texttt{\{hi, lo\}}.
-			\item Note: This instruction executes more quickly if
-			\texttt{rA} is equal to bits \texttt{[63:32]} of
-			\texttt{sign\_extend\_to\_64(rC)}.
+		%--------
+		\item Effect: performs a 64-bit by 64-bit signed modulo of
+		\texttt{\{hi, lo\}} by \texttt{\{rA, rC\}}, storing 64-bit
+		result in \texttt{\{hi, lo\}}.
+		\item Note: This instruction executes more quickly if
+		\texttt{rA} is equal to bits \texttt{[63:32]} of
+		\texttt{sign\_extend\_to\_64(rC)}.
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x19}:
-			\texttt{\textbf{ldub} rA, [rC]}
+	\item Opcode \texttt{0x19}:
+		\texttt{\textbf{ldub} rA, [rC]}
 		\begin{itemize}
-			\item Effect: Load an 8-bit value from memory at address
-			computed as \texttt{rC + <index\_reg>}, zero-extend
-			the 8-bit value to 32 bits, then put the zero-extended 32-bit
-			value into \texttt{rA}.
-			\item The \texttt{<index\_reg>} value is guaranteed to be zero
-			unless an \texttt{index} is in effect.
-			\item Shorthand for having the assembler insert an
-			\texttt{index rB} instruction before this one:
-				\texttt{ldub rA, [rC, rB]}
+		%--------
+		\item Effect: Load an 8-bit value from memory at address
+		computed as \texttt{rC + <index\_reg>}, zero-extend
+		the 8-bit value to 32 bits, then put the zero-extended 32-bit
+		value into \texttt{rA}.
+		\item The \texttt{<index\_reg>} value is guaranteed to be zero
+		unless an \texttt{index} is in effect.
+		\item Shorthand for having the assembler insert an
+		\texttt{index rB} instruction before this one:
+			\texttt{ldub rA, [rC, rB]}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x1a}:
-			\texttt{\textbf{ldsb} rA, [rC]}
+	\item Opcode \texttt{0x1a}:
+		\texttt{\textbf{ldsb} rA, [rC]}
 		\begin{itemize}
-			\item Effect: Load an 8-bit value from memory at address
-			computed as \texttt{rC + <index\_reg>}, sign-extend
-			the 8-bit value to 32 bits, then put the sign-extended 32-bit
-			value into \texttt{rA}.
-			\item The \texttt{<index\_reg>} value is guaranteed to be zero
-			unless an \texttt{index} is in effect.
-			\item Shorthand for having the assembler insert an
-			\texttt{index rB} instruction before this one:
-				\texttt{ldsb rA, [rC, rB]}
+		%--------
+		\item Effect: Load an 8-bit value from memory at address
+		computed as \texttt{rC + <index\_reg>}, sign-extend
+		the 8-bit value to 32 bits, then put the sign-extended 32-bit
+		value into \texttt{rA}.
+		\item The \texttt{<index\_reg>} value is guaranteed to be zero
+		unless an \texttt{index} is in effect.
+		\item Shorthand for having the assembler insert an
+		\texttt{index rB} instruction before this one:
+			\texttt{ldsb rA, [rC, rB]}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x1b}:
-			\texttt{\textbf{lduh} rA, [rC]}
+	\item Opcode \texttt{0x1b}:
+		\texttt{\textbf{lduh} rA, [rC]}
 		\begin{itemize}
-			\item Effect: Load a 16-bit value from memory at address
-			computed as \texttt{rC + <index\_reg>}, zero-extend
-			the 16-bit value to 32 bits, then put the zero-extended 32-bit
-			value into \texttt{rA}.
-			\item The \texttt{<index\_reg>} value is guaranteed to be zero
-			unless an \texttt{index} is in effect.
-			\item Shorthand for having the assembler insert an
-			\texttt{index rB} instruction before this one:
-				\texttt{lduh rA, [rC, rB]}
+		%--------
+		\item Effect: Load a 16-bit value from memory at address
+		computed as \texttt{rC + <index\_reg>}, zero-extend
+		the 16-bit value to 32 bits, then put the zero-extended 32-bit
+		value into \texttt{rA}.
+		\item The \texttt{<index\_reg>} value is guaranteed to be zero
+		unless an \texttt{index} is in effect.
+		\item Shorthand for having the assembler insert an
+		\texttt{index rB} instruction before this one:
+			\texttt{lduh rA, [rC, rB]}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x1c}:
-			\texttt{\textbf{ldsh} rA, [rC]}
+	\item Opcode \texttt{0x1c}:
+		\texttt{\textbf{ldsh} rA, [rC]}
 		\begin{itemize}
-			\item Effect: Load a 16-bit value from memory at address
-			computed as \texttt{rC + <index\_reg>}, sign-extend
-			the 16-bit value to 32 bits, then put the zero-extended 32-bit
-			value into \texttt{rA}.
-			\item The \texttt{<index\_reg>} value is guaranteed to be zero
-			unless an \texttt{index} is in effect.
-			\item Shorthand for having the assembler insert an
-			\texttt{index rB} instruction before this one:
-				\texttt{ldsh rA, [rC, rB]}
+		%--------
+		\item Effect: Load a 16-bit value from memory at address
+		computed as \texttt{rC + <index\_reg>}, sign-extend
+		the 16-bit value to 32 bits, then put the zero-extended 32-bit
+		value into \texttt{rA}.
+		\item The \texttt{<index\_reg>} value is guaranteed to be zero
+		unless an \texttt{index} is in effect.
+		\item Shorthand for having the assembler insert an
+		\texttt{index rB} instruction before this one:
+			\texttt{ldsh rA, [rC, rB]}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x1d}:
-			\texttt{\textbf{stb} rA, [rC]}
+	\item Opcode \texttt{0x1d}:
+		\texttt{\textbf{stb} rA, [rC]}
 		\begin{itemize}
-			\item Effect: Store \texttt{rA[7:0]} to memory at the address
-			computed as \texttt{rC + <index\_reg>}.
-			\item The \texttt{<index\_reg>} value is guaranteed to be zero
-			unless an \texttt{index} is in effect.
-			\item Shorthand for having the assembler insert an
-			\texttt{index rB} instruction before this one:
-				\texttt{stb rA, [rC, rB]}
+		%--------
+		\item Effect: Store \texttt{rA[7:0]} to memory at the address
+		computed as \texttt{rC + <index\_reg>}.
+		\item The \texttt{<index\_reg>} value is guaranteed to be zero
+		unless an \texttt{index} is in effect.
+		\item Shorthand for having the assembler insert an
+		\texttt{index rB} instruction before this one:
+			\texttt{stb rA, [rC, rB]}
+		%--------
 		\end{itemize}
-		\item Opcode \texttt{0x1e}:
-			\texttt{\textbf{sth} rA, [rC]}
-		\begin{itemize}
-			\item Effect: Store \texttt{rA[15:0]} to memory at the address
-			computed as \texttt{rC + <index\_reg>}.
-			\item The \texttt{<index\_reg>} value is guaranteed to be zero
-			unless an \texttt{index} is in effect.
-			\item Shorthand for having the assembler insert an
-			\texttt{index rB} instruction before this one:
-				\texttt{sth rA, [rC, rB]}
-		\end{itemize}
+	\item Opcode \texttt{0x1e}:
+		\texttt{\textbf{sth} rA, [rC]}
+	\begin{itemize}
+		\item Effect: Store \texttt{rA[15:0]} to memory at the address
+		computed as \texttt{rC + <index\_reg>}.
+		\item The \texttt{<index\_reg>} value is guaranteed to be zero
+		unless an \texttt{index} is in effect.
+		\item Shorthand for having the assembler insert an
+		\texttt{index rB} instruction before this one:
+			\texttt{sth rA, [rC, rB]}
+	\end{itemize}
 
+	%--------
 	\end{itemize}
 
 	\doublespacing
@@ -997,10 +1225,12 @@
 
 	\singlespacing
 	\begin{itemize}
-		\item \texttt{i} is a 5-bit sign-extended immediate, which can
-		be expanded by \texttt{pre}, and is denoted \texttt{simm}
-		\item \texttt{c} encodes register \texttt{rC}
-		\item \texttt{a} encodes register \texttt{rA}
+	%--------
+	\item \texttt{i} is a 5-bit sign-extended immediate, which can
+	be expanded by \texttt{pre}, and is denoted \texttt{simm}
+	\item \texttt{c} encodes register \texttt{rC}
+	\item \texttt{a} encodes register \texttt{rA}
+	%--------
 	\end{itemize}
 	\doublespacing
 
@@ -1027,10 +1257,12 @@
 
 	\singlespacing
 	\begin{itemize}
-		\item \texttt{i} is a 5-bit sign-extended immediate, which can
-		be expanded by \texttt{pre}  
-		\item \texttt{c} encodes register \texttt{rC}
-		\item \texttt{a} encodes register \texttt{rA}
+	%--------
+	\item \texttt{i} is a 5-bit sign-extended immediate, which can
+	be expanded by \texttt{pre}  
+	\item \texttt{c} encodes register \texttt{rC}
+	\item \texttt{a} encodes register \texttt{rA}
+	%--------
 	\end{itemize}
 	\doublespacing
 
