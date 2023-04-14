@@ -1300,11 +1300,9 @@
 		\begin{itemize}
 		%--------
 		\item When \texttt{0b0}:
-			8-bit operation;
-			use \texttt{rA[7:0]} and \texttt{rB[7:0]}
+			8-bit operation
 		\item When \texttt{0b0}:
-			16-bit operation;
-			use \texttt{rA[15:0]} and \texttt{rB[15:0]}
+			16-bit operation
 		%--------
 		\end{itemize}
 	\item \texttt{o} is the opcode
@@ -1350,7 +1348,7 @@
 			\begin{itemize}
 			%--------
 			\item Effect:
-				Logical shift right \texttt{rA[7:0]} by \texttt{rB[7:0]}
+				Logical shift right \texttt{rA[7:0]} by \texttt{rB}
 			%--------
 			\end{itemize}
 		\item \texttt{w} value \texttt{0b1}:
@@ -1358,7 +1356,7 @@
 			\begin{itemize}
 			%--------
 			\item Effect:
-				Logical shift right \texttt{rA[15:0]} by \texttt{rB[15:0]}
+				Logical shift right \texttt{rA[15:0]} by \texttt{rB}
 			%--------
 			\end{itemize}
 		%--------
@@ -1372,7 +1370,7 @@
 			%--------
 			\item Effect:
 				Arithmetic shift right
-				\texttt{rA[7:0]} by \texttt{rB[7:0]}
+				\texttt{rA[7:0]} by \texttt{rB}
 			%--------
 			\end{itemize}
 		\item \texttt{w} value \texttt{0b1}:
@@ -1381,7 +1379,7 @@
 			%--------
 			\item Effect:
 				Arithmetic shift right
-					\texttt{rA[15:0]} by \texttt{rB[15:0]}
+					\texttt{rA[15:0]} by \texttt{rB}
 			%--------
 			\end{itemize}
 		%--------
