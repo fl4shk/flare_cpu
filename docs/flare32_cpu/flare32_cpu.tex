@@ -370,7 +370,7 @@
 		\texttt{\textbf{cmp} rA, \#simm}
 		\begin{itemize}
 		%--------
-		\item Note: Compare \texttt{rA} to \texttt{simm}.
+		\item Effect: Compare \texttt{rA} to \texttt{simm}.
 		\item Affectable flags:
 			\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
 		%--------
@@ -379,83 +379,87 @@
 		\texttt{\textbf{cpy} rA, \#simm}
 		\begin{itemize}
 		%--------
-		\item Note: Copy an immediate value into \texttt{rA}
+		\item Effect: Copy an immediate value into \texttt{rA}
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0x6}:
 		\texttt{\textbf{lsl} rA, \#simm}
 		\begin{itemize}
 		%--------
-		\item Note: Logical shift left
+		\item Effect: Logical shift left
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0x7}:
 		\texttt{\textbf{lsr} rA, \#simm}
 		\begin{itemize}
 		%--------
-		\item Note: Logical shift right
+		\item Effect: Logical shift right
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0x8}:
 		\texttt{\textbf{asr} rA, \#simm}
 		\begin{itemize}
 		%--------
-		\item Note: Arithmetic shift right
+		\item Effect: Arithmetic shift right
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0x9}:
 		\texttt{\textbf{and} rA, \#simm}
 		\begin{itemize}
 		%--------
-		\item Note: Bitwise AND
+		\item Effect: Bitwise AND
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0xa}:
 		\texttt{\textbf{orr} rA, \#simm}
 		\begin{itemize}
 		%--------
-		\item Note: Bitwise OR
+		\item Effect: Bitwise OR
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0xb}:
 		\texttt{\textbf{xor} rA, \#simm}
 		\begin{itemize}
 		%--------
-		\item Note: Bitwise XOR
+		\item Effect: Bitwise XOR
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0xc}:
-		\texttt{\textbf{zeb} rA}
+		\texttt{\textbf{ze} rA, \#simm}
 		\begin{itemize}
 		%--------
-		\item Effect: Set \texttt{rA[31:8]} to zero.
+		%\item Effect: Set \texttt{rA[31:8]} to zero.
+		\item Effect: Set \texttt{rA[31:simm]} to zero.
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0xd}:
-		\texttt{\textbf{zeh} rA}
+		\texttt{\textbf{se} rA, \#simm}
 		\begin{itemize}
 		%--------
-		\item Effect: Set \texttt{rA[31:16]} to zero.
-		%--------
-		\end{itemize}
-	\item Opcode \texttt{0xe}:
-		\texttt{\textbf{seb} rA}
-		\begin{itemize}
-		%--------
+		%\item Effect: Set \texttt{rA[31:16]} to zero.
 		\item Effect:
-			Sign-extend \texttt{rA[7:0]} to 32 bits, then copy that
+			Sign-extend \texttt{rA[simm:0]} to 32 bits, then copy that
 			value to \texttt{rA}
 		%--------
 		\end{itemize}
-	\item Opcode \texttt{0xf}:
-		\texttt{\textbf{seh} rA}
-		\begin{itemize}
-		%--------
-		\item Effect:
-			Sign-extend \texttt{rA[15:0]} to 32 bits, then copy that
-			value to \texttt{rA}
-		%--------
-		\end{itemize}
+	%\item Opcode \texttt{0xe}:
+	%	\texttt{\textbf{seb} rA}
+	%	\begin{itemize}
+	%	%--------
+	%	\item Effect:
+	%		Sign-extend \texttt{rA[7:0]} to 32 bits, then copy that
+	%		value to \texttt{rA}
+	%	%--------
+	%	\end{itemize}
+	%\item Opcode \texttt{0xf}:
+	%	\texttt{\textbf{seh} rA}
+	%	\begin{itemize}
+	%	%--------
+	%	\item Effect:
+	%		Sign-extend \texttt{rA[15:0]} to 32 bits, then copy that
+	%		value to \texttt{rA}
+	%	%--------
+	%	\end{itemize}
 	\end{itemize}
 
 	\doublespacing
@@ -463,7 +467,7 @@
 	\subsection{Instruction Group 2}
 	The following encoding is used, with each character representing one
 	bit: \\
-	\texttt{010f oooo cccc aaaa}, where
+	\texttt{010f oooo bbbb aaaa}, where
 
 	\singlespacing
 	\begin{itemize}
@@ -528,7 +532,7 @@
 		\texttt{\textbf{cmp} rA, rB}
 		\begin{itemize}
 		%--------
-		\item Note: Compare \texttt{rA} to \texttt{rB}. \texttt{cmp}
+		\item Effect Compare \texttt{rA} to \texttt{rB}. \texttt{cmp}
 		is \textit{always} able to affect flags, independent of the
 		encoded \texttt{f} bit of the instruction.
 		\item Affectable flags:
@@ -541,7 +545,7 @@
 		%--------
 		\item Mnemonic for when flags not affected: \texttt{cpy}
 		\item Mnemonic for when flags affected: \texttt{cpy.f}
-		\item Note: Copy \texttt{rB} into \texttt{rA}
+		\item Effect Copy \texttt{rB} into \texttt{rA}
 		\item Affectable flags:
 			\texttt{Z}, \texttt{N}
 		%--------
@@ -552,7 +556,7 @@
 		%--------
 		\item Mnemonic for when flags not affected: \texttt{lsl}
 		\item Mnemonic for when flags affected: \texttt{lsl.f}
-		\item Note: Logical shift left
+		\item Effect Logical shift left
 		\item Affectable flags:
 			\texttt{Z}, \texttt{N}
 		%--------
@@ -563,7 +567,7 @@
 		%--------
 		\item Mnemonic for when flags not affected: \texttt{lsr}
 		\item Mnemonic for when flags affected: \texttt{lsr.f}
-		\item Note: Logical shift right
+		\item Effect Logical shift right
 		\item Affectable flags:
 			\texttt{Z}, \texttt{N}
 		%--------
@@ -574,7 +578,7 @@
 		%--------
 		\item Mnemonic for when flags not affected: \texttt{asr}
 		\item Mnemonic for when flags affected: \texttt{asr.f}
-		\item Note: Arithmetic shift right
+		\item Effect Arithmetic shift right
 		\item Affectable flags:
 			\texttt{Z}, \texttt{N}
 		%--------
@@ -585,7 +589,7 @@
 		%--------
 		\item Mnemonic for when flags not affected: \texttt{and}
 		\item Mnemonic for when flags affected: \texttt{and.f}
-		\item Note: Bitwise AND
+		\item Effect Bitwise AND
 		\item Affectable flags:
 			\texttt{Z}, \texttt{N}
 		%--------
@@ -596,7 +600,7 @@
 		%--------
 		\item Mnemonic for when flags not affected: \texttt{orr}
 		\item Mnemonic for when flags affected: \texttt{orr.f}
-		\item Note: Bitwise OR
+		\item Effect Bitwise OR
 		\item Affectable flags:
 			\texttt{Z}, \texttt{N}
 		%--------
@@ -607,7 +611,7 @@
 		%--------
 		\item Mnemonic for when flags not affected: \texttt{xor}
 		\item Mnemonic for when flags affected: \texttt{xor.f}
-		\item Note: Bitwise XOR
+		\item Effect Bitwise XOR
 		\item Affectable flags:
 			\texttt{Z}, \texttt{N}
 		%--------
@@ -618,7 +622,7 @@
 		%--------
 		\item Mnemonic for when flags not affected: \texttt{adc}
 		\item Mnemonic for when flags affected: \texttt{adc.f}
-		\item Note: Add with Carry
+		\item Effect Add with Carry
 		\item Affectable flags:
 			\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
 		%--------
@@ -629,7 +633,7 @@
 		%--------
 		\item Mnemonic for when flags not affected: \texttt{sbc}
 		\item Mnemonic for when flags affected: \texttt{sbc.f}
-		\item Note: Subtract with Borrow
+		\item Effect Subtract with Borrow
 		\item Affectable flags:
 			\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
 		%--------
@@ -707,7 +711,7 @@
 		%--------
 		\item Name: Branch and Link
 		\item Description: Relative call
-		\item In-Depth Effect:
+		\item Effect:
 			\texttt{lr <= pc + 2; pc <= pc + simm + 2;}
 		%--------
 		\end{itemize}
@@ -717,7 +721,7 @@
 		\begin{itemize}
 		%--------
 		\item Name: BRanch Always
-		\item Description: Relative branch always
+		\item Description: Unconditional relative branch
 		\item Effect:
 			\texttt{pc <= pc + simm + 2;}
 		%--------
@@ -871,7 +875,7 @@
 	\subsection{Instruction Group 4}
 	The following encoding is used, with each character representing one
 	bit: \\
-	\texttt{100o oooo cccc aaaa}, where
+	\texttt{100o oooo bbbb aaaa}, where
 
 	\singlespacing
 	\begin{itemize}
@@ -1202,7 +1206,8 @@
 		\end{itemize}
 	\item Opcode \texttt{0x1e}:
 		\texttt{\textbf{sth} rA, [rB]}
-	\begin{itemize}
+		\begin{itemize}
+		%--------
 		\item Effect: Store \texttt{rA[15:0]} to memory at the address
 		computed as \texttt{rB + <index\_reg>}.
 		\item The \texttt{<index\_reg>} value is guaranteed to be zero
@@ -1210,8 +1215,8 @@
 		\item Shorthand for having the assembler insert an
 		\texttt{index rC} instruction before this one:
 			\texttt{sth rA, [rB, rC]}
-	\end{itemize}
-
+		%--------
+		\end{itemize}
 	%--------
 	\end{itemize}
 
@@ -1219,7 +1224,7 @@
 	\subsection{Instruction Group 5: Immediate Indexed Load}
 	The following encoding is used, with each character representing one
 	bit: \\
-	\texttt{101i iiii cccc aaaa}, where
+	\texttt{101i iiii bbbb aaaa}, where
 
 	\singlespacing
 	\begin{itemize}
@@ -1251,7 +1256,7 @@
 	\subsection{Instruction Group 6: Immediate Indexed Store}
 	The following encoding is used, with each character representing one
 	bit: \\
-	\texttt{110i iiii cccc aaaa}, where
+	\texttt{110i iiii bbbb aaaa}, where
 
 	\singlespacing
 	\begin{itemize}
@@ -1279,6 +1284,110 @@
 	%The \texttt{index\_reg} value is zero in all cases except
 	%the previous instruction was \texttt{index index\_reg} and if
 	%\texttt{index\_reg}'s value was non-zero. 
+
+	\doublespacing
+
+	\subsection{Instruction Group 7, Subgroup 0b00:
+		Extra 8-bit and 16-bit Ops}
+	The following encoding is used, with each character representing one
+	bit: \\
+	\texttt{1110 0woo bbbb aaaa}, where
+
+	\singlespacing
+	\begin{itemize}
+	%--------
+	\item \texttt{w} is the operation width
+		\begin{itemize}
+		%--------
+		\item When \texttt{0b0}:
+			8-bit operation;
+			use \texttt{rA[7:0]} and \texttt{rB[7:0]}
+		\item When \texttt{0b0}:
+			16-bit operation;
+			use \texttt{rA[15:0]} and \texttt{rB[15:0]}
+		%--------
+		\end{itemize}
+	\item \texttt{o} is the opcode
+	\item \texttt{b} encodes register \texttt{rB}
+	\item \texttt{a} encodes register \texttt{rA}
+	%--------
+	\end{itemize}
+	\doublespacing
+
+	Here is a list of instructions from this encoding gorup.
+
+	\singlespacing
+	\begin{itemize}
+	%--------
+	\item Opcode \texttt{0x0}:
+		\begin {itemize}
+		%--------
+		\item \texttt{w} value \texttt{0b0}:
+			\texttt{\textbf{cmpb} rA, rB}
+			\begin{itemize}
+			%--------
+			\item Effect: Compare \texttt{rA[7:0]} to \texttt{rB[7:0]}
+			\item Affectable flags:
+				\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+			%--------
+			\end{itemize}
+		\item \texttt{w} value \texttt{0b1}:
+			\texttt{\textbf{cmph} rA, rB}
+			\begin{itemize}
+			%--------
+			\item Effect: Compare \texttt{rA[15:0]} to \texttt{rB[15:0]}
+			\item Affectable flags:
+				\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+			%--------
+			\end{itemize}
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0x1}:
+		\begin {itemize}
+		%--------
+		\item \texttt{w} value \texttt{0b0}:
+			\texttt{\textbf{lsrb} rA, rB}
+			\begin{itemize}
+			%--------
+			\item Effect:
+				Logical shift right \texttt{rA[7:0]} by \texttt{rB[7:0]}
+			%--------
+			\end{itemize}
+		\item \texttt{w} value \texttt{0b1}:
+			\texttt{\textbf{lsrh} rA, rB}
+			\begin{itemize}
+			%--------
+			\item Effect:
+				Logical shift right \texttt{rA[15:0]} by \texttt{rB[15:0]}
+			%--------
+			\end{itemize}
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0x2}:
+		\begin {itemize}
+		%--------
+		\item \texttt{w} value \texttt{0b0}:
+			\texttt{\textbf{asrb} rA, rB}
+			\begin{itemize}
+			%--------
+			\item Effect:
+				Arithmetic shift right
+				\texttt{rA[7:0]} by \texttt{rB[7:0]}
+			%--------
+			\end{itemize}
+		\item \texttt{w} value \texttt{0b1}:
+			\texttt{\textbf{asrh} rA, rB}
+			\begin{itemize}
+			%--------
+			\item Effect:
+				Arithmetic shift right
+					\texttt{rA[15:0]} by \texttt{rB[15:0]}
+			%--------
+			\end{itemize}
+		%--------
+		\end{itemize}
+	%--------
+	\end{itemize}
 
 
 	%\printbibliography[heading=bibnumbered,title={Bibliography}]
