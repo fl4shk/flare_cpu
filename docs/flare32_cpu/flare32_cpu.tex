@@ -152,7 +152,9 @@
 	\doublespacing
 	There are sixteen general-purpose registers (all of which are 32-bit):
 	\texttt{r0}, \texttt{r1},
-	\texttt{r2}, \texttt{...}, \texttt{r11}, \texttt{r12}, \texttt{lr},
+	\texttt{r2}, \texttt{...}, \texttt{r11}, \texttt{r12},
+	\texttt{lr} (link register, the return address of \texttt{bl} and
+		\texttt{jl}),
 	\texttt{fp} (frame pointer), \texttt{sp} (stack pointer).
 
 	The program counter, \texttt{pc}, is 32 bits long, as addresses are
@@ -164,25 +166,29 @@
 	%--------
 	\item \texttt{flags}: arithmetic/logic FLAGS;
 		(reg encoding: \texttt{0x0})
+	\item \texttt{hi}:
+		HIgh 32 bits of instructions that produce 64-bit results;
+		(reg encoding: \texttt{0x1})
+	\item \texttt{lo}:
+		LOw 32 bits of instructions that produce 64-bit results;
+		(reg encoding: \texttt{0x2})
 	\item \texttt{ids}: Interrupt DeStination:
-		the address to jump to upon an interrupt
-		being serviced (also known as the interrupt vector);
-		(reg encoding \texttt{0x1})
+		the address to jump to upon an interrupt being serviced
+			(also known as the interrupt vector);
+		(reg encoding: \texttt{0x3})
 	\item \texttt{ira}: Interrupt Return Address:
 		the address that was jumped from upon an interrupt being
 			serviced;
-		(reg encoding \texttt(0x2))
-	\item \texttt{ie}: Interrupt Enable flag:
-		flag indicating whether interrupts are
-			enabled (0x1) or disabled (0x0)
-		note that interrupts start off as disabled;
-		(reg encoding 0x3)
-	\item \texttt{hi}:
-		HIgh 32 bits of instructions that produce 64-bit results;
-		(reg encoding 0x4)
-	\item \texttt{lo}:
-		LOw 32 bits of instructions that produce 64-bit results;
-		(reg encoding 0x5)
+		(reg encoding: \texttt(0x4))
+	\item \texttt{ie}: IRQ Enable flag:
+		flag indicating whether IRQs are
+			disabled (\texttt{0x0}) or enabled (\texttt{0x1});
+		note that this flag starts with a value of \texttt{0x0};
+		(reg encoding: 0x5)
+	\item \texttt{ity}: Interrupt TYpe:
+		flag indicating whether the most recently taken interrupt is an
+			IRQ (\texttt{0x0}) or a \texttt{swi} (\texttt{0x1})
+		(reg encoding: 0x6)
 	\item Note:
 		All other encodings for special-purpose registers are reserved.
 	%--------
@@ -322,7 +328,7 @@
 	%\texttt{index} will all stop being in effect.
 
 	When \texttt{pre}, \texttt{lpre}, or \texttt{index} is in effect,
-	interrupts will not be serviced.
+	IRQs will not be serviced.
 
 	Pseudo code for handling the how \texttt{pre}, \texttt{lpre}, and
 	\texttt{index} are to be handled regarding whether or not they are "in
@@ -439,7 +445,23 @@
 		%\item Effect: Set \texttt{rA[31:16]} to zero.
 		\item Effect:
 			Sign-extend \texttt{rA[simm:0]} to 32 bits, then copy that
-			value to \texttt{rA}
+			value to \texttt{rA}.
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0xe}:
+		\texttt{\textbf{swi} rA, \#simm}
+		\begin{itemize}
+		%--------
+		\item Effect:
+			Call software interrupt number \texttt{rA + simm}.
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0xf}:
+		\texttt{\textbf{swi} \#simm}
+		\begin{itemize}
+		%--------
+		\item Effect:
+			Call software interrupt number \texttt{simm}.
 		%--------
 		\end{itemize}
 	%\item Opcode \texttt{0xe}:
@@ -926,7 +948,7 @@
 		\texttt{\textbf{reti}}
 		\begin{itemize}
 		%--------
-		\item Effect: enables interrupts (by copying \texttt{1} into
+		\item Effect: enables IRQs (by copying \texttt{0x1} into
 		\texttt{ie}) and performs \texttt{pc <= ira;}
 		%--------
 		\end{itemize}
@@ -1019,7 +1041,7 @@
 		effect any more. (It will also store that \texttt{pre} is not
 		in effect any more).
 		\item Note: If \texttt{index} is in effect, the current
-		instruction cannot be interrupted.
+		instruction cannot be interrupted by an IRQ.
 		\item Note: Any time \texttt{index} stops being in effect,
 		\texttt{pre} will stop being in effect as well.
 		%--------
