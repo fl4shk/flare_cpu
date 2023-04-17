@@ -13,7 +13,8 @@ assembler_disassembler/snow64_cpu_assembler_disassembler*
 assembler_disassembler/src/gen_src/*
 assembler_disassembler/*.elf
 *.s.ignore
-*.s
+*.o
+*.elf
 *.gdb_history*
 *tags
 *types_*.taghl
