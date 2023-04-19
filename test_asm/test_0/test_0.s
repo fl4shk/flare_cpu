@@ -32,17 +32,17 @@ test_label_3:
 	//add r0, pc, #3
 	//sub r3, fp
 	//cmp sp, fp
-	cpy hi, fp
-	cpy fp, hi
-	reti
-	jmp ira
-	push r0, sp
-	pop hi, sp
-	push hi, sp
+	//cpy hi, fp
+	//cpy fp, hi
+	//reti
+	//jmp ira
+	//push r0, sp
+	//pop hi, sp
+	//push hi, sp
 	//.word 0x10000000
 	//.word test_label_3
-	cpy r4, #3
-	jmp r5
+	//cpy r4, #3
+	//jmp r5
 	//ldr r0, [r5, #0x0]
 	//str r0, [r5, #0x3]
 	//bra 0x2
@@ -50,6 +50,8 @@ test_label_3:
 	//bra test_label_3 - test_label_2
 	//bra test_label_2
 	//cpy r0, #3
+	//index r0
+	ldub r0, [r3, r5]
 
 .data
 //.org 0x1008

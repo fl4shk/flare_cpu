@@ -189,6 +189,10 @@
 		flag indicating whether the most recently taken interrupt is an
 			IRQ (\texttt{0x0}) or a \texttt{swi} (\texttt{0x1})
 		(reg encoding: 0x6)
+	\item \texttt{sty}: Software interrupt TYpe:
+		\texttt{swi}'s argument. For \texttt{swi rA, \#simm}, this is the
+			value \texttt{rA + simm}
+		(reg encoding: 0x7)
 	\item Note:
 		All other encodings for special-purpose registers are reserved.
 	%--------
