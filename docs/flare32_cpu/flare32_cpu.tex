@@ -369,9 +369,15 @@
 	\item Opcode \texttt{0x0}:
 		\texttt{\textbf{add} rA, \#simm}
 	\item Opcode \texttt{0x1}:
-		% subi was deemed useless given that immediates are
+		% subi was deemed (mostly) unnecessary given that immediates are
 		% sign-extended.
 		\texttt{\textbf{add} rA, pc, \#simm}
+		\begin{itemize}
+		%--------
+		\item Effect:
+			\texttt{rA <= pc + simm + 2;}
+		%--------
+		\end{itemize}
 	\item Opcode \texttt{0x2}:
 		\texttt{\textbf{add} rA, sp, \#simm}
 	\item Opcode \texttt{0x3}:
