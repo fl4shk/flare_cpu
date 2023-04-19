@@ -993,6 +993,10 @@
 		\texttt{rB}.
 		\item This instruction does nothing when \texttt{rA} is the
 		same register as \texttt{rB}. 
+		\item Note: As a pseudo instruction, omitting "\texttt{, rB}" will
+			automatically select \texttt{sp} as the particular stack
+			pointer. 
+		\texttt{sp}
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0x9}:
@@ -1003,6 +1007,9 @@
 		\texttt{rB} as the stack pointer, pre-incrementing \texttt{rB}.
 		\item This instruction does nothing when \texttt{rA} is the
 		same register as \texttt{rB}. 
+		\item Note: As a pseudo instruction, omitting "\texttt{, rB}" will
+			automatically select \texttt{sp} as the particular stack
+			pointer. 
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0xa}:
@@ -1015,6 +1022,9 @@
 		\item Note that \texttt{sA} is considered to be 32-bit for the
 		purpose of the store to memory and decrementing \texttt{rB},
 		even if \texttt{sA} is \texttt{flags} or \texttt{ie}.
+		\item Note: As a pseudo instruction, omitting "\texttt{, rB}" will
+			automatically select \texttt{sp} as the particular stack
+			pointer. 
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0xb}:
@@ -1026,6 +1036,9 @@
 		\item Note that \texttt{sA} is considered to be 32-bit for the
 		purpose of the load from memory and incrementing \texttt{rB},
 		even if \texttt{sA} is \texttt{flags} or \texttt{ie}.
+		\item Note: As a pseudo instruction, omitting "\texttt{, rB}" will
+			automatically select \texttt{sp} as the particular stack
+			pointer. 
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0xc}:
