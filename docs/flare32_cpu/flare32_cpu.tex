@@ -984,77 +984,6 @@
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0x7}:
-		\texttt{\textbf{ei}}
-		\begin{itemize}
-		%--------
-		\item Effect: copy \texttt{1} into \texttt{ie}.
-		%--------
-		\end{itemize}
-	\item Opcode \texttt{0x8}:
-		\texttt{\textbf{di}}
-		\begin{itemize}
-		%--------
-		\item Effect: copy \texttt{0} into \texttt{ie}.
-		%--------
-		\end{itemize}
-	\item Opcode \texttt{0x9}:
-		\texttt{\textbf{push} rA, rB}
-		\begin{itemize}
-		%--------
-		\item Effect: pushes \texttt{rA} onto the stack, using
-		\texttt{rB} as the stack pointer, post-decrementing
-		\texttt{rB}.
-		\item This instruction does nothing when \texttt{rA} is the
-		same register as \texttt{rB}. 
-		\item Note: As a pseudo instruction, omitting "\texttt{, rB}" will
-			automatically select \texttt{sp} as the particular stack
-			pointer. 
-		\texttt{sp}
-		%--------
-		\end{itemize}
-	\item Opcode \texttt{0xa}:
-		\texttt{\textbf{pop} rA, rB}
-		\begin{itemize}
-		%--------
-		\item Effect: pops \texttt{rA} off the stack, using
-		\texttt{rB} as the stack pointer, pre-incrementing \texttt{rB}.
-		\item This instruction does nothing when \texttt{rA} is the
-		same register as \texttt{rB}. 
-		\item Note: As a pseudo instruction, omitting "\texttt{, rB}" will
-			automatically select \texttt{sp} as the particular stack
-			pointer. 
-		%--------
-		\end{itemize}
-	\item Opcode \texttt{0xb}:
-		\texttt{\textbf{push} sA, rB}
-		\begin{itemize}
-		%--------
-		\item Effect: pushes \texttt{sA} onto the stack, using
-		\texttt{rB} as the stack pointer, post-decrementing
-		\texttt{rB}.
-		\item Note that \texttt{sA} is considered to be 32-bit for the
-		purpose of the store to memory and decrementing \texttt{rB},
-		even if \texttt{sA} is \texttt{flags} or \texttt{ie}.
-		\item Note: As a pseudo instruction, omitting "\texttt{, rB}" will
-			automatically select \texttt{sp} as the particular stack
-			pointer. 
-		%--------
-		\end{itemize}
-	\item Opcode \texttt{0xc}:
-		\texttt{\textbf{pop} sA, rB}
-		\begin{itemize}
-		%--------
-		\item Effect: pops \texttt{sA} off the stack, using
-		\texttt{rB} as the stack pointer, pre-incrementing \texttt{rB}.
-		\item Note that \texttt{sA} is considered to be 32-bit for the
-		purpose of the load from memory and incrementing \texttt{rB},
-		even if \texttt{sA} is \texttt{flags} or \texttt{ie}.
-		\item Note: As a pseudo instruction, omitting "\texttt{, rB}" will
-			automatically select \texttt{sp} as the particular stack
-			pointer. 
-		%--------
-		\end{itemize}
-	\item Opcode \texttt{0xd}:
 		\texttt{\textbf{index} rA}
 		\begin{itemize}
 		%--------
@@ -1074,6 +1003,77 @@
 		instruction cannot be interrupted by an IRQ.
 		\item Note: Any time \texttt{index} stops being in effect,
 		\texttt{pre} will stop being in effect as well.
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0x8}:
+		\texttt{\textbf{ei}}
+		\begin{itemize}
+		%--------
+		\item Effect: copy \texttt{1} into \texttt{ie}.
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0x9}:
+		\texttt{\textbf{di}}
+		\begin{itemize}
+		%--------
+		\item Effect: copy \texttt{0} into \texttt{ie}.
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0xa}:
+		\texttt{\textbf{push} rA, rB}
+		\begin{itemize}
+		%--------
+		\item Effect: pushes \texttt{rA} onto the stack, using
+		\texttt{rB} as the stack pointer, post-decrementing
+		\texttt{rB}.
+		\item This instruction does nothing when \texttt{rA} is the
+		same register as \texttt{rB}. 
+		\item Note: As a pseudo instruction, omitting "\texttt{, rB}" will
+			automatically select \texttt{sp} as the particular stack
+			pointer. 
+		\texttt{sp}
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0xb}:
+		\texttt{\textbf{pop} rA, rB}
+		\begin{itemize}
+		%--------
+		\item Effect: pops \texttt{rA} off the stack, using
+		\texttt{rB} as the stack pointer, pre-incrementing \texttt{rB}.
+		\item This instruction does nothing when \texttt{rA} is the
+		same register as \texttt{rB}. 
+		\item Note: As a pseudo instruction, omitting "\texttt{, rB}" will
+			automatically select \texttt{sp} as the particular stack
+			pointer. 
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0xc}:
+		\texttt{\textbf{push} sA, rB}
+		\begin{itemize}
+		%--------
+		\item Effect: pushes \texttt{sA} onto the stack, using
+		\texttt{rB} as the stack pointer, post-decrementing
+		\texttt{rB}.
+		\item Note that \texttt{sA} is considered to be 32-bit for the
+		purpose of the store to memory and decrementing \texttt{rB},
+		even if \texttt{sA} is \texttt{flags} or \texttt{ie}.
+		\item Note: As a pseudo instruction, omitting "\texttt{, rB}" will
+			automatically select \texttt{sp} as the particular stack
+			pointer. 
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0xd}:
+		\texttt{\textbf{pop} sA, rB}
+		\begin{itemize}
+		%--------
+		\item Effect: pops \texttt{sA} off the stack, using
+		\texttt{rB} as the stack pointer, pre-incrementing \texttt{rB}.
+		\item Note that \texttt{sA} is considered to be 32-bit for the
+		purpose of the load from memory and incrementing \texttt{rB},
+		even if \texttt{sA} is \texttt{flags} or \texttt{ie}.
+		\item Note: As a pseudo instruction, omitting "\texttt{, rB}" will
+			automatically select \texttt{sp} as the particular stack
+			pointer. 
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0xe}:
