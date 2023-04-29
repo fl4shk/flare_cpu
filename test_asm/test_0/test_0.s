@@ -1,4 +1,4 @@
-.align 2
+.align 1
 .text
 //.org 0x1000
 .global _start

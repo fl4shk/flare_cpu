@@ -23,6 +23,7 @@ assembler_disassembler/*.elf
 *.vhd
 *.vcd
 *.v
+*.P
 testing/*
 a.out
 *.E
