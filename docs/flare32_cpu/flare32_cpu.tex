@@ -984,6 +984,270 @@
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0x7}:
+		\texttt{\textbf{ei}}
+		\begin{itemize}
+		%--------
+		\item Effect: copy \texttt{1} into \texttt{ie}.
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0x8}:
+		\texttt{\textbf{di}}
+		\begin{itemize}
+		%--------
+		\item Effect: copy \texttt{0} into \texttt{ie}.
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0x9}:
+		\texttt{\textbf{push} rA, rB}
+		\begin{itemize}
+		%--------
+		\item Effect: pushes \texttt{rA} onto the stack, using
+		\texttt{rB} as the stack pointer, post-decrementing
+		\texttt{rB}.
+		\item This instruction does nothing when \texttt{rA} is the
+		same register as \texttt{rB}. 
+		\item Note: As a pseudo instruction, omitting "\texttt{, rB}" will
+			automatically select \texttt{sp} as the particular stack
+			pointer. 
+		\texttt{sp}
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0xa}:
+		\texttt{\textbf{pop} rA, rB}
+		\begin{itemize}
+		%--------
+		\item Effect: pops \texttt{rA} off the stack, using
+		\texttt{rB} as the stack pointer, pre-incrementing \texttt{rB}.
+		\item This instruction does nothing when \texttt{rA} is the
+		same register as \texttt{rB}. 
+		\item Note: As a pseudo instruction, omitting "\texttt{, rB}" will
+			automatically select \texttt{sp} as the particular stack
+			pointer. 
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0xb}:
+		\texttt{\textbf{push} sA, rB}
+		\begin{itemize}
+		%--------
+		\item Effect: pushes \texttt{sA} onto the stack, using
+		\texttt{rB} as the stack pointer, post-decrementing
+		\texttt{rB}.
+		\item Note that \texttt{sA} is considered to be 32-bit for the
+		purpose of the store to memory and decrementing \texttt{rB},
+		even if \texttt{sA} is \texttt{flags} or \texttt{ie}.
+		\item Note: As a pseudo instruction, omitting "\texttt{, rB}" will
+			automatically select \texttt{sp} as the particular stack
+			pointer. 
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0xc}:
+		\texttt{\textbf{pop} sA, rB}
+		\begin{itemize}
+		%--------
+		\item Effect: pops \texttt{sA} off the stack, using
+		\texttt{rB} as the stack pointer, pre-incrementing \texttt{rB}.
+		\item Note that \texttt{sA} is considered to be 32-bit for the
+		purpose of the load from memory and incrementing \texttt{rB},
+		even if \texttt{sA} is \texttt{flags} or \texttt{ie}.
+		\item Note: As a pseudo instruction, omitting "\texttt{, rB}" will
+			automatically select \texttt{sp} as the particular stack
+			pointer. 
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0xd}:
+		\texttt{\textbf{mul} rA, rB}
+		\begin{itemize}
+		%--------
+		\item Effect: \texttt{rA <= rA * rB;}
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0xe}:
+		\texttt{\textbf{udiv} rA, rB}
+		\begin{itemize}
+		%--------
+		\item Effect: \texttt{rA <= u32(rA) / u32(rB);}
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0x0f}:
+		\texttt{\textbf{sdiv} rA, rB}
+		\begin{itemize}
+		%--------
+		\item Effect: \texttt{rA <= s32(rA) / s32(rB);}
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0x10}:
+		\texttt{\textbf{umod} rA, rB}
+		\begin{itemize}
+		%--------
+		\item Effect: \texttt{rA <= u32(rA) \% u32(rB);}
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0x11}:
+		\texttt{\textbf{smod} rA, rB}
+		\begin{itemize}
+		%--------
+		\item Effect: \texttt{rA <= s32(rA) \% s32(rB);}
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0x12}:
+		\texttt{\textbf{lumul} rA, rB}
+		\begin{itemize}
+		%--------
+		\item Effect: This instruction multiplies \texttt{rA} by
+		\texttt{rB}, performing an unsigned 32-bit by 32-bit -> 64-bit
+		multiply, storing result in \texttt{\{hi, lo\}}.
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0x13}:
+		\texttt{\textbf{lsmul} rA, rB}
+		\begin{itemize}
+		%--------
+		\item Effect: This instruction multiplies \texttt{rA} by
+		\texttt{rB}, performing a signed 32-bit by 32-bit -> 64-bit
+		multiply, storing result in \texttt{\{hi, lo\}}.
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0x14}:
+		\texttt{\textbf{ludiv} rA, rB}
+		\begin{itemize}
+		%--------
+		\item Effect: performs a 64-bit by 64-bit unsigned division of
+		\texttt{\{hi, lo\}} by \texttt{\{rA, rB\}}, storing 64-bit
+		result in \texttt{\{hi, lo\}}.
+		\item Note: This instruction executes more quickly if
+		\texttt{rA}'s value is \texttt{0x00000000}, i.e. if the
+		operation is actually a 64-bit by 32-bit -> 64-bit unsigned
+		divide.
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0x15}:
+		\texttt{\textbf{lsdiv} rA, rB}
+		\begin{itemize}
+		%--------
+		\item Effect: performs a 64-bit by 64-bit signed division of
+		\texttt{\{hi, lo\}} by \texttt{\{rA, rB\}}, storing 64-bit
+		result in \texttt{\{hi, lo\}}.
+		%\item Note: This instruction executes more quickly if
+		%\texttt{rA}'s value is either \texttt{0x00000000} or
+		%\texttt{0xffffffff},  i.e. if the operation is actually a
+		%64-bit by 32-bit -> 64-bit signed divide.
+		\item Note: This instruction executes more quickly if
+		\texttt{rA} is equal to bits \texttt{[63:32]} of
+		\texttt{sign\_extend\_to\_64(rB)}.
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0x16}:
+		\texttt{\textbf{lumod} rA, rB}
+		\begin{itemize}
+		%--------
+		\item Effect: performs a 64-bit by 64-bit unsigned modulo of
+		\texttt{\{hi, lo\}} by \texttt{\{rA, rB\}}, storing 64-bit
+		result in \texttt{\{hi, lo\}}.
+		\item Note: This instruction executes more quickly if
+		\texttt{rA}'s value is \texttt{0x00000000}, i.e. if the
+		operation is actually a 64-bit by 32-bit -> 64-bit unsigned
+		modulo.
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0x17}:
+		\texttt{\textbf{lsmod} rA, rB}
+		\begin{itemize}
+		%--------
+		\item Effect: performs a 64-bit by 64-bit signed modulo of
+		\texttt{\{hi, lo\}} by \texttt{\{rA, rB\}}, storing 64-bit
+		result in \texttt{\{hi, lo\}}.
+		\item Note: This instruction executes more quickly if
+		\texttt{rA} is equal to bits \texttt{[63:32]} of
+		\texttt{sign\_extend\_to\_64(rB)}.
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0x18}:
+		\texttt{\textbf{ldub} rA, [rB]}
+		\begin{itemize}
+		%--------
+		\item Effect: Load an 8-bit value from memory at address
+		computed as \texttt{rB + <index\_reg>}, zero-extend
+		the 8-bit value to 32 bits, then put the zero-extended 32-bit
+		value into \texttt{rA}.
+		\item The \texttt{<index\_reg>} value is guaranteed to be zero
+		unless an \texttt{index} is in effect.
+		\item Shorthand for having the assembler insert an
+		\texttt{index rC} instruction before this one:
+			\texttt{ldub rA, [rB, rC]}
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0x19}:
+		\texttt{\textbf{ldsb} rA, [rB]}
+		\begin{itemize}
+		%--------
+		\item Effect: Load an 8-bit value from memory at address
+		computed as \texttt{rB + <index\_reg>}, sign-extend
+		the 8-bit value to 32 bits, then put the sign-extended 32-bit
+		value into \texttt{rA}.
+		\item The \texttt{<index\_reg>} value is guaranteed to be zero
+		unless an \texttt{index} is in effect.
+		\item Shorthand for having the assembler insert an
+		\texttt{index rC} instruction before this one:
+			\texttt{ldsb rA, [rB, rC]}
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0x1a}:
+		\texttt{\textbf{lduh} rA, [rB]}
+		\begin{itemize}
+		%--------
+		\item Effect: Load a 16-bit value from memory at address
+		computed as \texttt{rB + <index\_reg>}, zero-extend
+		the 16-bit value to 32 bits, then put the zero-extended 32-bit
+		value into \texttt{rA}.
+		\item The \texttt{<index\_reg>} value is guaranteed to be zero
+		unless an \texttt{index} is in effect.
+		\item Shorthand for having the assembler insert an
+		\texttt{index rC} instruction before this one:
+			\texttt{lduh rA, [rB, rC]}
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0x1b}:
+		\texttt{\textbf{ldsh} rA, [rB]}
+		\begin{itemize}
+		%--------
+		\item Effect: Load a 16-bit value from memory at address
+		computed as \texttt{rB + <index\_reg>}, sign-extend
+		the 16-bit value to 32 bits, then put the zero-extended 32-bit
+		value into \texttt{rA}.
+		\item The \texttt{<index\_reg>} value is guaranteed to be zero
+		unless an \texttt{index} is in effect.
+		\item Shorthand for having the assembler insert an
+		\texttt{index rC} instruction before this one:
+			\texttt{ldsh rA, [rB, rC]}
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0x1c}:
+		\texttt{\textbf{stb} rA, [rB]}
+		\begin{itemize}
+		%--------
+		\item Effect: Store \texttt{rA[7:0]} to memory at the address
+		computed as \texttt{rB + <index\_reg>}.
+		\item The \texttt{<index\_reg>} value is guaranteed to be zero
+		unless an \texttt{index} is in effect.
+		\item Shorthand for having the assembler insert an
+		\texttt{index rC} instruction before this one:
+			\texttt{stb rA, [rB, rC]}
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0x1d}:
+		\texttt{\textbf{sth} rA, [rB]}
+		\begin{itemize}
+		%--------
+		\item Effect: Store \texttt{rA[15:0]} to memory at the address
+		computed as \texttt{rB + <index\_reg>}.
+		\item The \texttt{<index\_reg>} value is guaranteed to be zero
+		unless an \texttt{index} is in effect.
+		\item Shorthand for having the assembler insert an
+		\texttt{index rC} instruction before this one:
+			\texttt{sth rA, [rB, rC]}
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0x1e}:
 		\texttt{\textbf{index} rA}
 		\begin{itemize}
 		%--------
@@ -1003,270 +1267,6 @@
 		instruction cannot be interrupted by an IRQ.
 		\item Note: Any time \texttt{index} stops being in effect,
 		\texttt{pre} will stop being in effect as well.
-		%--------
-		\end{itemize}
-	\item Opcode \texttt{0x8}:
-		\texttt{\textbf{ei}}
-		\begin{itemize}
-		%--------
-		\item Effect: copy \texttt{1} into \texttt{ie}.
-		%--------
-		\end{itemize}
-	\item Opcode \texttt{0x9}:
-		\texttt{\textbf{di}}
-		\begin{itemize}
-		%--------
-		\item Effect: copy \texttt{0} into \texttt{ie}.
-		%--------
-		\end{itemize}
-	\item Opcode \texttt{0xa}:
-		\texttt{\textbf{push} rA, rB}
-		\begin{itemize}
-		%--------
-		\item Effect: pushes \texttt{rA} onto the stack, using
-		\texttt{rB} as the stack pointer, post-decrementing
-		\texttt{rB}.
-		\item This instruction does nothing when \texttt{rA} is the
-		same register as \texttt{rB}. 
-		\item Note: As a pseudo instruction, omitting "\texttt{, rB}" will
-			automatically select \texttt{sp} as the particular stack
-			pointer. 
-		\texttt{sp}
-		%--------
-		\end{itemize}
-	\item Opcode \texttt{0xb}:
-		\texttt{\textbf{pop} rA, rB}
-		\begin{itemize}
-		%--------
-		\item Effect: pops \texttt{rA} off the stack, using
-		\texttt{rB} as the stack pointer, pre-incrementing \texttt{rB}.
-		\item This instruction does nothing when \texttt{rA} is the
-		same register as \texttt{rB}. 
-		\item Note: As a pseudo instruction, omitting "\texttt{, rB}" will
-			automatically select \texttt{sp} as the particular stack
-			pointer. 
-		%--------
-		\end{itemize}
-	\item Opcode \texttt{0xc}:
-		\texttt{\textbf{push} sA, rB}
-		\begin{itemize}
-		%--------
-		\item Effect: pushes \texttt{sA} onto the stack, using
-		\texttt{rB} as the stack pointer, post-decrementing
-		\texttt{rB}.
-		\item Note that \texttt{sA} is considered to be 32-bit for the
-		purpose of the store to memory and decrementing \texttt{rB},
-		even if \texttt{sA} is \texttt{flags} or \texttt{ie}.
-		\item Note: As a pseudo instruction, omitting "\texttt{, rB}" will
-			automatically select \texttt{sp} as the particular stack
-			pointer. 
-		%--------
-		\end{itemize}
-	\item Opcode \texttt{0xd}:
-		\texttt{\textbf{pop} sA, rB}
-		\begin{itemize}
-		%--------
-		\item Effect: pops \texttt{sA} off the stack, using
-		\texttt{rB} as the stack pointer, pre-incrementing \texttt{rB}.
-		\item Note that \texttt{sA} is considered to be 32-bit for the
-		purpose of the load from memory and incrementing \texttt{rB},
-		even if \texttt{sA} is \texttt{flags} or \texttt{ie}.
-		\item Note: As a pseudo instruction, omitting "\texttt{, rB}" will
-			automatically select \texttt{sp} as the particular stack
-			pointer. 
-		%--------
-		\end{itemize}
-	\item Opcode \texttt{0xe}:
-		\texttt{\textbf{mul} rA, rB}
-		\begin{itemize}
-		%--------
-		\item Effect: \texttt{rA <= rA * rB;}
-		%--------
-		\end{itemize}
-	\item Opcode \texttt{0xf}:
-		\texttt{\textbf{udiv} rA, rB}
-		\begin{itemize}
-		%--------
-		\item Effect: \texttt{rA <= u32(rA) / u32(rB);}
-		%--------
-		\end{itemize}
-	\item Opcode \texttt{0x10}:
-		\texttt{\textbf{sdiv} rA, rB}
-		\begin{itemize}
-		%--------
-		\item Effect: \texttt{rA <= s32(rA) / s32(rB);}
-		%--------
-		\end{itemize}
-	\item Opcode \texttt{0x11}:
-		\texttt{\textbf{umod} rA, rB}
-		\begin{itemize}
-		%--------
-		\item Effect: \texttt{rA <= u32(rA) \% u32(rB);}
-		%--------
-		\end{itemize}
-	\item Opcode \texttt{0x12}:
-		\texttt{\textbf{smod} rA, rB}
-		\begin{itemize}
-		%--------
-		\item Effect: \texttt{rA <= s32(rA) \% s32(rB);}
-		%--------
-		\end{itemize}
-	\item Opcode \texttt{0x13}:
-		\texttt{\textbf{lumul} rA, rB}
-		\begin{itemize}
-		%--------
-		\item Effect: This instruction multiplies \texttt{rA} by
-		\texttt{rB}, performing an unsigned 32-bit by 32-bit -> 64-bit
-		multiply, storing result in \texttt{\{hi, lo\}}.
-		%--------
-		\end{itemize}
-	\item Opcode \texttt{0x14}:
-		\texttt{\textbf{lsmul} rA, rB}
-		\begin{itemize}
-		%--------
-		\item Effect: This instruction multiplies \texttt{rA} by
-		\texttt{rB}, performing a signed 32-bit by 32-bit -> 64-bit
-		multiply, storing result in \texttt{\{hi, lo\}}.
-		%--------
-		\end{itemize}
-	\item Opcode \texttt{0x15}:
-		\texttt{\textbf{ludiv} rA, rB}
-		\begin{itemize}
-		%--------
-		\item Effect: performs a 64-bit by 64-bit unsigned division of
-		\texttt{\{hi, lo\}} by \texttt{\{rA, rB\}}, storing 64-bit
-		result in \texttt{\{hi, lo\}}.
-		\item Note: This instruction executes more quickly if
-		\texttt{rA}'s value is \texttt{0x00000000}, i.e. if the
-		operation is actually a 64-bit by 32-bit -> 64-bit unsigned
-		divide.
-		%--------
-		\end{itemize}
-	\item Opcode \texttt{0x16}:
-		\texttt{\textbf{lsdiv} rA, rB}
-		\begin{itemize}
-		%--------
-		\item Effect: performs a 64-bit by 64-bit signed division of
-		\texttt{\{hi, lo\}} by \texttt{\{rA, rB\}}, storing 64-bit
-		result in \texttt{\{hi, lo\}}.
-		%\item Note: This instruction executes more quickly if
-		%\texttt{rA}'s value is either \texttt{0x00000000} or
-		%\texttt{0xffffffff},  i.e. if the operation is actually a
-		%64-bit by 32-bit -> 64-bit signed divide.
-		\item Note: This instruction executes more quickly if
-		\texttt{rA} is equal to bits \texttt{[63:32]} of
-		\texttt{sign\_extend\_to\_64(rB)}.
-		%--------
-		\end{itemize}
-	\item Opcode \texttt{0x17}:
-		\texttt{\textbf{lumod} rA, rB}
-		\begin{itemize}
-		%--------
-		\item Effect: performs a 64-bit by 64-bit unsigned modulo of
-		\texttt{\{hi, lo\}} by \texttt{\{rA, rB\}}, storing 64-bit
-		result in \texttt{\{hi, lo\}}.
-		\item Note: This instruction executes more quickly if
-		\texttt{rA}'s value is \texttt{0x00000000}, i.e. if the
-		operation is actually a 64-bit by 32-bit -> 64-bit unsigned
-		modulo.
-		%--------
-		\end{itemize}
-	\item Opcode \texttt{0x18}:
-		\texttt{\textbf{lsmod} rA, rB}
-		\begin{itemize}
-		%--------
-		\item Effect: performs a 64-bit by 64-bit signed modulo of
-		\texttt{\{hi, lo\}} by \texttt{\{rA, rB\}}, storing 64-bit
-		result in \texttt{\{hi, lo\}}.
-		\item Note: This instruction executes more quickly if
-		\texttt{rA} is equal to bits \texttt{[63:32]} of
-		\texttt{sign\_extend\_to\_64(rB)}.
-		%--------
-		\end{itemize}
-	\item Opcode \texttt{0x19}:
-		\texttt{\textbf{ldub} rA, [rB]}
-		\begin{itemize}
-		%--------
-		\item Effect: Load an 8-bit value from memory at address
-		computed as \texttt{rB + <index\_reg>}, zero-extend
-		the 8-bit value to 32 bits, then put the zero-extended 32-bit
-		value into \texttt{rA}.
-		\item The \texttt{<index\_reg>} value is guaranteed to be zero
-		unless an \texttt{index} is in effect.
-		\item Shorthand for having the assembler insert an
-		\texttt{index rC} instruction before this one:
-			\texttt{ldub rA, [rB, rC]}
-		%--------
-		\end{itemize}
-	\item Opcode \texttt{0x1a}:
-		\texttt{\textbf{ldsb} rA, [rB]}
-		\begin{itemize}
-		%--------
-		\item Effect: Load an 8-bit value from memory at address
-		computed as \texttt{rB + <index\_reg>}, sign-extend
-		the 8-bit value to 32 bits, then put the sign-extended 32-bit
-		value into \texttt{rA}.
-		\item The \texttt{<index\_reg>} value is guaranteed to be zero
-		unless an \texttt{index} is in effect.
-		\item Shorthand for having the assembler insert an
-		\texttt{index rC} instruction before this one:
-			\texttt{ldsb rA, [rB, rC]}
-		%--------
-		\end{itemize}
-	\item Opcode \texttt{0x1b}:
-		\texttt{\textbf{lduh} rA, [rB]}
-		\begin{itemize}
-		%--------
-		\item Effect: Load a 16-bit value from memory at address
-		computed as \texttt{rB + <index\_reg>}, zero-extend
-		the 16-bit value to 32 bits, then put the zero-extended 32-bit
-		value into \texttt{rA}.
-		\item The \texttt{<index\_reg>} value is guaranteed to be zero
-		unless an \texttt{index} is in effect.
-		\item Shorthand for having the assembler insert an
-		\texttt{index rC} instruction before this one:
-			\texttt{lduh rA, [rB, rC]}
-		%--------
-		\end{itemize}
-	\item Opcode \texttt{0x1c}:
-		\texttt{\textbf{ldsh} rA, [rB]}
-		\begin{itemize}
-		%--------
-		\item Effect: Load a 16-bit value from memory at address
-		computed as \texttt{rB + <index\_reg>}, sign-extend
-		the 16-bit value to 32 bits, then put the zero-extended 32-bit
-		value into \texttt{rA}.
-		\item The \texttt{<index\_reg>} value is guaranteed to be zero
-		unless an \texttt{index} is in effect.
-		\item Shorthand for having the assembler insert an
-		\texttt{index rC} instruction before this one:
-			\texttt{ldsh rA, [rB, rC]}
-		%--------
-		\end{itemize}
-	\item Opcode \texttt{0x1d}:
-		\texttt{\textbf{stb} rA, [rB]}
-		\begin{itemize}
-		%--------
-		\item Effect: Store \texttt{rA[7:0]} to memory at the address
-		computed as \texttt{rB + <index\_reg>}.
-		\item The \texttt{<index\_reg>} value is guaranteed to be zero
-		unless an \texttt{index} is in effect.
-		\item Shorthand for having the assembler insert an
-		\texttt{index rC} instruction before this one:
-			\texttt{stb rA, [rB, rC]}
-		%--------
-		\end{itemize}
-	\item Opcode \texttt{0x1e}:
-		\texttt{\textbf{sth} rA, [rB]}
-		\begin{itemize}
-		%--------
-		\item Effect: Store \texttt{rA[15:0]} to memory at the address
-		computed as \texttt{rB + <index\_reg>}.
-		\item The \texttt{<index\_reg>} value is guaranteed to be zero
-		unless an \texttt{index} is in effect.
-		\item Shorthand for having the assembler insert an
-		\texttt{index rC} instruction before this one:
-			\texttt{sth rA, [rB, rC]}
 		%--------
 		\end{itemize}
 	%--------
