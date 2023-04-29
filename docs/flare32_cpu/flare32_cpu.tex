@@ -980,6 +980,13 @@
 		\texttt{\textbf{push} rA, rB}
 		\begin{itemize}
 		%--------
+		%\item Pseudo instruction with same effect: 
+		%	\begin{itemize}
+		%	%--------
+		%	\item \texttt{\textbf{strda} rA, [rB]}
+		%	\item Name: store register, decrement base after
+		%	%--------
+		%	\end{itemize}
 		\item Effect: pushes \texttt{rA} onto the stack, using
 		\texttt{rB} as the stack pointer, post-decrementing
 		\texttt{rB}.
@@ -995,6 +1002,13 @@
 		\texttt{\textbf{push} sA, rB}
 		\begin{itemize}
 		%--------
+		%\item Pseudo instruction with same effect: 
+		%	\begin{itemize}
+		%	%--------
+		%	\item \texttt{\textbf{strda} sA, [rB]}
+		%	\item Name: store register, decrement base after
+		%	%--------
+		%	\end{itemize}
 		\item Effect: pushes \texttt{sA} onto the stack, using
 		\texttt{rB} as the stack pointer, post-decrementing
 		\texttt{rB}.
@@ -1010,6 +1024,13 @@
 		\texttt{\textbf{pop} rA, rB}
 		\begin{itemize}
 		%--------
+		%\item Pseudo instruction with same effect: 
+		%	\begin{itemize}
+		%	%--------
+		%	\item \texttt{\textbf{ldrib} rA, rB}
+		%	\item Name: load register, increment base before
+		%	%--------
+		%	\end{itemize}
 		\item Effect: pops \texttt{rA} off the stack, using
 		\texttt{rB} as the stack pointer, pre-incrementing \texttt{rB}.
 		\item This instruction does nothing when \texttt{rA} is the
@@ -1023,6 +1044,13 @@
 		\texttt{\textbf{pop} sA, rB}
 		\begin{itemize}
 		%--------
+		\item Pseudo instruction with same effect: 
+			\begin{itemize}
+			%--------
+			\item \texttt{\textbf{ldrib} sA, rB}
+			\item Name explanation: load register, increment base before
+			%--------
+			\end{itemize}
 		\item Effect: pops \texttt{sA} off the stack, using
 		\texttt{rB} as the stack pointer, pre-incrementing \texttt{rB}.
 		\item Note that \texttt{sA} is considered to be 32-bit for the
@@ -1339,7 +1367,7 @@
 
 	\doublespacing
 
-	\subsection{Instruction Group 7, Subgroup 0b00:
+	\subsection{Instruction Group 7, Subgroup \texttt{0b00}:
 		Extra 8-bit and 16-bit Ops}
 	The following encoding is used, with each character representing one
 	bit: \\
@@ -1364,7 +1392,7 @@
 	\end{itemize}
 	\doublespacing
 
-	Here is a list of instructions from this encoding gorup.
+	Here is a list of instructions from this encoding group.
 
 	\singlespacing
 	\begin{itemize}
@@ -1434,6 +1462,64 @@
 					\texttt{rA[15:0]} by \texttt{rB}
 			%--------
 			\end{itemize}
+		%--------
+		\end{itemize}
+	%--------
+	\end{itemize}
+
+	\doublespacing
+
+	\subsection{Instruction Group 7, Subgroup \texttt{0b010}:
+		Extra load/store instructions}
+	The following encoding is used, with each character representing one
+	bit: \\
+	\texttt{1110 10oo bbbb aaaa}, where
+
+	\singlespacing
+	\begin{itemize}
+	%--------
+	\item \texttt{o} is the opcode
+	\item \texttt{b} encodes register \texttt{sA}
+	\item \texttt{a} encodes register \texttt{rB} or \texttt{sB}
+	%--------
+	\end{itemize}
+	\doublespacing
+
+	Here is a list of instructions from this encoding group.
+
+	\singlespacing
+	\begin{itemize}
+	%--------
+	\item Opcode \texttt{0x0}:
+		\texttt{\textbf{ldr} sA, [rB]}
+		\begin{itemize}
+		%--------
+		\item Effect: 32-bit load of \texttt{sA} from memory at address
+			held in \texttt{rB}.
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0x1}:
+		\texttt{\textbf{ldr} sA, [sB]}
+		\begin{itemize}
+		%--------
+		\item Effect: 32-bit load of \texttt{sA} from memory at address
+			held in \texttt{sB}.
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0x2}:
+		\texttt{\textbf{str} sA, [rB]}
+		\begin{itemize}
+		%--------
+		\item Effect: 32-bit store of \texttt{sA} to memory at address
+			held in \texttt{rB}.
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0x3}:
+		\texttt{\textbf{str} sA, [sB]}
+		\begin{itemize}
+		%--------
+		\item Effect: 32-bit store of \texttt{sA} to memory at address
+			held in \texttt{sB}.
 		%--------
 		\end{itemize}
 	%--------
