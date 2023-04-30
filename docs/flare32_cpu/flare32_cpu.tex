@@ -166,33 +166,38 @@
 	%--------
 	\item \texttt{flags}: arithmetic/logic FLAGS;
 		(reg encoding: \texttt{0x0})
-	\item \texttt{hi}:
-		HIgh 32 bits of instructions that produce 64-bit results;
-		(reg encoding: \texttt{0x1})
-	\item \texttt{lo}:
-		LOw 32 bits of instructions that produce 64-bit results;
-		(reg encoding: \texttt{0x2})
+	%\item \texttt{hi}:
+	%	HIgh 32 bits of instructions that produce 64-bit results;
+	%	(reg encoding: \texttt{0x1})
+	%\item \texttt{lo}:
+	%	LOw 32 bits of instructions that produce 64-bit results;
+	%	(reg encoding: \texttt{0x2})
 	\item \texttt{ids}: Interrupt DeStination:
 		the address to jump to upon an interrupt being serviced
 			(also known as the interrupt vector);
-		(reg encoding: \texttt{0x3})
+		%(reg encoding: \texttt{0x3})
+		(reg encoding: \texttt{0x1})
 	\item \texttt{ira}: Interrupt Return Address:
 		the address that was jumped from upon an interrupt being
 			serviced;
-		(reg encoding: \texttt(0x4))
+		%(reg encoding: \texttt(0x4))
+		(reg encoding: \texttt(0x2))
 	\item \texttt{ie}: IRQ Enable flag:
 		flag indicating whether IRQs are
 			disabled (\texttt{0x0}) or enabled (\texttt{0x1});
 		note that this flag starts with a value of \texttt{0x0};
-		(reg encoding: 0x5)
+		%(reg encoding: \texttt{0x5})
+		(reg encoding: \texttt{0x3})
 	\item \texttt{ity}: Interrupt TYpe:
 		flag indicating whether the most recently taken interrupt is an
 			IRQ (\texttt{0x0}) or a \texttt{swi} (\texttt{0x1})
-		(reg encoding: 0x6)
+		%(reg encoding: \texttt{0x6})
+		(reg encoding: \texttt{0x4})
 	\item \texttt{sty}: Software interrupt TYpe:
 		\texttt{swi}'s argument. For \texttt{swi rA, \#simm}, this is the
 			value \texttt{rA + simm}
-		(reg encoding: 0x7)
+		%(reg encoding: \texttt{0x7})
+		(reg encoding: \texttt{0x5})
 	\item Note:
 		All other encodings for special-purpose registers are reserved.
 	%--------
@@ -1124,7 +1129,7 @@
 		%--------
 		\item Effect: This instruction multiplies \texttt{rA} by
 		\texttt{rB}, performing an unsigned 32-bit by 32-bit -> 64-bit
-		multiply, storing result in \texttt{\{hi, lo\}}.
+		multiply, storing result in \texttt{\{r0, r1\}}.
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0x11}:
@@ -1133,7 +1138,7 @@
 		%--------
 		\item Effect: This instruction multiplies \texttt{rA} by
 		\texttt{rB}, performing a signed 32-bit by 32-bit -> 64-bit
-		multiply, storing result in \texttt{\{hi, lo\}}.
+		multiply, storing result in \texttt{\{r0, r1\}}.
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0x12}:
@@ -1141,8 +1146,8 @@
 		\begin{itemize}
 		%--------
 		\item Effect: performs a 64-bit by 64-bit unsigned division of
-		\texttt{\{hi, lo\}} by \texttt{\{rA, rB\}}, storing 64-bit
-		result in \texttt{\{hi, lo\}}.
+		\texttt{\{r0, r1\}} by \texttt{\{rA, rB\}}, storing 64-bit
+		result in \texttt{\{r0, r1\}}.
 		\item Note: This instruction executes more quickly if
 		\texttt{rA}'s value is \texttt{0x00000000}, i.e. if the
 		operation is actually a 64-bit by 32-bit -> 64-bit unsigned
@@ -1154,8 +1159,8 @@
 		\begin{itemize}
 		%--------
 		\item Effect: performs a 64-bit by 64-bit signed division of
-		\texttt{\{hi, lo\}} by \texttt{\{rA, rB\}}, storing 64-bit
-		result in \texttt{\{hi, lo\}}.
+		\texttt{\{r0, r1\}} by \texttt{\{rA, rB\}}, storing 64-bit
+		result in \texttt{\{r0, r1\}}.
 		%\item Note: This instruction executes more quickly if
 		%\texttt{rA}'s value is either \texttt{0x00000000} or
 		%\texttt{0xffffffff},  i.e. if the operation is actually a
@@ -1170,8 +1175,8 @@
 		\begin{itemize}
 		%--------
 		\item Effect: performs a 64-bit by 64-bit unsigned modulo of
-		\texttt{\{hi, lo\}} by \texttt{\{rA, rB\}}, storing 64-bit
-		result in \texttt{\{hi, lo\}}.
+		\texttt{\{r0, r1\}} by \texttt{\{rA, rB\}}, storing 64-bit
+		result in \texttt{\{r0, r1\}}.
 		\item Note: This instruction executes more quickly if
 		\texttt{rA}'s value is \texttt{0x00000000}, i.e. if the
 		operation is actually a 64-bit by 32-bit -> 64-bit unsigned
@@ -1183,8 +1188,8 @@
 		\begin{itemize}
 		%--------
 		\item Effect: performs a 64-bit by 64-bit signed modulo of
-		\texttt{\{hi, lo\}} by \texttt{\{rA, rB\}}, storing 64-bit
-		result in \texttt{\{hi, lo\}}.
+		\texttt{\{r0, r1\}} by \texttt{\{rA, rB\}}, storing 64-bit
+		result in \texttt{\{r0, r1\}}.
 		\item Note: This instruction executes more quickly if
 		\texttt{rA} is equal to bits \texttt{[63:32]} of
 		\texttt{sign\_extend\_to\_64(rB)}.
