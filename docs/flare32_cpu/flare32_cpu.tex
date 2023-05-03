@@ -1127,72 +1127,142 @@
 		\texttt{\textbf{lumul} rA, rB}
 		\begin{itemize}
 		%--------
-		\item Effect: This instruction multiplies \texttt{rA} by
-		\texttt{rB}, performing an unsigned 32-bit by 32-bit -> 64-bit
-		multiply, storing result in \texttt{\{r0, r1\}}.
+		%\item Effect: This instruction multiplies \texttt{rA} by
+		%	\texttt{rB}, performing an unsigned 32-bit by 32-bit -> 64-bit
+		%	multiply, storing result in \texttt{\{r0, r1\}}.
+		\item Effect: This instruction multiplies
+			\texttt{concat\{rA, r\{A+1\}\}}
+			by \texttt{concat\{rB, r\{B+1\}\}},
+			performing an unsigned 32-bit by 32-bit -> 64-bit multiply,
+			storing 64-bit result in
+			\texttt{concat\{rA, r\{A+1\}\}}.
+		\item Note: This instruction operates as if
+			\texttt{rA} were encoded with \texttt{(A[0x0] == 0b0)}
+			and
+			\texttt{rB} were encoded with \texttt{(B[0x0] == 0b0)},
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0x11}:
 		\texttt{\textbf{lsmul} rA, rB}
 		\begin{itemize}
 		%--------
-		\item Effect: This instruction multiplies \texttt{rA} by
-		\texttt{rB}, performing a signed 32-bit by 32-bit -> 64-bit
-		multiply, storing result in \texttt{\{r0, r1\}}.
+		%\item Effect: This instruction multiplies \texttt{rA} by
+		%\texttt{rB}, performing a signed 32-bit by 32-bit -> 64-bit
+		%multiply, storing result in \texttt{\{r0, r1\}}.
+		\item Effect: This instruction multiplies
+			\texttt{concat\{rA, r\{A+1\}\}}
+			by \texttt{concat\{rB, r\{B+1\}\}},
+			performing a signed 32-bit by 32-bit -> 64-bit multiply,
+			storing 64-bit result in
+			\texttt{concat\{rA, r\{A+1\}\}}.
+		\item Note: This instruction operates as if
+			\texttt{rA} were encoded with \texttt{(A[0x0] == 0b0)}
+			and
+			\texttt{rB} were encoded with \texttt{(B[0x0] == 0b0)},
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0x12}:
 		\texttt{\textbf{ludiv} rA, rB}
 		\begin{itemize}
 		%--------
+		%\item Effect: performs a 64-bit by 64-bit unsigned division of
+		%	\texttt{\{r0, r1\}} by \texttt{\{rA, rB\}}, storing 64-bit
+		%	result in \texttt{\{r0, r1\}}.
+		%\item Note: This instruction executes more quickly if
+		%	\texttt{rA}'s value is \texttt{0x00000000}, i.e. if the
+		%	operation is actually a 64-bit by 32-bit -> 64-bit unsigned
+		%	divide.
 		\item Effect: performs a 64-bit by 64-bit unsigned division of
-		\texttt{\{r0, r1\}} by \texttt{\{rA, rB\}}, storing 64-bit
-		result in \texttt{\{r0, r1\}}.
+			\texttt{concat\{rA, r\{A + 1\}\}}
+			by \texttt{concat\{rB, r\{B + 1\}\}},
+			storing 64-bit result in
+			\texttt{concat\{rA, r\{A + 1\}\}}.
+		\item Note: This instruction operates as if
+			\texttt{rA} were encoded with \texttt{(A[0x0] == 0b0)}
+			and
+			\texttt{rB} were encoded with \texttt{(B[0x0] == 0b0)},
 		\item Note: This instruction executes more quickly if
-		\texttt{rA}'s value is \texttt{0x00000000}, i.e. if the
-		operation is actually a 64-bit by 32-bit -> 64-bit unsigned
-		divide.
+			\texttt{rB}'s value is \texttt{0x00000000}, i.e. if the
+			operation is actually a 64-bit by 32-bit -> 64-bit unsigned
+			divide.
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0x13}:
 		\texttt{\textbf{lsdiv} rA, rB}
 		\begin{itemize}
 		%--------
-		\item Effect: performs a 64-bit by 64-bit signed division of
-		\texttt{\{r0, r1\}} by \texttt{\{rA, rB\}}, storing 64-bit
-		result in \texttt{\{r0, r1\}}.
+		%\item Effect: performs a 64-bit by 64-bit signed division of
+		%	\texttt{\{r0, r1\}} by \texttt{\{rA, rB\}}, storing 64-bit
+		%	result in \texttt{\{r0, r1\}}.
 		%\item Note: This instruction executes more quickly if
-		%\texttt{rA}'s value is either \texttt{0x00000000} or
-		%\texttt{0xffffffff},  i.e. if the operation is actually a
-		%64-bit by 32-bit -> 64-bit signed divide.
+		%	\texttt{rA}'s value is either \texttt{0x00000000} or
+		%	\texttt{0xffffffff},  i.e. if the operation is actually a
+		%	64-bit by 32-bit -> 64-bit signed divide.
+		%\item Note: This instruction executes more quickly if
+		%	\texttt{rA} is equal to bits \texttt{[63:32]} of
+		%	\texttt{sign\_extend\_to\_64(rB)}.
+		\item Effect: performs a 64-bit by 64-bit signed division of
+			\texttt{concat\{rA, r\{A + 1\}\}}
+			by \texttt{concat\{rB, r\{B + 1\}\}},
+			storing 64-bit result in
+			\texttt{concat\{rA, r\{A + 1\}\}}.
+		\item Note: This instruction operates as if
+			\texttt{rA} were encoded with \texttt{(A[0x0] == 0b0)}
+			and
+			\texttt{rB} were encoded with \texttt{(B[0x0] == 0b0)},
 		\item Note: This instruction executes more quickly if
-		\texttt{rA} is equal to bits \texttt{[63:32]} of
-		\texttt{sign\_extend\_to\_64(rB)}.
+			\texttt{rB} is equal to bits \texttt{[63:32]} of
+			\texttt{s64(r\{B+1\})}.
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0x14}:
 		\texttt{\textbf{lumod} rA, rB}
 		\begin{itemize}
 		%--------
+		%\item Effect: performs a 64-bit by 64-bit unsigned modulo of
+		%	\texttt{\{r0, r1\}} by \texttt{\{rA, rB\}}, storing 64-bit
+		%	result in \texttt{\{r0, r1\}}.
+		%\item Note: This instruction executes more quickly if
+		%	\texttt{rA}'s value is \texttt{0x00000000}, i.e. if the
+		%	operation is actually a 64-bit by 32-bit -> 64-bit unsigned
+		%	modulo.
 		\item Effect: performs a 64-bit by 64-bit unsigned modulo of
-		\texttt{\{r0, r1\}} by \texttt{\{rA, rB\}}, storing 64-bit
-		result in \texttt{\{r0, r1\}}.
+			\texttt{concat\{rA, r\{A + 1\}\}}
+			by \texttt{concat\{rB, r\{B + 1\}\}},
+			storing 64-bit result in
+			\texttt{concat\{rA, r\{A + 1\}\}}.
+		\item Note: This instruction operates as if
+			\texttt{rA} were encoded with \texttt{(A[0x0] == 0b0)}
+			and
+			\texttt{rB} were encoded with \texttt{(B[0x0] == 0b0)},
 		\item Note: This instruction executes more quickly if
-		\texttt{rA}'s value is \texttt{0x00000000}, i.e. if the
-		operation is actually a 64-bit by 32-bit -> 64-bit unsigned
-		modulo.
+			\texttt{rB}'s value is \texttt{0x00000000}, i.e. if the
+			operation is actually a 64-bit by 32-bit -> 64-bit unsigned
+			modulo.
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0x15}:
 		\texttt{\textbf{lsmod} rA, rB}
 		\begin{itemize}
 		%--------
+		%\item Effect: performs a 64-bit by 64-bit signed modulo of
+		%	\texttt{\{r0, r1\}} by \texttt{\{rA, rB\}}, storing 64-bit
+		%	result in \texttt{\{r0, r1\}}.
+		%\item Note: This instruction executes more quickly if
+		%	\texttt{rA} is equal to bits \texttt{[63:32]} of
+		%	\texttt{sign\_extend\_to\_64(rB)}.
 		\item Effect: performs a 64-bit by 64-bit signed modulo of
-		\texttt{\{r0, r1\}} by \texttt{\{rA, rB\}}, storing 64-bit
-		result in \texttt{\{r0, r1\}}.
+			\texttt{concat\{rA, r\{A + 1\}\}}
+			by \texttt{concat\{rB, r\{B + 1\}\}},
+			storing 64-bit result in
+			\texttt{concat\{rA, r\{A + 1\}\}}.
+		\item Note: This instruction operates as if
+			\texttt{rA} were encoded with \texttt{(A[0x0] == 0b0)}
+			and
+			\texttt{rB} were encoded with \texttt{(B[0x0] == 0b0)},
 		\item Note: This instruction executes more quickly if
-		\texttt{rA} is equal to bits \texttt{[63:32]} of
-		\texttt{sign\_extend\_to\_64(rB)}.
+			\texttt{rB} is equal to bits \texttt{[63:32]} of
+			\texttt{s64(r\{B+1\})}.
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0x16}:
