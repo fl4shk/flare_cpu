@@ -1127,38 +1127,40 @@
 		\texttt{\textbf{lumul} rA, rB}
 		\begin{itemize}
 		%--------
-		%\item Effect: This instruction multiplies \texttt{rA} by
-		%	\texttt{rB}, performing an unsigned 32-bit by 32-bit -> 64-bit
-		%	multiply, storing result in \texttt{\{r0, r1\}}.
-		\item Effect: This instruction multiplies
-			\texttt{concat\{rA, r\{A+1\}\}}
-			by \texttt{concat\{rB, r\{B+1\}\}},
-			performing an unsigned 32-bit by 32-bit -> 64-bit multiply,
-			storing 64-bit result in
-			\texttt{concat\{rA, r\{A+1\}\}}.
-		\item Note: This instruction operates as if
-			\texttt{rA} were encoded with \texttt{(A[0x0] == 0b0)}
-			and
-			\texttt{rB} were encoded with \texttt{(B[0x0] == 0b0)},
+		\item Effect: This instruction multiplies \texttt{rA} by
+			\texttt{rB}, performing an unsigned 32-bit by 32-bit -> 64-bit
+			multiply, storing result in \texttt{concat\{r0, r1\}}.
+		%\item Effect: This instruction multiplies
+		%	%\texttt{concat\{rA, r\{A+1\}\}}
+		%	%by \texttt{concat\{rB, r\{B+1\}\}},
+		%	\texttt{rA} by \texttt{rB},
+		%	performing an unsigned 32-bit by 32-bit -> 64-bit multiply,
+		%	storing 64-bit result in
+		%	\texttt{concat\{rA, r\{A+1\}\}}.
+		%\item Note: This instruction operates as if
+		%	\texttt{rA} were encoded with \texttt{(A[0x0] == 0b0)}.
+		%	%and
+		%	%\texttt{rB} were encoded with \texttt{(B[0x0] == 0b0)},
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0x11}:
 		\texttt{\textbf{lsmul} rA, rB}
 		\begin{itemize}
 		%--------
-		%\item Effect: This instruction multiplies \texttt{rA} by
-		%\texttt{rB}, performing a signed 32-bit by 32-bit -> 64-bit
-		%multiply, storing result in \texttt{\{r0, r1\}}.
-		\item Effect: This instruction multiplies
-			\texttt{concat\{rA, r\{A+1\}\}}
-			by \texttt{concat\{rB, r\{B+1\}\}},
-			performing a signed 32-bit by 32-bit -> 64-bit multiply,
-			storing 64-bit result in
-			\texttt{concat\{rA, r\{A+1\}\}}.
-		\item Note: This instruction operates as if
-			\texttt{rA} were encoded with \texttt{(A[0x0] == 0b0)}
-			and
-			\texttt{rB} were encoded with \texttt{(B[0x0] == 0b0)},
+		\item Effect: This instruction multiplies \texttt{rA} by
+		\texttt{rB}, performing a signed 32-bit by 32-bit -> 64-bit
+		multiply, storing result in \texttt{concat\{r0, r1\}}.
+		%\item Effect: This instruction multiplies
+		%	%\texttt{concat\{rA, r\{A+1\}\}}
+		%	%by \texttt{concat\{rB, r\{B+1\}\}},
+		%	\texttt{rA} by \texttt{rB},
+		%	performing a signed 32-bit by 32-bit -> 64-bit multiply,
+		%	storing 64-bit result in
+		%	\texttt{concat\{rA, r\{A+1\}\}}.
+		%\item Note: This instruction operates as if
+		%	\texttt{rA} were encoded with \texttt{(A[0x0] == 0b0)}
+		%	and
+		%	\texttt{rB} were encoded with \texttt{(B[0x0] == 0b0)},
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0x12}:
