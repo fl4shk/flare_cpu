@@ -569,9 +569,9 @@
 		\texttt{\textbf{cmp} rA, rB}
 		\begin{itemize}
 		%--------
-		\item Effect Compare \texttt{rA} to \texttt{rB}. \texttt{cmp}
-		is \textit{always} able to affect flags, independent of the
-		encoded \texttt{f} bit of the instruction.
+		\item Effect: Compare \texttt{rA} to \texttt{rB}. \texttt{cmp}
+			is \textit{always} able to affect flags, independent of the
+			encoded \texttt{f} bit of the instruction.
 		\item Affectable flags:
 			\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
 		%--------
@@ -582,7 +582,7 @@
 		%--------
 		\item Mnemonic for when flags not affected: \texttt{cpy}
 		\item Mnemonic for when flags affected: \texttt{cpy.f}
-		\item Effect Copy \texttt{rB} into \texttt{rA}
+		\item Effect: Copy \texttt{rB} into \texttt{rA}
 		\item Affectable flags:
 			\texttt{Z}, \texttt{N}
 		%--------
@@ -593,7 +593,7 @@
 		%--------
 		\item Mnemonic for when flags not affected: \texttt{lsl}
 		\item Mnemonic for when flags affected: \texttt{lsl.f}
-		\item Effect Logical shift left
+		\item Effect: Logical shift left
 		\item Affectable flags:
 			\texttt{Z}, \texttt{N}
 		%--------
@@ -604,7 +604,7 @@
 		%--------
 		\item Mnemonic for when flags not affected: \texttt{lsr}
 		\item Mnemonic for when flags affected: \texttt{lsr.f}
-		\item Effect Logical shift right
+		\item Effect: Logical shift right
 		\item Affectable flags:
 			\texttt{Z}, \texttt{N}
 		%--------
@@ -615,7 +615,7 @@
 		%--------
 		\item Mnemonic for when flags not affected: \texttt{asr}
 		\item Mnemonic for when flags affected: \texttt{asr.f}
-		\item Effect Arithmetic shift right
+		\item Effect: Arithmetic shift right
 		\item Affectable flags:
 			\texttt{Z}, \texttt{N}
 		%--------
@@ -626,7 +626,7 @@
 		%--------
 		\item Mnemonic for when flags not affected: \texttt{and}
 		\item Mnemonic for when flags affected: \texttt{and.f}
-		\item Effect Bitwise AND
+		\item Effect: Bitwise AND
 		\item Affectable flags:
 			\texttt{Z}, \texttt{N}
 		%--------
@@ -637,7 +637,7 @@
 		%--------
 		\item Mnemonic for when flags not affected: \texttt{orr}
 		\item Mnemonic for when flags affected: \texttt{orr.f}
-		\item Effect Bitwise OR
+		\item Effect: Bitwise OR
 		\item Affectable flags:
 			\texttt{Z}, \texttt{N}
 		%--------
@@ -648,7 +648,7 @@
 		%--------
 		\item Mnemonic for when flags not affected: \texttt{xor}
 		\item Mnemonic for when flags affected: \texttt{xor.f}
-		\item Effect Bitwise XOR
+		\item Effect: Bitwise XOR
 		\item Affectable flags:
 			\texttt{Z}, \texttt{N}
 		%--------
@@ -659,7 +659,7 @@
 		%--------
 		\item Mnemonic for when flags not affected: \texttt{adc}
 		\item Mnemonic for when flags affected: \texttt{adc.f}
-		\item Effect Add with Carry
+		\item Effect: Add with Carry
 		\item Affectable flags:
 			\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
 		%--------
@@ -670,7 +670,22 @@
 		%--------
 		\item Mnemonic for when flags not affected: \texttt{sbc}
 		\item Mnemonic for when flags affected: \texttt{sbc.f}
-		\item Effect Subtract with Borrow
+		\item Effect: Subtract with Borrow
+		\item Affectable flags:
+			\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0xe}
+		\texttt{\textbf{cmpbc} rA, rB}
+		\begin{itemize}
+		%--------
+		\item Effect: Compare \texttt{rA} to \texttt{rB},
+			but with carry-in. \texttt{cmpbc}
+			is \textit{always} able to affect flags, independent of the
+			encoded \texttt{f} bit of the instruction.
+		\item: Note: this instruction acts like
+			\texttt{\textbf{sbc} rA, rB}, but without storing the
+			subtraction's result into \texttt{rA}.
 		\item Affectable flags:
 			\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
 		%--------
