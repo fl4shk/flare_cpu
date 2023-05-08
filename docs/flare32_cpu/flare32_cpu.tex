@@ -659,7 +659,9 @@
 		%--------
 		\item Mnemonic for when flags not affected: \texttt{adc}
 		\item Mnemonic for when flags affected: \texttt{adc.f}
-		\item Effect: Add with Carry
+		\item Effect: Add with Carry, using the formula
+			\texttt{rA + rB + flags.C} to compute the value that will be
+			written into \texttt{rA}.
 		\item Affectable flags:
 			\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
 		%--------
@@ -670,22 +672,28 @@
 		%--------
 		\item Mnemonic for when flags not affected: \texttt{sbc}
 		\item Mnemonic for when flags affected: \texttt{sbc.f}
-		\item Effect: Subtract with Borrow
+		\item Effect: Subtract with Borrow, using the formula
+			\texttt{rA + (~rB) + flags.C} to compute the value that will be
+			written into \texttt{rA}.
 		\item Affectable flags:
 			\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
 		%--------
 		\end{itemize}
-	\item Opcode \texttt{0xe}
+	\item Opcode \texttt{0xe}:
 		\texttt{\textbf{cmpbc} rA, rB}
 		\begin{itemize}
 		%--------
 		\item Effect: Compare \texttt{rA} to \texttt{rB},
-			but with carry-in. \texttt{cmpbc}
-			is \textit{always} able to affect flags, independent of the
-			encoded \texttt{f} bit of the instruction.
-		\item: Note: this instruction acts like
+			but with carry-in and a different effect for setting the
+			\texttt{flags.Z}.
+			\texttt{cmpbc} is \textit{always} able to affect
+			\texttt{flags}, independent of the encoded \texttt{f} bit of
+			the instruction.
+		\item: Note: this instruction acts much like
 			\texttt{\textbf{sbc} rA, rB}, but without storing the
 			subtraction's result into \texttt{rA}.
+			However, this instruction sets the \texttt{Z} flag to
+			\texttt{prev(flags.Z) AND ((rA + (~rB) + flags.C) == 0)}
 		\item Affectable flags:
 			\texttt{Z}, \texttt{C}, \texttt{V}, \texttt{N}
 		%--------
