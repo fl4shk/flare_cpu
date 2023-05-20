@@ -42,7 +42,7 @@ CC:=$(PREFIX)gcc
 C_FLAGS:=$(C_FLAGS) -std=c11 -Wall
 
 AS:=$(PREFIX)as
-S_FLAGS:=$(S_FLAGS)
+S_FLAGS:=$(S_FLAGS) #-mlinkrelax
 
 OBJDUMP:=$(PREFIX)objdump
 
