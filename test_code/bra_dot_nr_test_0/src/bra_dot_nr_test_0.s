@@ -16,23 +16,28 @@ _start:
 	//cpy r3, r5
 	////cpy r2, r3
 
-	//bra testificate
+	bra testificate
 	bra target
+	cpy.nr r0, #-1
 
 //.org 0x200034
 .org 0x32000
+//.global target
 target:
 	//cpy r0, #target
 	//cpy r0, #0x3333
 	//cpy r0, #_start
 	cpy r0, #target
+	//cpy r0, #target + 0x3000
 	lsr r0, #target + 0x3000
-	bra.nr target
-	bra _start
+	//bra.nr target
+	//bra _start
+	//bra testificate
+	//str r0, [r0, r2, #5]
+	//cpy r
+infin:
+	bra infin
 	bra testificate
-//infin:
-//	bra infin
-//	bra testificate
 
 //some_data:
 //	.hword some_data

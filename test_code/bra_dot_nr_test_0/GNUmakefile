@@ -52,7 +52,7 @@ LD:=$(PREFIX)ld
 
 # Initial linker flags
 #LD_FLAGS:=$(LD_FLAGS) -Wl,--relax #-lm
-LD_FLAGS:=$(LD_FLAGS) --relax
+LD_FLAGS:=$(LD_FLAGS) #--relax
 
 
 

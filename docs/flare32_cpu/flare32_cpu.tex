@@ -1090,25 +1090,24 @@
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0xa}:
-		\texttt{\textbf{index} rA}
+		\texttt{\textbf{pop} pc, rB}
 		\begin{itemize}
 		%--------
-		\item Effect: Performs \texttt{<index\_reg> <= rA;} and stores
-		that \texttt{index} is in effect.
-		\item Note: If \texttt{index} is in effect and the current
-		instruction is \texttt{index}, the current instruction will be
-		treated as a NOP, and \texttt{index} will stop being in effect.
-		\item Note: \texttt{pre} and \texttt{index} can be combined
-		with one another (though this is only useful for \texttt{ldr}
-		and \texttt{str}).
-		\item Note: A non-\texttt{pre} instruction following
-		\texttt{index} will store that that \texttt{index} is not in
-		effect any more. (It will also store that \texttt{pre} is not
-		in effect any more).
-		\item Note: If \texttt{index} is in effect, the current
-		instruction cannot be interrupted by an IRQ.
-		\item Note: Any time \texttt{index} stops being in effect,
-		\texttt{pre} will stop being in effect as well.
+		\item Pseudo instruction with same effect: 
+			\begin{itemize}
+			%--------
+			\item \texttt{\textbf{ldrib} pc, rB}
+			\item Name explanation: load register, increment base before
+			%--------
+			\end{itemize}
+		\item Effect: pops \texttt{pc} off the stack, using
+		\texttt{rB} as the stack pointer, pre-incrementing \texttt{rB}.
+		\item Note that \texttt{pc} is considered to be 32-bit for the
+		purpose of the load from memory and incrementing \texttt{rB},
+		even if \texttt{pc} is \texttt{flags} or \texttt{ie}.
+		\item Note: As a pseudo instruction, omitting "\texttt{, rB}" will
+			automatically select \texttt{sp} as the particular stack
+			pointer. 
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0xb}:
@@ -1395,6 +1394,28 @@
 		\begin{itemize}
 		%--------
 		\item Effect: \texttt{sA <= sB;}
+		%--------
+		\end{itemize}
+	\item Opcode \texttt{0x1f}:
+		\texttt{\textbf{index} rA}
+		\begin{itemize}
+		%--------
+		\item Effect: Performs \texttt{<index\_reg> <= rA;} and stores
+		that \texttt{index} is in effect.
+		\item Note: If \texttt{index} is in effect and the current
+		instruction is \texttt{index}, the current instruction will be
+		treated as a NOP, and \texttt{index} will stop being in effect.
+		\item Note: \texttt{pre} and \texttt{index} can be combined
+		with one another (though this is only useful for \texttt{ldr}
+		and \texttt{str}).
+		\item Note: A non-\texttt{pre} instruction following
+		\texttt{index} will store that that \texttt{index} is not in
+		effect any more. (It will also store that \texttt{pre} is not
+		in effect any more).
+		\item Note: If \texttt{index} is in effect, the current
+		instruction cannot be interrupted by an IRQ.
+		\item Note: Any time \texttt{index} stops being in effect,
+		\texttt{pre} will stop being in effect as well.
 		%--------
 		\end{itemize}
 	%--------
