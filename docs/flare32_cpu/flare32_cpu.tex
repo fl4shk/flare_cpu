@@ -272,7 +272,9 @@
 	\item If \texttt{pre} is used, the immediate field of the
 	\texttt{pre} instruction will form bits \texttt{[16:5]} of the
 	immediate of the next non-\texttt{index} instruction. The 17-bit
-	immediate will then be sign-extended to 32 bits.
+	immediate will then be sign-extended to 32 bits. Sign-extension will
+	be performed on the 17-bit immediate even if, had there been no
+	\texttt{pre}, the 5-bit immediate would have been zero-extended.
 
 	\item On the other hand, if \texttt{lpre} is used, the immediate
 	field of the \texttt{lpre} instruction will form bits
@@ -280,7 +282,6 @@
 	instruction.
 	%--------
 	\end{itemize}
-
 
 	For branch instructions (group 3):
 	\begin{itemize}
@@ -298,14 +299,17 @@
 	%--------
 	\end{itemize}
 
-	Instructions that use an immediate value, other than \texttt{pre},
-	\texttt{lpre}, and relative branches normally have 5-bit immediates.
-	Relative branches normally have 9-bit branch offsets. if \texttt{pre}
-	or \texttt{lpre} is used with a relative branch, bits \texttt{[9:5]} of
-	the branch offset that is encoded directly into a relative branch
-	instruction will be ignored, and the immediate field of the
-	\texttt{pre} or \texttt{lpre} instruction will be used to determine
-	bits \texttt{[9:5]} of the branch offset..
+	%Instructions that use an immediate value, other than \texttt{pre},
+	%\texttt{lpre}, and relative branches normally have 5-bit immediates.
+	%Relative branches normally have 9-bit branch offsets.
+
+	%If \texttt{pre}
+	%or \texttt{lpre} is used with a relative branch, bits \texttt{[9:5]} of
+	%the branch offset that is encoded directly into a relative branch
+	%instruction will be ignored, and the immediate field of the
+	%\texttt{pre} or \texttt{lpre} instruction will be used to determine
+	%bits \texttt{[9:5]} of the branch offset..
+	%If \texttt{pre} is used with a relative branch, then bits 
 
 	\subsubsection{Handling of \texttt{pre}, \texttt{lpre}, and
 	\texttt{index}}
@@ -345,8 +349,6 @@
 
 	\VerbatimInput{verbatim_input/pre_lpre_index.txt}
 
-
-
 	\subsection{Instruction Group 1}
 	The following encoding is used, with each character representing one
 	bit: \\
@@ -355,8 +357,9 @@
 	\singlespacing
 	\begin{itemize}
 	%--------
-	\item \texttt{i} is a 5-bit sign-extended immediate, and is denoted
-	\texttt{simm}
+	\item \texttt{i} is a 5-bit sign-extended or zero-extended immediate,
+		and is denoted \texttt{simm} when sign-extended or \texttt{imm}
+		when zero-extended.
 	\item \texttt{a} encodes register \texttt{rA}
 	\item \texttt{o} is the opcode
 	%\item \texttt{f} is \texttt{0} if this instruction cannot affect
@@ -375,7 +378,7 @@
 		\texttt{\textbf{add} rA, \#simm}
 	\item Opcode \texttt{0x1}:
 		% subi was deemed (mostly) unnecessary given that immediates are
-		% sign-extended.
+		% (for \texttt{add} immediate instruction) sign-extended.
 		\texttt{\textbf{add} rA, pc, \#simm}
 		\begin{itemize}
 		%--------
@@ -404,21 +407,21 @@
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0x6}:
-		\texttt{\textbf{lsl} rA, \#simm}
+		\texttt{\textbf{lsl} rA, \#imm}
 		\begin{itemize}
 		%--------
 		\item Effect: Logical shift left
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0x7}:
-		\texttt{\textbf{lsr} rA, \#simm}
+		\texttt{\textbf{lsr} rA, \#imm}
 		\begin{itemize}
 		%--------
 		\item Effect: Logical shift right
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0x8}:
-		\texttt{\textbf{asr} rA, \#simm}
+		\texttt{\textbf{asr} rA, \#imm}
 		\begin{itemize}
 		%--------
 		\item Effect: Arithmetic shift right
@@ -446,7 +449,7 @@
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0xc}:
-		\texttt{\textbf{ze} rA, \#simm}
+		\texttt{\textbf{ze} rA, \#imm}
 		\begin{itemize}
 		%--------
 		%\item Effect: Set \texttt{rA[31:8]} to zero.
@@ -454,7 +457,7 @@
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0xd}:
-		\texttt{\textbf{se} rA, \#simm}
+		\texttt{\textbf{se} rA, \#imm}
 		\begin{itemize}
 		%--------
 		%\item Effect: Set \texttt{rA[31:16]} to zero.
@@ -472,7 +475,7 @@
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0xf}:
-		\texttt{\textbf{swi} \#simm}
+		\texttt{\textbf{swi} \#imm}
 		\begin{itemize}
 		%--------
 		\item Effect:

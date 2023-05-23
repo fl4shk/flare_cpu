@@ -35,6 +35,7 @@ target:
 	//bra testificate
 	//str r0, [r0, r2, #5]
 	//cpy r
+	pop pc
 infin:
 	bra infin
 	bra testificate
