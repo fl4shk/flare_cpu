@@ -359,7 +359,8 @@
 	%--------
 	\item \texttt{i} is a 5-bit sign-extended or zero-extended immediate,
 		and is denoted \texttt{simm} when sign-extended or \texttt{imm}
-		when zero-extended.
+		when zero-extended. Also, \texttt{simm} or \texttt{imm} can be
+		expanded with \texttt{pre} or \texttt{lpre}.
 	\item \texttt{a} encodes register \texttt{rA}
 	\item \texttt{o} is the opcode
 	%\item \texttt{f} is \texttt{0} if this instruction cannot affect
@@ -479,7 +480,7 @@
 		\begin{itemize}
 		%--------
 		\item Effect:
-			Call software interrupt number \texttt{simm}.
+			Call software interrupt number \texttt{imm}.
 		%--------
 		\end{itemize}
 	%\item Opcode \texttt{0xe}:
@@ -702,7 +703,7 @@
 		%--------
 		\end{itemize}
 	%\item Opcode \texttt{0xe}:
-	%	\texttt{\textbf{ludiv} rA, rB}
+	%	\texttt{\textbf{udiv64} rA, rB}
 	%	\begin{itemize}
 	%	%--------
 	%	\item Effect: performs a 64-bit by 64-bit unsigned division of
@@ -715,7 +716,7 @@
 	%	%--------
 	%	\end{itemize}
 	%\item Opcode \texttt{0xf}:
-	%	\texttt{\textbf{lsdiv} rA, rB}
+	%	\texttt{\textbf{sdiv64} rA, rB}
 	%	\begin{itemize}
 	%	%--------
 	%	\item Effect: performs a 64-bit by 64-bit signed division of
@@ -740,8 +741,9 @@
 	\singlespacing
 	\begin{itemize}
 	%--------
-	\item \texttt{i} is a 9-bit sign-extended immediate, and is denoted
-	\texttt{simm}
+	\item \texttt{i} is a 9-bit sign-extended immediate,
+		which can be expanded by \texttt{pre} or \texttt{lpre},
+		and is denoted \texttt{simm}
 	\item \texttt{o} is the opcode
 	%\item \texttt{i} is a 9-bit sign-extended immediate, which can
 	%still be affected by \texttt{pre}, but when \texttt{pre} is the
@@ -1189,7 +1191,7 @@
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0x12}:
-		\texttt{\textbf{ludiv} rA, rB}
+		\texttt{\textbf{udiv64} rA, rB}
 		\begin{itemize}
 		%--------
 		%\item Effect: performs a 64-bit by 64-bit unsigned division of
@@ -1215,7 +1217,7 @@
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0x13}:
-		\texttt{\textbf{lsdiv} rA, rB}
+		\texttt{\textbf{sdiv64} rA, rB}
 		\begin{itemize}
 		%--------
 		%\item Effect: performs a 64-bit by 64-bit signed division of
@@ -1243,7 +1245,7 @@
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0x14}:
-		\texttt{\textbf{lumod} rA, rB}
+		\texttt{\textbf{umod64} rA, rB}
 		\begin{itemize}
 		%--------
 		%\item Effect: performs a 64-bit by 64-bit unsigned modulo of
@@ -1269,7 +1271,7 @@
 		%--------
 		\end{itemize}
 	\item Opcode \texttt{0x15}:
-		\texttt{\textbf{lsmod} rA, rB}
+		\texttt{\textbf{smod64} rA, rB}
 		\begin{itemize}
 		%--------
 		%\item Effect: performs a 64-bit by 64-bit signed modulo of
@@ -1434,7 +1436,8 @@
 	\begin{itemize}
 	%--------
 	\item \texttt{i} is a 5-bit sign-extended immediate, which can
-	be expanded by \texttt{pre}, and is denoted \texttt{simm}
+		be expanded by \texttt{pre} or \texttt{lpre}, and is denoted
+		\texttt{simm}
 	\item \texttt{b} encodes register \texttt{rB}
 	\item \texttt{a} encodes register \texttt{rA}
 	%--------
@@ -1450,8 +1453,49 @@
 	The \texttt{<index\_reg>} value is guaranteed to be zero unless an
 	\texttt{index} is in effect.
 
-	Shorthand for having the assembler insert an \texttt{index rC}
-	instruction before this one: \texttt{ldr rA, [rB, rC, \#simm]}
+	%Shorthand for having the assembler insert an \texttt{index rC}
+	%instruction before this one: \texttt{ldr rA, [rB, rC, \#simm]}
+	The following pseudo instructions exist within the assembler for this
+	encoding group:
+	\begin{itemize}
+	%--------
+	\item \texttt{\textbf{ldr} rA, [rB]}
+		\begin{itemize}
+		%--------
+		\item This pseudo instruction assembles to the following:
+			\begin{itemize}
+			%--------
+			\item \texttt{\textbf{ldr} rA, [rB, \#0x0]}
+			%--------
+			\end{itemize}
+		%--------
+		\end{itemize}
+	\item \texttt{\textbf{ldr} rA, [rB, rC]}
+		\begin{itemize}
+		%--------
+		\item This pseudo instruction assembles to the following:
+			\begin{itemize}
+			%--------
+			\item \texttt{\textbf{index} rC}
+			\item \texttt{\textbf{ldr} rA, [rB, \#0x0]}
+			%--------
+			\end{itemize}
+		%--------
+		\end{itemize}
+	\item \texttt{\textbf{ldr} rA, [rB, rC, \#simm]}
+		\begin{itemize}
+		%--------
+		\item This pseudo instruction assembles to the following:
+			\begin{itemize}
+			%--------
+			\item \texttt{\textbf{index} rC}
+			\item \texttt{\textbf{ldr} rA, [rB, \#simm]}
+			%--------
+			\end{itemize}
+		%--------
+		\end{itemize}
+	%--------
+	\end{itemize}
 
 	%The \texttt{<index\_reg>} value is zero in all cases except
 	%the previous instruction was \texttt{index index\_reg} and if
@@ -1466,7 +1510,8 @@
 	\begin{itemize}
 	%--------
 	\item \texttt{i} is a 5-bit sign-extended immediate, which can
-	be expanded by \texttt{pre}  
+		be expanded by \texttt{pre} or \texttt{lpre}, and is denoted
+		\texttt{simm}
 	\item \texttt{b} encodes register \texttt{rB}
 	\item \texttt{a} encodes register \texttt{rA}
 	%--------
@@ -1482,8 +1527,53 @@
 	The \texttt{<index\_reg>} value is guaranteed to be zero unless an
 	\texttt{index} is in effect.
 
-	Shorthand for having the assembler insert an \texttt{index rC}
-	instruction before this one: \texttt{str rA, [rB, rC, \#simm]}
+	%Shorthand for having the assembler insert an \texttt{index rC}
+	%instruction before this one: \texttt{str rA, [rB, rC, \#simm]}
+
+	%The assembler will insert an \texttt{index rC} instruction before this
+	%instruction if either of the following syntaxes:
+	The following pseudo instructions exist within the assembler for this
+	encoding group:
+	\begin{itemize}
+	%--------
+	\item \texttt{\textbf{str} rA, [rB]}
+		\begin{itemize}
+		%--------
+		\item This pseudo instruction assembles to the following:
+			\begin{itemize}
+			%--------
+			\item \texttt{\textbf{str} rA, [rB, \#0x0]}
+			%--------
+			\end{itemize}
+		%--------
+		\end{itemize}
+	\item \texttt{\textbf{str} rA, [rB, rC]}
+		\begin{itemize}
+		%--------
+		\item This pseudo instruction assembles to the following:
+			\begin{itemize}
+			%--------
+			\item \texttt{\textbf{index} rC}
+			\item \texttt{\textbf{str} rA, [rB, \#0x0]}
+			%--------
+			\end{itemize}
+		%--------
+		\end{itemize}
+	\item \texttt{\textbf{str} rA, [rB, rC, \#simm]}
+		\begin{itemize}
+		%--------
+		\item This pseudo instruction assembles to the following:
+			\begin{itemize}
+			%--------
+			\item \texttt{\textbf{index} rC}
+			\item \texttt{\textbf{str} rA, [rB, \#simm]}
+			%--------
+			\end{itemize}
+		%--------
+		\end{itemize}
+	%--------
+	\end{itemize}
+
 
 	%The \texttt{index\_reg} value is zero in all cases except
 	%the previous instruction was \texttt{index index\_reg} and if
@@ -1603,8 +1693,8 @@
 	\begin{itemize}
 	%--------
 	\item \texttt{o} is the opcode
-	\item \texttt{b} encodes register \texttt{sA}
-	\item \texttt{a} encodes register \texttt{rB} or \texttt{sB}
+	\item \texttt{b} encodes register \texttt{rB} or \texttt{sB}
+	\item \texttt{a} encodes register \texttt{sA}
 	%--------
 	\end{itemize}
 	\doublespacing
@@ -1649,6 +1739,79 @@
 	%--------
 	\end{itemize}
 
+	\subsection{Instruction Group 7, Subgroup \texttt{0b0110}:
+		Icache Reload Instruction}
+	The following encoding is used, with each character representing one
+	bit: \\
+	\texttt{1110 110i iiii aaaa}, where
+
+	\singlespacing
+	\begin{itemize}
+	%--------
+	%\item \texttt{o} is the opcode
+	%\item \texttt{b} encodes register \texttt{sA}
+	\item \texttt{i} is a 5-bit sign-extended immediate, which can be
+		expanded by \texttt{pre} or \texttt{lpre}, and is denoted
+		\texttt{simm}.
+	\item \texttt{a} encodes register \texttt{rA}
+	%--------
+	\end{itemize}
+	\doublespacing
+
+	The one instruction from this encoding group  is
+	\texttt{\textbf{icreload} [rA, \#simm]}.
+	This instruction forcibly reloads the icache line at an effective
+	address computed as \texttt{<index\_reg> + rA + simm}, using the
+	sign-extended form of \texttt{simm}.
+	As a side note, this instruction will attempt to read the data from
+	dcache, and will only read from memory if dcache doesn't have that
+	data.
+	Icache lines and dcache lines are the same length, 64 bytes.
+
+	The \texttt{<index\_reg>} value is guaranteed to be zero unless an
+	\texttt{index} is in effect.
+
+	The following pseudo instructions exist within the assembler for this
+	encoding group:
+	\begin{itemize}
+	%--------
+	\item \texttt{\textbf{icreload} [rA]}
+		\begin{itemize}
+		%--------
+		\item This pseudo instruction assembles to the following:
+			\begin{itemize}
+			%--------
+			\item \texttt{\textbf{icreload} [rA, \#0x0]}
+			%--------
+			\end{itemize}
+		%--------
+		\end{itemize}
+	\item \texttt{\textbf{icreload} [rA, rC]}
+		\begin{itemize}
+		%--------
+		\item This pseudo instruction assembles to the following:
+			\begin{itemize}
+			%--------
+			\item \texttt{\textbf{index} rC}
+			\item \texttt{\textbf{icreload} [rA, \#0x0]}
+			%--------
+			\end{itemize}
+		%--------
+		\end{itemize}
+	\item \texttt{\textbf{icreload} [rA, rC, \#simm]}
+		\begin{itemize}
+		%--------
+		\item This pseudo instruction assembles to the following:
+			\begin{itemize}
+			%--------
+			\item \texttt{\textbf{index} rC}
+			\item \texttt{\textbf{icreload} [rA, \#simm]}
+			%--------
+			\end{itemize}
+		%--------
+		\end{itemize}
+	%--------
+	\end{itemize}
 
 	%\printbibliography[heading=bibnumbered,title={Bibliography}]
 

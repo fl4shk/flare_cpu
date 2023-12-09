@@ -1,35 +1,37 @@
 #!/usr/bin/env python3
 
-import math
-
 from amaranth import *
 from amaranth.lib.data import *
 from amaranth.lib import enum
-from amaranth.asserts import Assert, Assume, Cover
-from amaranth.asserts import Past, Rose, Fell, Stable
-
-from amaranth.sim import Simulator, Delay, Tick
-
-#from enum import Enum, auto
 import enum as pyenum
 
-from libcheesevoyage.misc_util import *
-from libcheesevoyage.general.container_types import *
-#--------
 def MAIN_WIDTH():
 	return 32
+def MAIN_WIDTH_PAIR():
+	return 64
 def INSN_GRP_WIDTH():
 	return 3
 def INSN_MAIN_WIDTH():
 	return 16
-def INSN_LRPE_WIDTH():
+def INSN_LPRE_WIDTH():
 	return 32
+def INSN_MAX_WIDTH():
+	return 64
+def INSN_MAIN_NBYTES():
+	return (INSN_MAIN_WIDTH() // 8)
+def INSN_LPRE_NBYTES():
+	return (INSN_LPRE_WIDTH() // 8)
+def INSN_MAX_NBYTES():
+	return (INSN_MAX_WIDTH() // 8)
 #def GPR_SPR_WIDTH():
 #	return 32
 def NUM_GPRS():
 	return 16
 #def SPR_WIDTH():
 #	return 32
+#def NUM_SPRS():
+#	return 16
+#def REAL_NUM_SPRS():
 def NUM_SPRS():
 	return 6
 def INSN_REG_WIDTH():
@@ -205,10 +207,10 @@ class InsnG4Op(enum.Enum, shape=INSN_G4_OP_WIDTH()):
 
 	LUMUL_RA_RB = 0x10
 	LSMUL_RA_RB = 0x11
-	LUDIV_RA_RB = 0x12
-	LSDIV_RA_RB = 0x13
-	LUMOD_RA_RB = 0x14
-	LSMOD_RA_RB = 0x15
+	UDIV64_RA_RB = 0x12
+	SDIV64_RA_RB = 0x13
+	UMOD64_RA_RB = 0x14
+	SMOD64_RA_RB = 0x15
 	LDUB_RA_RB_LDST = 0x16
 	LDSB_RA_RB_LDST = 0x17
 
@@ -263,178 +265,106 @@ class InsnG7SprldstOp(enum.Enum, shape=INSN_G7_SPRLDST_OP_WIDTH()):
 	STR_SA_RB_LDST = 0x2
 	STR_SA_SB_LDST = 0x3
 
-class InsnG0PreLayout(StructLayout):
-	def __init__(self):
-		super().__init__({
-			"grp": unsigned(INSN_GRP_WIDTH()),
-			"subgrp": unsigned(INSN_G0_PRE_SUBGRP_WIDTH()),
-			"simm": signed(INSN_G0_PRE_SIMM_WIDTH()),
-		})
-class InsnG0LpreLayout(StructLayout):
-	def __init__(self):
-		super().__init__({
-			"grp": unsigned(INSN_GRP_WIDTH()),
-			"subgrp": unsigned(INSN_G0_LPRE_SUBGRP_WIDTH()),
-			"simm": signed(INSN_G0_LPRE_SIMM_WIDTH()),
-		})
-class InsnG0LpreHiLayout(StructLayout):
-	def __init__(self):
-		super().__init__({
-			"grp": unsigned(INSN_GRP_WIDTH()),
-			"subgrp": unsigned(INSN_G0_LPRE_SUBGRP_WIDTH()),
-			"simm": signed(INSN_G0_LPRE_HI_SIMM_WIDTH()),
-		})
-class InsnG1Layout(StructLayout):
-	def __init__(self):
-		super().__init__({
-			"grp": unsigned(INSN_GRP_WIDTH()),
-			"simm": unsigned(INSN_G1_SIMM_WIDTH()),
-			"op": unsigned(INSN_G1_OP_WIDTH()),
-			"ra": unsigned(INSN_REG_WIDTH()),
-		})
-class InsnG2Layout(StructLayout):
-	def __init__(self):
-		super().__init__({
-			"grp": unsigned(INSN_GRP_WIDTH()),
-			"f": unsigned(INSN_G2_F_WIDTH()),
-			"op": unsigned(INSN_G2_OP_WIDTH()),
-			"rb": unsigned(INSN_REG_WIDTH()),
-			"ra": unsigned(INSN_REG_WIDTH()),
-		})
-class InsnG3Layout(StructLayout):
-	def __init__(self):
-		super().__init__({
-			"grp": unsigned(INSN_GRP_WIDTH()),
-			"simm": signed(INSN_G3_SIMM_WIDTH()),
-			"op": unsigned(INSN_G3_OP_WIDTH()),
-		})
-class InsnG4Layout(StructLayout):
-	def __init__(self):
-		super().__init__({
-			"grp": unsigned(INSN_GRP_WIDTH()),
-			"op": unsigned(INSN_G4_OP_WIDTH()),
-			"rb": unsigned(INSN_REG_WIDTH()),
-			"ra": unsigned(INSN_REG_WIDTH()),
-		})
-class InsnG5Layout(StructLayout):
-	def __init__(self):
-		super().__init__({
-			"grp": unsigned(INSN_GRP_WIDTH()),
-			"simm": unsigned(INSN_G5_SIMM_WIDTH()),
-			"rb": unsigned(INSN_REG_WIDTH()),
-			"ra": unsigned(INSN_REG_WIDTH()),
-		})
-class InsnG6Layout(StructLayout):
-	def __init__(self):
-		super().__init__({
-			"grp": unsigned(INSN_GRP_WIDTH()),
-			"simm": unsigned(INSN_G6_SIMM_WIDTH()),
-			"rb": unsigned(INSN_REG_WIDTH()),
-			"ra": unsigned(INSN_REG_WIDTH()),
-		})
-class InsnG7AluopbhLayout(StructLayout):
-	def __init__(self):
-		super().__init__({
-			"grp": unsigned(INSN_GRP_WIDTH()),
-			"subgrp": unsigned(INSN_G7_ALUOPBH_SUBGRP_WIDTH()),
-			"w": unsigned(INSN_G7_ALUOPBH_W_WIDTH()),
-			"op": unsigned(INSN_G7_ALUOPBH_OP_WIDTH()),
-			"rb": unsigned(INSN_REG_WIDTH()),
-			"ra": unsigned(INSN_REG_WIDTH()),
-		})
-class InsnG7SprldstLayout(StructLayout):
-	def __init__(self):
-		super().__init__({
-			"grp": unsigned(INSN_GRP_WIDTH()),
-			"subgrp": unsigned(INSN_G7_SPRLDST_SUBGRP_WIDTH()),
-			"op": unsigned(INSN_G7_SPRLDST_OP_WIDTH()),
-			"rb": unsigned(INSN_REG_WIDTH()),
-			"ra": unsigned(INSN_REG_WIDTH()),
-		})
+def INSN_G7_ICRELOAD_SUBGRP_WIDTH():
+	return 4
+def INSN_G7_ICRELOAD_SUBGRP_VAL():
+	return 0b0110
+def INSN_G7_ICRELOAD_SIMM_WIDTH():
+	return 5
 
-#--------
-def MEM_ACC_TYPE_WIDTH():
-	return 2
-class MemAccType(enum.Enum, shape=MEM_ACC_TYPE_WIDTH()):
-	BYTE = 0b00
-	HWORD = 0b01
-	WORD = 0b10
-	RESERVED = 0b11
-
-class RegFileBus:
+class InsnG0PreLayt(StructLayout):
 	def __init__(self):
-		self.wr_en = Signal(1, attrs=sig_keep())
-		self.wr_addr = Signal(INSN_REG_WIDTH(), attrs=sig_keep())
-		self.wr_data = Signal(MAIN_WIDTH(), attrs=sig_keep())
-		#self.rd_en_lst = Splitarr(
-		#	[Signal(1, attrs=sig_keep())
-		#		for i in range(RegFileBus.NUM_RD())],
-		#	name="rd_en"
-		#)
-		self.rd_addr_lst = Splitarr(
-			[Signal(INSN_REG_WIDTH(), attrs=sig_keep())
-				for i in range(RegFileBus.NUM_RD())],
-			name="rd_addr"
-		)
-		self.rd_data_lst = Splitarr(
-			[Signal(MAIN_WIDTH(), attrs=sig_keep())
-				for i in range(RegFileBus.NUM_RD())],
-			name="rd_data"
-		)
-	@staticmethod
-	def NUM_RD():
-		return 2
-
-class RegFile(Elaboratable):
-	def __init__(self, depth: int):
-		self.__bus = RegFileBus()
-		self.__depth = depth
-
-		# One Memory for every read port,
-		# but write the same contents from the single-element `bus.wr_...`
-		# ports to every individual `Memory.write_port()`
-		self.__mem = [
-			Memory(
-				width=MAIN_WIDTH(),
-				depth=depth,
-				init=[0x0 for j in range(self.depth())]
-			)
-			for i in range(RegFileBus.NUM_RD())
-		]
-	def bus(self):
-		return self.__bus
-	def depth(self):
-		return self.__depth
-	def elaborate(self, platform: str) -> Module:
-		#--------
-		m = Module()
-		#--------
-		bus = self.bus()
-
-		loc = Blank()
-
-		loc.rd_port_lst = []
-		loc.wr_port_lst = []
-
-		for i in range(len(self.__mem)):
-			loc.rd_port_lst += [self.__mem[i].read_port()]
-			loc.wr_port_lst += [self.__mem[i].write_port()]
-			m.submodules += [loc.rd_port_lst[i] + loc.wr_port_lst[i]]
-
-			m.d.comb += [
-				loc.rd_port_lst[i].addr.eq(bus.rd_addr_lst[i]),
-				bus.rd_data_lst[i].eq(loc.rd_port_lst[i].data),
-				loc.wr_port_lst[i].addr.eq(bus.wr_addr),
-				loc.wr_port_lst[i].data.eq(bus.wr_data),
-				loc.wr_port_lst[i].en.eq(bus.wr_en),
-			]
-		#--------
-		return m
-		#--------
-class Flare32CpuBus:
+		super().__init__({
+			"grp": INSN_GRP_WIDTH(),
+			"subgrp": INSN_G0_PRE_SUBGRP_WIDTH(),
+			"simm": INSN_G0_PRE_SIMM_WIDTH(),
+		})
+class InsnG0LpreLayt(StructLayout):
 	def __init__(self):
-		pass
-
-#class Flare32Cpu(Elaboratable):
-#	def __init__(self):
-#		
+		super().__init__({
+			"grp": INSN_GRP_WIDTH(),
+			"subgrp": INSN_G0_LPRE_SUBGRP_WIDTH(),
+			"simm": INSN_G0_LPRE_SIMM_WIDTH(),
+		})
+class InsnG0LpreHiLayt(StructLayout):
+	def __init__(self):
+		super().__init__({
+			"grp": INSN_GRP_WIDTH(),
+			"subgrp": INSN_G0_LPRE_SUBGRP_WIDTH(),
+			"simm": INSN_G0_LPRE_HI_SIMM_WIDTH(),
+		})
+class InsnG1Layt(StructLayout):
+	def __init__(self):
+		super().__init__({
+			"grp": INSN_GRP_WIDTH(),
+			"simm": INSN_G1_SIMM_WIDTH(),
+			"op": INSN_G1_OP_WIDTH(),
+			"ra": INSN_REG_WIDTH(),
+		})
+class InsnG2Layt(StructLayout):
+	def __init__(self):
+		super().__init__({
+			"grp": INSN_GRP_WIDTH(),
+			"f": INSN_G2_F_WIDTH(),
+			"op": INSN_G2_OP_WIDTH(),
+			"rb": INSN_REG_WIDTH(),
+			"ra": INSN_REG_WIDTH(),
+		})
+class InsnG3Layt(StructLayout):
+	def __init__(self):
+		super().__init__({
+			"grp": INSN_GRP_WIDTH(),
+			"simm": INSN_G3_SIMM_WIDTH(),
+			"op": INSN_G3_OP_WIDTH(),
+		})
+class InsnG4Layt(StructLayout):
+	def __init__(self):
+		super().__init__({
+			"grp": INSN_GRP_WIDTH(),
+			"op": INSN_G4_OP_WIDTH(),
+			"rb": INSN_REG_WIDTH(),
+			"ra": INSN_REG_WIDTH(),
+		})
+class InsnG5Layt(StructLayout):
+	def __init__(self):
+		super().__init__({
+			"grp": INSN_GRP_WIDTH(),
+			"simm": INSN_G5_SIMM_WIDTH(),
+			"rb": INSN_REG_WIDTH(),
+			"ra": INSN_REG_WIDTH(),
+		})
+class InsnG6Layt(StructLayout):
+	def __init__(self):
+		super().__init__({
+			"grp": INSN_GRP_WIDTH(),
+			"simm": INSN_G6_SIMM_WIDTH(),
+			"rb": INSN_REG_WIDTH(),
+			"ra": INSN_REG_WIDTH(),
+		})
+class InsnG7AluopbhLayt(StructLayout):
+	def __init__(self):
+		super().__init__({
+			"grp": INSN_GRP_WIDTH(),
+			"subgrp": INSN_G7_ALUOPBH_SUBGRP_WIDTH(),
+			"w": INSN_G7_ALUOPBH_W_WIDTH(),
+			"op": INSN_G7_ALUOPBH_OP_WIDTH(),
+			"rb": INSN_REG_WIDTH(),
+			"ra": INSN_REG_WIDTH(),
+		})
+class InsnG7SprldstLayt(StructLayout):
+	def __init__(self):
+		super().__init__({
+			"grp": INSN_GRP_WIDTH(),
+			"subgrp": INSN_G7_SPRLDST_SUBGRP_WIDTH(),
+			"op": INSN_G7_SPRLDST_OP_WIDTH(),
+			"rb": INSN_REG_WIDTH(),
+			"ra": INSN_REG_WIDTH(),
+		})
+class InsnG7IcreloadLayt(StructLayout):
+	def __init__(self):
+		super().__init__({
+			"grp": INSN_GRP_WIDTH(),
+			"subgrp": INSN_G7_ICRELOAD_SUBGRP_WIDTH(),
+			"simm": INSN_G7_ICRELOAD_SIMM_WIDTH(),
+			"ra": INSN_REG_WIDTH(),
+		})
