@@ -260,83 +260,83 @@ bit: \
 
 Here is a list of instructions from this encoding group.
 - Opcode `0x0`:
-  `add rA, simm`
+  `add rA, #simm`
 - Opcode `0x1`:
   // subi was deemed (mostly) unnecessary given that immediates are
   // (for `add` immediate instruction) sign-extended.
-  `add rA, pc, simm`
+  `add rA, pc, #simm`
   //--------
   - Effect:
     `rA <= pc + simm + 2;`
   //--------
 - Opcode `0x2`:
-  `add rA, sp, simm`
+  `add rA, sp, #simm`
 - Opcode `0x3`:
-  `add rA, fp, simm`
+  `add rA, fp, #simm`
 - Opcode `0x4`:
-  `cmp rA, simm`
+  `cmp rA, #simm`
   //--------
   - Effect: Compare `rA` to `simm`.
   - Affectable flags:
     `Z`, `C`, `V`, `N`
   //--------
 - Opcode `0x5`:
-  `cpy rA, simm`
+  `cpy rA, #simm`
   //--------
   - Effect: Copy an immediate value into `rA`
   //--------
 - Opcode `0x6`:
-  `lsl rA, imm`
+  `lsl rA, #imm`
   //--------
   - Effect: Logical shift left
   //--------
 - Opcode `0x7`:
-  `lsr rA, imm`
+  `lsr rA, #imm`
   //--------
   - Effect: Logical shift right
   //--------
 - Opcode `0x8`:
-  `asr rA, imm`
+  `asr rA, #imm`
   //--------
   - Effect: Arithmetic shift right
   //--------
 - Opcode `0x9`:
-  `and rA, simm`
+  `and rA, #simm`
   //--------
   - Effect: Bitwise AND
   //--------
 - Opcode `0xa`:
-  `orr rA, simm`
+  `orr rA, #simm`
   //--------
   - Effect: Bitwise OR
   //--------
 - Opcode `0xb`:
-  `xor rA, simm`
+  `xor rA, #simm`
   //--------
   - Effect: Bitwise XOR
   //--------
 - Opcode `0xc`:
-  `ze rA, imm`
+  `ze rA, #imm`
   //--------
   //- Effect: Set `rA[31:8]` to zero.
-  - Effect: Set `rA[31:simm]` to zero.
+  - Effect: Set `rA[31:imm]` to zero.
   //--------
 - Opcode `0xd`:
-  `se rA, imm`
+  `se rA, #imm`
   //--------
   //- Effect: Set `rA[31:16]` to zero.
   - Effect:
-    Sign-extend `rA[simm:0]` to 32 bits, then copy that
+    Sign-extend `rA[imm:0]` to 32 bits, then copy that
     value to `rA`.
   //--------
 - Opcode `0xe`:
-  `swi rA, simm`
+  `swi rA, #simm`
   //--------
   - Effect:
     Call software interrupt number `rA + simm`.
   //--------
 - Opcode `0xf`:
-  `swi imm`
+  `swi #imm`
   //--------
   - Effect:
     Call software interrupt number `imm`.
