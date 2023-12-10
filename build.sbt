@@ -2,7 +2,8 @@ ThisBuild / version := "1.0"
 ThisBuild / scalaVersion := "2.12.16"
 ThisBuild / organization := "org.example"
 
-val spinalVersion = "1.9.3"
+//val spinalVersion = "1.9.3"
+val spinalVersion = "dev"
 val spinalCore = "com.github.spinalhdl" %% "spinalhdl-core" % spinalVersion
 val spinalLib = "com.github.spinalhdl" %% "spinalhdl-lib" % spinalVersion
 val spinalIdslPlugin = compilerPlugin("com.github.spinalhdl" %% "spinalhdl-idsl-plugin" % spinalVersion)
@@ -71,7 +72,7 @@ lazy val libcheesevoyage = (project in file("./submodules/libcheesevoyage"))
 //            spinalIdslPlugin
 //        )
 //    )
-//    .dependsOn(artyA7100TVgaTest)
+//    .dependsOn(flare32_cpu)
 //lazy val libcheesevoyage = (project in file("."))
 //  .settings(
 //      Compile / scalaSource := baseDirectory.value / "hw" / "spinal",
@@ -80,10 +81,10 @@ lazy val libcheesevoyage = (project in file("./submodules/libcheesevoyage"))
 //  .settings(
 //      Compile / scalaSource := baseDirectory.value / "hw" / "spinal",
 //  )
-//scalacOptions += "-P:semanticdb:sourceroot:/media/other_data/fl4shk_home_stuff/Documents/prog/electronics/spinalhdl/small_projects_and_tests/artyA7100TVgaTest"
+//scalacOptions += "-P:semanticdb:sourceroot:/media/other_data/fl4shk_home_stuff/Documents/prog/electronics/spinalhdl/small_projects_and_tests/flare32_cpu"
 //scalacOptions += "-Ybackend-parallelism 4"
 
-lazy val artyA7100TVgaTest = (project in file("."))
+lazy val flare32_cpu = (project in file("."))
   //.aggregate(libcheesevoyage)
   .settings(
     Compile / scalaSource := baseDirectory.value / "hw" / "spinal",
@@ -119,7 +120,7 @@ lazy val artyA7100TVgaTest = (project in file("."))
     //)
 
   ).dependsOn(libcheesevoyage)
-//artyA7100TVgaTest.dependsOn(libcheesevoyage % "compile->libcheesevoyage")
-//artyA7100TVgaTest.dependsOn(libcheesevoyage)
+//flare32_cpu.dependsOn(libcheesevoyage % "compile->libcheesevoyage")
+//flare32_cpu.dependsOn(libcheesevoyage)
 
 fork := true
