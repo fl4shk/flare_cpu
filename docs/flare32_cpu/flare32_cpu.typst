@@ -169,77 +169,149 @@ Pseudo code for handling the how `pre`, `lpre`, and
 effect" is as follows:
 
 
+//```
+//function handle_pre_lpre_index(input in, output out) {
+//  if (in.instruction.is_pre()) {
+//    if (in.state.pre.have || in.state.lpre.have) {
+//      out.state.can_service_interrupts = false;
+//
+//      // Instruction was a NOP
+//      out.state.pre.have = false;
+//      out.state.lpre.have = false;
+//      out.state.index.have = false;
+//      out.instruction = nop;
+//    } else {
+//      if (in.state.index.have) {
+//        out.state.can_service_interrupts = false;
+//      } else {
+//        out.state.can_service_interrupts = true;
+//      }
+//      out.state.pre.set_have(true);
+//      out.instruction = in.instruction;
+//    }
+//  } else if (in.instruction.is_lpre()) {
+//    if (in.state.pre.have || in.state.lpre.have) {
+//      out.state.can_service_interrupts = false;
+//
+//      // Instruction was a NOP
+//      out.state.pre.have = false;
+//      out.state.lpre.have = false;
+//      out.state.index.have = false;
+//      out.instruction = nop;
+//    } else {
+//      if (in.state.index.have) {
+//        out.state.can_service_interrupts = false;
+//      } else {
+//        out.state.can_service_interrupts = true;
+//      }
+//      out.state.lpre.set_have(true);
+//      out.instruction = in.instruction;
+//    }
+//  } else if (in.instruction.is_index()) {
+//    if (in.state.index.have) {
+//      out.state.can_service_interrupts = false;
+//
+//      // Instruction was a NOP
+//      out.state.pre.have = false;
+//      out.state.lpre.have = false;
+//      out.state.index.have = false;
+//      out.instruction = nop;
+//    } else {
+//      if (in.state.pre.have || in.state.lpre.have) {
+//        out.state.can_service_interrupts = false;
+//      } else {
+//        out.state.can_service_interrupts = true;
+//      }
+//      out.state.index.have = true;
+//      out.instruction = in.instruction;
+//    }
+//  } else {
+//    if (
+//      in.state.pre.have || in.state.lpre.have || in.state.index.have
+//    ) {
+//      out.state.can_service_interrupts = false;
+//    } else {
+//      out.state.can_service_interrupts = true;
+//    }
+//    out.instruction = instruction;
+//
+//    // Whenever we see an instruction other than pre, lpre, or index,
+//    // that means that those instructions stop being "in effect".
+//    out.state.pre.have = false;
+//    out.state.lpre.have = false;
+//    out.state.index.have = false;
+//  }
+//}
+//```
+
 ```
-function handle_pre_lpre_index(input in, output out) {
-  if (in.instruction.is_pre()) {
-    if (in.state.pre.have || in.state.lpre.have) {
-      out.state.can_service_interrupts = false;
-
-      // Instruction was a NOP
-      out.state.pre.have = false;
-      out.state.lpre.have = false;
-      out.state.index.have = false;
-      out.instruction = nop;
-    } else {
-      if (in.state.index.have) {
-        out.state.can_service_interrupts = false;
-      } else {
-        out.state.can_service_interrupts = true;
+function handlePreLpreIndex(input in, output out) {
+  when (!out.instr.isLpre()) {
+    when (in.instr.isPre()) {
+      when (
+        in.state.pre.haveIt
+        || in.state.lpre.haveIt
+      ) {
+        // invalid instruction
+        out.state.pre.haveIt := False
+        out.state.lpre.haveIt := False
+        out.state.index.haveIt := False
+        out.instr := NOP
+        out.state.canServiceIrq := True
+      } otherwise {
+        out.state.pre.haveIt := True
+        out.state.pre.data := in.instr[11:0]
+        out.instr := in.instr
+        out.state.canServiceIrq := False
       }
-      out.state.pre.set_have(true);
-      out.instruction = in.instruction;
-    }
-  } else if (in.instruction.is_lpre()) {
-    if (in.state.pre.have || in.state.lpre.have) {
-      out.state.can_service_interrupts = false;
-
-      // Instruction was a NOP
-      out.state.pre.have = false;
-      out.state.lpre.have = false;
-      out.state.index.have = false;
-      out.instruction = nop;
-    } else {
-      if (in.state.index.have) {
-        out.state.can_service_interrupts = false;
-      } else {
-        out.state.can_service_interrupts = true;
+    } elsewhen (in.instr.isLpre()) {
+      when (
+        in.state.pre.haveIt
+        || in.state.lpre.haveIt
+      ) {
+        // invalid instruction
+        out.state.pre.haveIt := False
+        out.state.lpre.haveIt := False
+        out.state.index.haveIt := False
+        out.instr := NOP
+        out.state.canServiceIrq := True
+      } otherwise {
+        out.state.lpre.haveIt := True
+        out.instr := in.instr
+        out.state.canServiceIrq := False
+        out.state.lpre.data[26:16] := in.instr[10:0]
       }
-      out.state.lpre.set_have(true);
-      out.instruction = in.instruction;
-    }
-  } else if (in.instruction.is_index()) {
-    if (in.state.index.have) {
-      out.state.can_service_interrupts = false;
-
-      // Instruction was a NOP
-      out.state.pre.have = false;
-      out.state.lpre.have = false;
-      out.state.index.have = false;
-      out.instruction = nop;
-    } else {
-      if (in.state.pre.have || in.state.lpre.have) {
-        out.state.can_service_interrupts = false;
-      } else {
-        out.state.can_service_interrupts = true;
+    } elsewhen (in.instr.isIndex()) {
+      when (
+        in.state.index.haveIt
+      ) {
+        // invalid instruction
+        out.state.pre.haveIt := False
+        out.state.lpre.haveIt := False
+        out.state.index.haveIt := False
+        out.instr := NOP
+        out.state.canServiceIrq := True
+      } otherwise {
+        out.state.index.haveIt := True
+        out.instr := in.instr
+        out.state.canServiceIrq := False
       }
-      out.state.index.have = true;
-      out.instruction = in.instruction;
-    }
-  } else {
-    if (
-      in.state.pre.have || in.state.lpre.have || in.state.index.have
-    ) {
-      out.state.can_service_interrupts = false;
-    } else {
-      out.state.can_service_interrupts = true;
-    }
-    out.instruction = instruction;
+    } otherwise {
+      out.state.canServiceIrq := !(
+        in.state.pre.haveIt
+        || in.state.lpre.haveIt
+        || in.state.index.haveIt
+      )
+      out.instr := instr
 
-    // Whenever we see an instruction other than pre, lpre, or index,
-    // that means that those instructions stop being "in effect".
-    out.state.pre.have = false;
-    out.state.lpre.have = false;
-    out.state.index.have = false;
+      // Whenever we see an instruction other than `pre`, `lpre`, or `index`,
+      // that means those instructions stop being "in effect".
+      out.state.pre.haveIt := False
+      out.state.lpre.haveIt := False
+      out.state.index.haveIt := False
+    }
+  } otherwise { // when (out.instr.isLpre())
+    out.state.lpre.data[15:0] := in.instr
   }
 }
 ```
@@ -709,7 +781,7 @@ Here is a list of instructions from this encoding group.
 //// //--------
 // - Effect: `pc <= (rA + rB);`
 // //--------
-//- Opcode `0x2`:
+- Opcode `0x2`:
   `jmp ira`
   //--------
   - Effect: `pc <= ira;`
@@ -738,9 +810,9 @@ Here is a list of instructions from this encoding group.
   // - `strda rA, [rB]`
   // - Name: store register, decrement base after
   // //--------
-  //  - Effect: pushes `rA` onto the stack, using
-  `rB` as the stack pointer, post-decrementing
-  `rB`.
+  - Effect: pushes `rA` onto the stack, using
+    `rB` as the stack pointer, post-decrementing
+    `rB`.
   - This instruction does nothing when `rA` is the same register as `rB`. 
   - Note: As a pseudo instruction, omitting "`, rB`" will
     automatically select `sp` as the particular stack
@@ -755,9 +827,9 @@ Here is a list of instructions from this encoding group.
   // - `strda sA, [rB]`
   // - Name: store register, decrement base after
   // //--------
-  //  - Effect: pushes `sA` onto the stack, using
-  `rB` as the stack pointer, post-decrementing
-  `rB`.
+  - Effect: pushes `sA` onto the stack, using
+    `rB` as the stack pointer, post-decrementing
+    `rB`.
   - Note that `sA` is considered to be 32-bit for the
     purpose of the store to memory and decrementing `rB`,
     even if `sA` is `flags` or `ie`.
@@ -773,8 +845,8 @@ Here is a list of instructions from this encoding group.
   // - `ldrib rA, rB`
   // - Name: load register, increment base before
   // //--------
-  //  - Effect: pops `rA` off the stack, using
-  `rB` as the stack pointer, pre-incrementing `rB`.
+  - Effect: pops `rA` off the stack, using
+    `rB` as the stack pointer, pre-incrementing `rB`.
   - This instruction does nothing when `rA` is the
     same register as `rB`. 
   - Note: As a pseudo instruction, omitting "`, rB`" will
@@ -784,11 +856,11 @@ Here is a list of instructions from this encoding group.
 - Opcode `0x9`:
   `pop sA, rB`
   //--------
-  - Pseudo instruction with same effect: 
-    //--------
-    - `ldrib sA, rB`
-    - Name explanation: load register, increment base before
-    //--------
+  //- Pseudo instruction with same effect: 
+  //  //--------
+  //  - `ldrib sA, rB`
+  //  - Name explanation: load register, increment base before
+  //  //--------
   - Effect: pops `sA` off the stack, using
     `rB` as the stack pointer, pre-incrementing `rB`.
   - Note that `sA` is considered to be 32-bit for the
@@ -801,11 +873,11 @@ Here is a list of instructions from this encoding group.
 - Opcode `0xa`:
   `pop pc, rB`
   //--------
-  - Pseudo instruction with same effect: 
-    //--------
-    - `ldrib pc, rB`
-    - Name explanation: load register, increment base before
-    //--------
+  //- Pseudo instruction with same effect: 
+  //  //--------
+  //  - `ldrib pc, rB`
+  //  - Name explanation: load register, increment base before
+  //  //--------
   - Effect: pops `pc` off the stack, using
     `rB` as the stack pointer, pre-incrementing `rB`.
   - Note that `pc` is considered to be 32-bit for the
@@ -1046,9 +1118,9 @@ Here is a list of instructions from this encoding group.
     before this one: `sth rA, [rB, rC]`
   //--------
 - Opcode `0x1c`:
-  `cpy rA, sC`
+  `cpy rA, sB`
   //--------
-  - Effect: `rA <= sC;`
+  - Effect: `rA <= sB;`
   //--------
 - Opcode `0x1d`:
   `cpy sA, rB`
