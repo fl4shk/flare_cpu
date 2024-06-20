@@ -233,7 +233,11 @@ case class Flare32CpuParams(
     lengthWidth=(
       //icacheLineMemWordCount
       //icacheLineMemWordCount
-      /*log2Up*/(icacheNumBytesPerLinePow - log2Up(mainWidth))
+      /*log2Up*/(
+        icacheNumBytesPerLinePow
+        //- log2Up(mainWidth)
+        - log2Up(mainWidth / 8)
+      )
     ),
     alignment=BmbParameter.BurstAlignement.WORD,
     alignmentMin=0,
@@ -269,7 +273,10 @@ case class Flare32CpuParams(
     lengthWidth=(
       //dcacheLineMemWordCount
       //icacheParams.numBytesPerLine / params.instrMainWidth
-      /*log2Up*/(dcacheNumBytesPerLinePow - log2Up(mainWidth))
+      /*log2Up*/(
+        dcacheNumBytesPerLinePow
+        - log2Up(mainWidth / 8)
+      )
     ),
     alignment=BmbParameter.BurstAlignement.WORD,
     alignmentMin=0,
@@ -392,7 +399,7 @@ case class Flare32CpuIcacheEntry(
   //--------
   val valid = Bool()
   //val data = UInt(params.instrMainWidth bits)
-  val baseAddr = UInt(params.instrMainWidth bits)
+  val baseAddr = UInt(params.icacheLineBaseAddrWidth bits)
   val data = params.icacheLineMemWordType()
   //--------
 }
@@ -401,7 +408,10 @@ case class Flare32CpuIcache(
   params: Flare32CpuParams,
   linkArr: ArrayBuffer[Link],
 ) extends Area {
-  def pipeMemModStageCnt = 1
+  def pipeMemModStageCnt = (
+    //0
+    1
+  )
   def pipeMemModType() = SamplePipeMemRmwModType(
     wordType=Flare32CpuIcacheEntry(params=params),
     wordCount=params.icacheLineMemWordCount,
@@ -430,17 +440,28 @@ case class Flare32CpuIcache(
     initBigInt=Some(
       Array.fill(params.icacheLineMemWordCount)(BigInt(0)).toSeq
     ),
-    optEnableModDuplicate=true,
+    optEnableModDuplicate=(
+      true
+    ),
     optEnableClear=true,
     memRamStyle="block",
     vivadoDebug=false,
   )(
     doHazardCmpFunc=None,
     doPrevHazardCmpFunc=false,
+    //doModSingleStageFunc=Some(
+    //  (
+    //    outp,
+    //    inp,
+    //  ) => {
+    //  }
+    //),
   )
 }
 object Flare32CpuParamsTest extends App {
   val p = Flare32CpuParams()
+  println(s"ibusParams.lengthWidth: ${p.ibusParams.access.lengthWidth}")
+  println(s"dbusParams.lengthWidth: ${p.dbusParams.access.lengthWidth}")
   println("icache:")
   println(s"icacheNumLines: ${p.icacheNumLines}")
   println(s"icacheNumBytesPerLine: ${p.icacheNumBytesPerLine}")
@@ -467,25 +488,25 @@ object Flare32CpuParamsTest extends App {
   println(s"dcacheLineBaseAddrWidth: ${p.dcacheLineBaseAddrWidth}")
   println(s"dcacheLineBaseAddRange: ${p.dcacheLineBaseAddrRange}")
 }
-//case class Flare32CpuIo(
-//  params: Flare32CpuParams
-//) extends Bundle {
-//  //--------
-//  //--------
-//  //val bus = 
-//  // Instruction Cache Bus
-//  //val ibus = master(tilelink.Bus(Flare32CpuParams.busParams))
-//  //val ibus = master(Axi4(config=params.ibusConfig))
-//  val ibus = master(Bmb(p=params.ibusParams))
-//
-//  // Data Cache Bus
-//  //val dbus = master(tilelink.Bus(Flare32CpuParams.busParams))
-//  //val dbus = master(Axi4(config=params.dbusConfig))
-//  val dbus = master(Bmb(p=params.dbusParams))
-//
-//  val irq = in Bool()
-//  //--------
-//}
+case class Flare32CpuIo(
+  params: Flare32CpuParams
+) extends Bundle {
+  //--------
+  //--------
+  //val bus = 
+  // Instruction Cache Bus
+  //val ibus = master(tilelink.Bus(Flare32CpuParams.busParams))
+  //val ibus = master(Axi4(config=params.ibusConfig))
+  val ibus = master(Bmb(p=params.ibusParams))
+
+  // Data Cache Bus
+  //val dbus = master(tilelink.Bus(Flare32CpuParams.busParams))
+  //val dbus = master(Axi4(config=params.dbusConfig))
+  val dbus = master(Bmb(p=params.dbusParams))
+
+  val irq = in Bool()
+  //--------
+}
 //case class Flare32Cpu(
 //  //clkRate: HertzNumber,
 //  //optIncludeSimd: Boolean=false,
