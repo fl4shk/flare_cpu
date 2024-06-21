@@ -1359,53 +1359,107 @@ Here is a list of instructions from this encoding group.
     held in `sB`.
   //--------
 
-== Instruction Group 7, Subgroup `0b0110`: Icache Reload Instruction
+//== Instruction Group 7, Subgroup `0b0110`: Icache Reload Instruction
+//The following encoding is used, with each character representing one
+//bit: \
+//`1110 110i iiii aaaa`, where
+////- `o` is the opcode
+////- `b` encodes register `sA`
+//- `i` is a 5-bit sign-extended immediate, which can be
+//  expanded by `pre` or `lpre`, and is denoted
+//  `simm`.
+//- `a` encodes register `rA`
+//
+//The one instruction from this encoding group  is
+//`icreload [rA, #simm]`.
+//This instruction forcibly reloads the icache line at an effective
+//address computed as `<index_reg> + rA + simm`, using the
+//sign-extended form of `simm`.
+//As a side note, this instruction will attempt to read the data from
+//dcache, and will only read from memory if dcache doesn't have that
+//data.
+//Icache lines and dcache lines are the same length, 64 bytes.
+//
+//The `<index_reg>` value is guaranteed to be zero unless an
+//`index` is in effect.
+//
+//The following pseudo instructions exist within the assembler for this
+//encoding group:
+//- `icreload [rA]`
+//  //--------
+//  - This pseudo instruction assembles to the following:
+//    //--------
+//    - `icreload [rA, #0x0]`
+//    //--------
+//  //--------
+//- `icreload [rA, rC]`
+//  //--------
+//  - This pseudo instruction assembles to the following:
+//    //--------
+//    - `index rC`
+//    - `icreload [rA, #0x0]`
+//    //--------
+//  //--------
+//- `icreload [rA, rC, #simm]`
+//  //--------
+//  - This pseudo instruction assembles to the following:
+//    //--------
+//    - `index rC`
+//    - `icreload [rA, #simm]`
+//    //--------
+//  //--------
+== Instruction Group 7, Subgroup `0b0110`: Icache Flush Instruction
 The following encoding is used, with each character representing one
 bit: \
-`1110 110i iiii aaaa`, where
-//- `o` is the opcode
-//- `b` encodes register `sA`
-- `i` is a 5-bit sign-extended immediate, which can be
-  expanded by `pre` or `lpre`, and is denoted
-  `simm`.
-- `a` encodes register `rA`
+`1110 1100 0000 0000`//, where
 
-The one instruction from this encoding group  is
-`icreload [rA, #simm]`.
-This instruction forcibly reloads the icache line at an effective
-address computed as `<index_reg> + rA + simm`, using the
-sign-extended form of `simm`.
-As a side note, this instruction will attempt to read the data from
-dcache, and will only read from memory if dcache doesn't have that
-data.
-Icache lines and dcache lines are the same length, 64 bytes.
+The one instruction from this encoding group is
+`icflush`, which invalidates the instruction cache entirely.
 
-The `<index_reg>` value is guaranteed to be zero unless an
-`index` is in effect.
-
-The following pseudo instructions exist within the assembler for this
-encoding group:
-- `icreload [rA]`
-  //--------
-  - This pseudo instruction assembles to the following:
-    //--------
-    - `icreload [rA, #0x0]`
-    //--------
-  //--------
-- `icreload [rA, rC]`
-  //--------
-  - This pseudo instruction assembles to the following:
-    //--------
-    - `index rC`
-    - `icreload [rA, #0x0]`
-    //--------
-  //--------
-- `icreload [rA, rC, #simm]`
-  //--------
-  - This pseudo instruction assembles to the following:
-    //--------
-    - `index rC`
-    - `icreload [rA, #simm]`
-    //--------
-  //--------
-
+////- `o` is the opcode
+////- `b` encodes register `sA`
+//- `i` is a 5-bit sign-extended immediate, which can be
+//  expanded by `pre` or `lpre`, and is denoted
+//  `simm`.
+//- `a` encodes register `rA`
+//
+//The one instruction from this encoding group  is
+//`icreload [rA, #simm]`.
+//This instruction forcibly reloads the icache line at an effective
+//address computed as `<index_reg> + rA + simm`, using the
+//sign-extended form of `simm`.
+//As a side note, this instruction will attempt to read the data from
+//dcache, and will only read from memory if dcache doesn't have that
+//data.
+//Icache lines and dcache lines are the same length, 64 bytes.
+//
+//The `<index_reg>` value is guaranteed to be zero unless an
+//`index` is in effect.
+//
+//The following pseudo instructions exist within the assembler for this
+//encoding group:
+//- `icreload [rA]`
+//  //--------
+//  - This pseudo instruction assembles to the following:
+//    //--------
+//    - `icreload [rA, #0x0]`
+//    //--------
+//  //--------
+//- `icreload [rA, rC]`
+//  //--------
+//  - This pseudo instruction assembles to the following:
+//    //--------
+//    - `index rC`
+//    - `icreload [rA, #0x0]`
+//    //--------
+//  //--------
+//- `icreload [rA, rC, #simm]`
+//  //--------
+//  - This pseudo instruction assembles to the following:
+//    //--------
+//    - `index rC`
+//    - `icreload [rA, #simm]`
+//    //--------
+//  //--------
+//
+//== Instruction Group 7, Subgroup `0b0111`: Icache Flush Instruction
