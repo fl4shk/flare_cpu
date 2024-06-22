@@ -229,7 +229,7 @@ case class Flare32Cpu(
   //val sArr = new ArrayBuffer[StageLink]()
   //val s2mArr = new ArrayBuffer[S2MLink]()
   //val cArr = new ArrayBuffer[CtrlLink]()
-  val nIcache, nDecode, nExec, nDcache, nWrback, nLast = Node()
+  val nIcache, nDecode, nExec, /*nDcache,*/ /*nWrback,*/ nLast = Node()
 
   val sIcacheDecode = StageLink(up=nIcache, down=Node())
   linkArr += sIcacheDecode
@@ -244,37 +244,6 @@ case class Flare32Cpu(
   linkArr += s2mDecodeExec
   val cDecodeExec = CtrlLink(up=s2mDecodeExec.down, down=nExec)
   linkArr += cDecodeExec
-
-  //val sExecDcache = StageLink(up=nExec, down=Node())
-  //linkArr += sExecDcache
-  //val s2mExecDcache = S2MLink(up=sExecDcache.down, down=Node())
-  //linkArr += s2mExecDcache
-  val cExecDcache = CtrlLink(
-    up=(
-      //s2mExecDcache.down
-      //nExec
-      Node()
-      //nExec
-    ),
-    down=(
-      //nDcache
-      Node()
-    ),
-  )
-  linkArr += cExecDcache
-
-  val cDcacheWrback = CtrlLink(
-    up=(
-      Node()
-    ),
-    down=(
-      nWrback
-    ),
-  )
-  linkArr += cDcacheWrback
-
-  //val cIcacheDecode = CtrlLink(up=nIcache, down=nDecode)
-  //val cDecodeExec = CtrlLink(up=nDecode, down=nExec)
   //--------
   // these are outputs of the pipeline stages
   val icachePayload = Payload(Flare32CpuPipePayload(params=params))
@@ -291,6 +260,64 @@ case class Flare32Cpu(
   //io.ibus << icache.io.ibus
   nIcache(icachePayload) := nIcache(icachePayload).getZero
 
+  val dcache = Flare32CpuPsDcache(
+    params=params,
+    prevPayload=execPayload,
+    currPayload=dcachePayload,
+    //cPrevCurr=cExecDcache,
+    linkArr=linkArr,
+  )
+  //io.dbus << dcache.io.dbus
+
+  //val sExecDcache = StageLink(up=nExec, down=Node())
+  //linkArr += sExecDcache
+  //val s2mExecDcache = S2MLink(up=sExecDcache.down, down=Node())
+  //linkArr += s2mExecDcache
+  //val cExecDcache = CtrlLink(
+  //  up=(
+  //    //s2mExecDcache.down
+  //    nExec
+  //    //Node()
+  //    //nExec
+  //  ),
+  //  down=(
+  //    //nDcache
+  //    Node()
+  //  ),
+  //)
+  //val cExecDcache = dcache.pipeMem.mod.front.pipe.first
+  val cExecDcache = CtrlLink(
+    up=cDecodeExec.down,
+    down=dcache.pipeMem.io.front,
+  )
+  linkArr += cExecDcache
+  //val dDecodeExecDcache = DirectLink(
+  //  up=,
+  //  down=cExecDcache.up
+  //)
+  //linkArr += dDecodeExecDcache
+
+  val cDcacheWrback = CtrlLink(
+    up=(
+      //Node()
+      //dcache.pipeMem.mod.front.pipe.last.down
+      dcache.pipeMem.io.modFront
+    ),
+    down=(
+      //nWrback
+      dcache.pipeMem.io.modBack
+    ),
+  )
+  linkArr += cDcacheWrback
+  dcache.pipeMem.io.back.ready := True
+
+  //val dWrbackEndDcache = DirectLink(
+  //  up=nWrback
+  //)
+
+  //val cIcacheDecode = CtrlLink(up=nIcache, down=nDecode)
+  //val cDecodeExec = CtrlLink(up=nDecode, down=nExec)
+  //--------
   val decode = Flare32CpuPsDecode(
     params=params,
     prevPayload=icachePayload,
@@ -302,33 +329,31 @@ case class Flare32Cpu(
       dcachePayload
     ),
   )
-  //val exec = Flare32CpuPsExec(
-  //  params=params,
-  //  prevPayload=decodePayload,
-  //  currPayload=execPayload,
-  //  cPrevCurr=cDecodeExec,
-  //  cCurrNext=(
-  //    cExecDcache
-  //  ),
-  //  decodeIo=decode.io,
-  //)
-  //val dcache = Flare32CpuPsDcache(
-  //  params=params,
-  //  prevPayload=execPayload,
-  //  currPayload=dcachePayload,
-  //  cPrevCurr=cExecDcache,
-  //  linkArr=linkArr,
-  //)
-  ////io.dbus << dcache.io.dbus
+  val exec = Flare32CpuPsExec(
+    params=params,
+    prevPayload=decodePayload,
+    currPayload=execPayload,
+    cPrevCurr=cDecodeExec,
+    cCurrNext=(
+      cExecDcache
+    ),
+    decodeIo=decode.io,
+  )
 
-  //val wrback = Flare32CpuPsWrback(
-  //  params=params,
-  //  prevPayload=dcachePayload,
-  //  cPrevCurr=cDcacheWrback,
-  //  decodeIo=decode.io,
-  //)
+  val wrback = Flare32CpuPsWrback(
+    params=params,
+    prevPayload=dcachePayload,
+    cPrevCurr=cDcacheWrback,
+    decodeIo=decode.io,
+  )
 
   //--------
+  //val dExecDcache = DirectLink(
+  //  up=
+  //)
+  //val sDcachePmFront = StageLink(
+  //  up=dcache.pipeMem
+  //)
   //val sDcachePmMod = StageLink(
   //  up=dcache.pipeMem.io.modFront,
   //  down=Node()

@@ -124,6 +124,8 @@ case class Flare32CpuPsDecode(
     //)
     when (up.isValid) {
       upPayload := up(prevPayload)
+    }
+      //up.ready := down.isReady
       //def myInstrDecEtc = up(prevPayload).decode.instrDecEtc
       //def myFetchInstr = up(prevPayload).decode.fetchInstr.asBits
       //val myFetchInstr = UInt(params.instrMainWidth bits)
@@ -336,10 +338,10 @@ case class Flare32CpuPsDecode(
         myLpreInfo.data(params.instrMainWidth - 1 downto 0).assignFromBits(
           myFetchInstr.asBits
         )
-        /*cPrevCurr.*/throwIt()
+        //// TODO: add `throwIt()` back
+        /*cPrevCurr.*/throwIt(usingReady=true)
         //cIfId.terminateIt() // clear `cIfId.my.valid`
       }
-    }
   }
   //--------
 }

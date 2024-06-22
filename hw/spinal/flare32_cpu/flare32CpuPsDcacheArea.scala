@@ -59,7 +59,7 @@ case class Flare32CpuPsDcache(
   params: Flare32CpuParams,
   prevPayload: Payload[Flare32CpuPipePayload],
   currPayload: Payload[Flare32CpuPipePayload],
-  cPrevCurr: CtrlLink,
+  //cPrevCurr: CtrlLink,
   linkArr: ArrayBuffer[Link],
 ) extends Area {
   //--------
