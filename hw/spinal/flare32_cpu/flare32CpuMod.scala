@@ -166,16 +166,16 @@ case class Flare32CpuIo(
 ) extends Bundle {
   //--------
   //--------
-  //val bus = 
-  // Instruction Cache Bus
-  //val ibus = master(tilelink.Bus(Flare32CpuParams.busParams))
-  //val ibus = master(Axi4(config=params.ibusConfig))
-  val ibus = master(Bmb(p=params.ibusParams))
+  ////val bus = 
+  //// Instruction Cache Bus
+  ////val ibus = master(tilelink.Bus(Flare32CpuParams.busParams))
+  ////val ibus = master(Axi4(config=params.ibusConfig))
+  //val ibus = master(Bmb(p=params.ibusParams))
 
-  // Data Cache Bus
-  //val dbus = master(tilelink.Bus(Flare32CpuParams.busParams))
-  //val dbus = master(Axi4(config=params.dbusConfig))
-  val dbus = master(Bmb(p=params.dbusParams))
+  //// Data Cache Bus
+  ////val dbus = master(tilelink.Bus(Flare32CpuParams.busParams))
+  ////val dbus = master(Axi4(config=params.dbusConfig))
+  //val dbus = master(Bmb(p=params.dbusParams))
 
   val irq = in Bool()
   //--------
@@ -252,11 +252,26 @@ case class Flare32Cpu(
   val cExecDcache = CtrlLink(
     up=(
       //s2mExecDcache.down
-      nExec
+      //nExec
+      Node()
+      //nExec
     ),
-    down=nDcache,
+    down=(
+      //nDcache
+      Node()
+    ),
   )
   linkArr += cExecDcache
+
+  val cDcacheWrback = CtrlLink(
+    up=(
+      Node()
+    ),
+    down=(
+      nWrback
+    ),
+  )
+  linkArr += cDcacheWrback
 
   //val cIcacheDecode = CtrlLink(up=nIcache, down=nDecode)
   //val cDecodeExec = CtrlLink(up=nDecode, down=nExec)
@@ -268,47 +283,75 @@ case class Flare32Cpu(
   val dcachePayload = Payload(Flare32CpuPipePayload(params=params))
   //val wrbackPayload = Payload(Flare32CpuPipePayload(params=params))
   //--------
-  val icache = Flare32CpuPsIcache(
-    params=params,
-    currPayload=icachePayload,
-    linkArr=linkArr,
-  )
-  io.ibus << icache.io.ibus
-
-  //val decode = Flare32CpuPsDecode(
+  //val icache = Flare32CpuPsIcache(
   //  params=params,
-  //  prevPayload=icachePayload,
-  //  cPrevCurr=cIcacheDecode,
-  //  cLastMain=cDcacheWrback,
-  //  lastMainPayload=(
-  //    //wrbackPayload
-  //    dcachePayload
-  //  ),
+  //  currPayload=icachePayload,
+  //  linkArr=linkArr,
   //)
-  ////val exec = Flare32CpuPsExec(
-  ////  params=params,
-  ////  prevPayload=decodePayload,
-  ////  cPrevCurr=cDecodeExec,
-  ////  cCurrNext=cExecDcache,
-  ////  decodeIo=decode.io,
-  ////)
-  val dcache = Flare32CpuPsDcache(
+  //io.ibus << icache.io.ibus
+  nIcache(icachePayload) := nIcache(icachePayload).getZero
+
+  val decode = Flare32CpuPsDecode(
     params=params,
-    prevPayload=execPayload,
-    currPayload=dcachePayload,
-    cPrevCurr=cExecDcache,
-    linkArr=linkArr,
+    prevPayload=icachePayload,
+    currPayload=decodePayload,
+    cPrevCurr=cIcacheDecode,
+    cLastMain=cDcacheWrback,
+    lastMainPayload=(
+      //wrbackPayload
+      dcachePayload
+    ),
   )
-  io.dbus << dcache.io.dbus
+  //val exec = Flare32CpuPsExec(
+  //  params=params,
+  //  prevPayload=decodePayload,
+  //  currPayload=execPayload,
+  //  cPrevCurr=cDecodeExec,
+  //  cCurrNext=(
+  //    cExecDcache
+  //  ),
+  //  decodeIo=decode.io,
+  //)
+  //val dcache = Flare32CpuPsDcache(
+  //  params=params,
+  //  prevPayload=execPayload,
+  //  currPayload=dcachePayload,
+  //  cPrevCurr=cExecDcache,
+  //  linkArr=linkArr,
+  //)
+  ////io.dbus << dcache.io.dbus
+
   //val wrback = Flare32CpuPsWrback(
   //  params=params,
   //  prevPayload=dcachePayload,
   //  cPrevCurr=cDcacheWrback,
   //  decodeIo=decode.io,
   //)
+
+  //--------
+  //val sDcachePmMod = StageLink(
+  //  up=dcache.pipeMem.io.modFront,
+  //  down=Node()
+  //)
+  //linkArr += sDcachePmMod
+  //val s2mDcachePmMod = S2MLink(
+  //  up=sDcachePmMod.down,
+  //  down=Node(),
+  //)
+  //linkArr += s2mDcachePmMod
+  //val cDcachePmMod = CtrlLink(
+  //  up=s2mDcachePmMod.down,
+  //  down=dcache.pipeMem.io.modBack,
+  //)
+  //linkArr += cDcachePmMod
+  //--------
+
   //--------
   Builder(linkArr.toSeq)
   //--------
+}
+object Flare32CpuVerilog extends App {
+  Config.spinal.generateVerilog(Flare32Cpu(params=Flare32CpuParams()))
 }
 
 //case class Flare32Cpu(

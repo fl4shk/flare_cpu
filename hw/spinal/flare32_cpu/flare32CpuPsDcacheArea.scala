@@ -125,7 +125,7 @@ case class Flare32CpuPsDcache(
     Vec.fill(
       (1 << params.dcacheNumLinesPow) / validVecElemWidth
     )(
-      Reg(UInt(validVecElemWidth bits)) init(0x0)
+      Reg(UInt(validVecElemWidth bits))
     )
     .setName("dcache_rValidVec")
   )
@@ -188,9 +188,10 @@ case class Flare32CpuPsDcache(
             rValidClearCnt := rValidVec.size - 2
             def myCntPlus1 = rValidVec.size - 1
             rValidClearCntPlus1 := myCntPlus1
-            rValidVec(myCntPlus1) := 0x0
+            //rValidVec(myCntPlus1) := U(validVecElemWidth, U"1'b0")
+            rValidVec(myCntPlus1) := U"1'b0".resized
           } otherwise { // when (!io.clear)
-            when (cMid0Front.up.isFiring) {
+            when (cMid0Front.up.isValid) {
               for (idx <- 0 until validVecElemWidth) {
                 //--------
                 //when (
@@ -223,7 +224,10 @@ case class Flare32CpuPsDcache(
         } otherwise {
           rValidClearCnt := rValidClearCnt - 1
           rValidClearCntPlus1 := rValidClearCntPlus1 - 1
-          rValidVec(rValidClearCntPlus1.asUInt) := 0x0
+          //rValidVec(rValidClearCntPlus1.asUInt.resized) := (
+          //  (params.dcacheValidVecElemWidth bits, 0x0)
+          //)
+          rValidVec(rValidClearCntPlus1.asUInt.resized) := U"1'b0".resized
         }
       }
     ),

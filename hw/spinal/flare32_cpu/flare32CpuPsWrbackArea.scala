@@ -35,7 +35,7 @@ case class Flare32CpuPsWrback(
   //--------
   //when (cExWb.down.isFiring)
   val cPrevCurrArea = new cPrevCurr.Area {
-    when (up.isFiring) {
+    when (up.isValid) {
       def wrGpr = (
         //cExWb.down(psExOutp).get(isGpr=true)
         up(prevPayload).exec.get(isGpr=true)

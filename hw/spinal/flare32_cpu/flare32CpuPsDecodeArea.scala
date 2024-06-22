@@ -107,7 +107,22 @@ case class Flare32CpuPsDecode(
     upPayload := RegNext(upPayload) init(upPayload.getZero)
     upPayload.allowOverride
     up(currPayload) := upPayload
-    when (up.isFiring) {
+    def myFetchInstr = upPayload.decode.fetchInstr
+    def myInstrDecEtc = upPayload.decode.instrDecEtc
+    //def myAllPrefixInfo = upPayload.decode.allPrefixInfo
+    val myAllPrefixInfo = Reg(cloneOf(upPayload.decode.allPrefixInfo))
+    myAllPrefixInfo.init(myAllPrefixInfo.getZero)
+    upPayload.decode.allPrefixInfo := myAllPrefixInfo
+    myFetchInstr := (
+      RegNext(myFetchInstr) init(myFetchInstr.getZero)
+    )
+    myInstrDecEtc := (
+      RegNext(myInstrDecEtc) init(myInstrDecEtc.getZero)
+    )
+    //myAllPrefixInfo := (
+    //  RegNext(myAllPrefixInfo) init(myAllPrefixInfo.getZero)
+    //)
+    when (up.isValid) {
       upPayload := up(prevPayload)
       //def myInstrDecEtc = up(prevPayload).decode.instrDecEtc
       //def myFetchInstr = up(prevPayload).decode.fetchInstr.asBits
@@ -115,18 +130,6 @@ case class Flare32CpuPsDecode(
       //val myInstrDecEtc = Flare32CpuInstrDecEtc(params=params)
       //val myAllPrefixInfo = Flare32CpuAllPrefixInfo(params=params)
 
-      def myFetchInstr = upPayload.decode.fetchInstr
-      def myInstrDecEtc = upPayload.decode.instrDecEtc
-      def myAllPrefixInfo = upPayload.decode.allPrefixInfo
-      myFetchInstr := (
-        RegNext(myFetchInstr) init(myFetchInstr.getZero)
-      )
-      myInstrDecEtc := (
-        RegNext(myInstrDecEtc) init(myInstrDecEtc.getZero)
-      )
-      myAllPrefixInfo := (
-        RegNext(myAllPrefixInfo) init(myAllPrefixInfo.getZero)
-      )
 
       def myPreInfo = myAllPrefixInfo.pre
       def myLpreInfo = myAllPrefixInfo.lpre
@@ -333,7 +336,7 @@ case class Flare32CpuPsDecode(
         myLpreInfo.data(params.instrMainWidth - 1 downto 0).assignFromBits(
           myFetchInstr.asBits
         )
-        cPrevCurr.throwIt()
+        /*cPrevCurr.*/throwIt()
         //cIfId.terminateIt() // clear `cIfId.my.valid`
       }
     }
