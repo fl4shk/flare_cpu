@@ -123,36 +123,36 @@ case class Flare32CpuPipePayload(
 //) extends Area {
 //}
 
-//object Flare32CpuParamsTest extends App {
-//  val p = Flare32CpuParams()
-//  println(s"ibusParams.lengthWidth: ${p.ibusParams.access.lengthWidth}")
-//  println(s"dbusParams.lengthWidth: ${p.dbusParams.access.lengthWidth}")
-//  println("icache:")
-//  println(s"icacheNumLines: ${p.icacheNumLines}")
-//  println(s"icacheNumBytesPerLine: ${p.icacheNumBytesPerLine}")
-//  println(s"icacheLineIdxRange: ${p.icacheLineIdxRange}")
-//  println(s"icacheLineBaseAddrWidth: ${p.icacheLineBaseAddrWidth}")
-//  val icacheLineDataIdxRangeArg = p.rawElemNumBytesPow32
-//  val icacheLineDataIdxRange = (
-//    p.icacheLineDataIdxRange(/*icacheLineDataIdxRangeArg*/)
-//  )
-//  println(s"icacheLineDataIdxRange: ${icacheLineDataIdxRange}")
-//  println(s"icacheLineIdxRange: ${p.icacheLineIdxRange}")
-//  println(s"icacheLineBaseAddrWidth: ${p.icacheLineBaseAddrWidth}")
-//  println(s"icacheLineBaseAddRange: ${p.icacheLineBaseAddrRange}")
-//  println("dcache:")
-//  println(s"dcacheNumLines: ${p.dcacheNumLines}")
-//  println(s"dcacheNumBytesPerLine: ${p.dcacheNumBytesPerLine}")
-//  println(s"dcacheLineIdxRange: ${p.dcacheLineIdxRange}")
-//  println(s"dcacheLineBaseAddrWidth: ${p.dcacheLineBaseAddrWidth}")
-//  val dcacheLineDataIdxRangeArg = p.rawElemNumBytesPow32
-//  val dcacheLineDataIdxRange32 = (
-//    p.dcacheLineDataIdxRange(dcacheLineDataIdxRangeArg)
-//  )
-//  println(s"dcacheLineDataIdxRange32: ${dcacheLineDataIdxRange32}")
-//  println(s"dcacheLineBaseAddrWidth: ${p.dcacheLineBaseAddrWidth}")
-//  println(s"dcacheLineBaseAddRange: ${p.dcacheLineBaseAddrRange}")
-//}
+object Flare32CpuParamsTest extends App {
+  val p = Flare32CpuParams()
+  println(s"ibusParams.lengthWidth: ${p.ibusParams.access.lengthWidth}")
+  println(s"dbusParams.lengthWidth: ${p.dbusParams.access.lengthWidth}")
+  println("icache:")
+  println(s"icacheNumLines: ${p.icacheNumLines}")
+  println(s"icacheNumBytesPerLine: ${p.icacheNumBytesPerLine}")
+  println(s"icacheLineIdxRange: ${p.icacheLineIdxRange}")
+  println(s"icacheLineBaseAddrWidth: ${p.icacheLineBaseAddrWidth}")
+  val icacheLineDataIdxRangeArg = p.rawElemNumBytesPow32
+  val icacheLineDataIdxRange = (
+    p.icacheLineDataIdxRange(/*icacheLineDataIdxRangeArg*/)
+  )
+  println(s"icacheLineDataIdxRange: ${icacheLineDataIdxRange}")
+  println(s"icacheLineIdxRange: ${p.icacheLineIdxRange}")
+  println(s"icacheLineBaseAddrWidth: ${p.icacheLineBaseAddrWidth}")
+  println(s"icacheLineBaseAddRange: ${p.icacheLineBaseAddrRange}")
+  println("dcache:")
+  println(s"dcacheNumLines: ${p.dcacheNumLines}")
+  println(s"dcacheNumBytesPerLine: ${p.dcacheNumBytesPerLine}")
+  println(s"dcacheLineIdxRange: ${p.dcacheLineIdxRange}")
+  println(s"dcacheLineBaseAddrWidth: ${p.dcacheLineBaseAddrWidth}")
+  val dcacheLineDataIdxRangeArg = p.rawElemNumBytesPow32
+  val dcacheLineDataIdxRange32 = (
+    p.dcacheLineDataIdxRange(dcacheLineDataIdxRangeArg)
+  )
+  println(s"dcacheLineDataIdxRange32: ${dcacheLineDataIdxRange32}")
+  println(s"dcacheLineBaseAddrWidth: ${p.dcacheLineBaseAddrWidth}")
+  println(s"dcacheLineBaseAddRange: ${p.dcacheLineBaseAddrRange}")
+}
 case class Flare32CpuIo(
   params: Flare32CpuParams,
 ) extends Bundle {
@@ -172,6 +172,79 @@ case class Flare32CpuIo(
   val irq = in Bool()
   //--------
 }
+
+case class Flare32Cpu(
+  params: Flare32CpuParams,
+) extends Component {
+  //--------
+  val io = Flare32CpuIo(params=params)
+  //--------
+  val linkArr = PipeHelper.mkLinkArr()
+  val pipe = PipeHelper(linkArr=linkArr)
+  //--------
+  //val cIcache = pipe.addStage(
+  //  name="Icache",
+  //)
+  // These are named based upon the later pipeline stages
+  val cIcacheDecode = pipe.addStage(
+    name="Decode",
+  )
+  val cDecodeExec = pipe.addStage(
+    name="Exec",
+  )
+  val cExecDcache = pipe.addStage(
+    name="Dcache",
+  )
+  val cDcacheWrback = pipe.addStage(
+    name="Wrback",
+  )
+  val cLast = pipe.addStage(
+    name="Last",
+    finish=true,
+  )
+  //--------
+  // these are outputs of the pipeline stages
+  val icachePayload = Payload(Flare32CpuPipePayload(params=params))
+  val decodePayload = Payload(Flare32CpuPipePayload(params=params))
+  val execPayload = Payload(Flare32CpuPipePayload(params=params))
+  val dcachePayload = Payload(Flare32CpuPipePayload(params=params))
+  //val wrbackPayload = Payload(Flare32CpuPipePayload(params=params))
+  //--------
+  val icache = Flare32CpuIcache(
+    params=params,
+    linkArr=linkArr,
+  )
+  val decode = Flare32CpuDecode(
+    params=params,
+    prevPayload=icachePayload,
+    cPrevCurr=cIcacheDecode,
+    cLastMain=cDcacheWrback,
+    lastMainPayload=(
+      //wrbackPayload
+      dcachePayload
+    ),
+  )
+  val exec = Flare32CpuExec(
+    params=params,
+    prevPayload=decodePayload,
+    cPrevCurr=cDecodeExec,
+    cCurrNext=cExecDcache,
+    decodeIo=decode.io,
+  )
+  val dcache = Flare32CpuDcache(
+    params=params,
+  )
+  val wrback = Flare32CpuWrback(
+    params=params,
+    prevPayload=dcachePayload,
+    cPrevCurr=cDcacheWrback,
+    decodeIo=decode.io,
+  )
+  //--------
+  Builder(linkArr.toSeq)
+  //--------
+}
+
 //case class Flare32Cpu(
 //  //clkRate: HertzNumber,
 //  //optIncludeSimd: Boolean=false,

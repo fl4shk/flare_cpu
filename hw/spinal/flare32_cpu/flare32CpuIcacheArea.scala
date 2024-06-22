@@ -55,12 +55,12 @@ case class Flare32CpuIcacheIo(
 // for now, this is a direct-mapped instruction cache
 case class Flare32CpuIcache(
   params: Flare32CpuParams,
-  //linkArr: ArrayBuffer[Link],
+  linkArr: ArrayBuffer[Link],
 ) extends Area {
   val io = /*master*/(Flare32CpuIcacheIo(
     params=params
   ))
-  val linkArr = PipeHelper.mkLinkArr()
+  //val linkArr = PipeHelper.mkLinkArr()
 
   def pipeMemModStageCnt = (
     //0

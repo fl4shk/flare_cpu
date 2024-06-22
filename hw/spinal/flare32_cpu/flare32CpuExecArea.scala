@@ -60,19 +60,27 @@ case class Flare32CpuExec(
   params: Flare32CpuParams,
   prevPayload: Payload[Flare32CpuPipePayload],
   cPrevCurr: CtrlLink,
+  cCurrNext: CtrlLink,
   decodeIo: Flare32CpuDecodeIo,
 ) extends Area {
   //--------
   val io = Flare32CpuExecIo(params=params)
   //--------
   val cPrevCurrArea = new cPrevCurr.Area {
-    val upPayload = Flare32CpuPipePayload(params=params)
-    upPayload := RegNext(upPayload) init(upPayload.getZero)
-    upPayload.allowOverride
-    up(io.currPayload) := upPayload
+    val upPayload = Vec.fill(2)(Flare32CpuPipePayload(params=params))
+    //upPayload := RegNext(upPayload) init(upPayload.getZero)
+    for (idx <- 0 until upPayload.size) {
+      upPayload(idx) := (
+        RegNext(upPayload(idx))
+        init(upPayload(idx).getZero)
+      )
+    }
+    upPayload(1).allowOverride
+    up(io.currPayload) := upPayload(1)
 
     when (up.isFiring) {
-      upPayload := up(prevPayload)
+      upPayload(0) := up(prevPayload)
+      upPayload(1) := upPayload(0)
       when (!decodeIo.rExecSetPc.valid) {
         //def myInstrDecEtc = cIdEx.down(instrDecEtc)
         def myInstrDecEtc = up(prevPayload).decode.instrDecEtc
@@ -99,7 +107,8 @@ case class Flare32CpuExec(
               //}
               //cIdEx(psExOutp).get(isGpr)
               //up(prevPayload).exec.get(isGpr)
-              upPayload.exec.get(isGpr)
+              upPayload(1).exec.get(isGpr)
+              //down(io.currPayload).exec.get(isGpr=isGpr)
             )
             myWrReg.regIdx := regIdx
             myWrReg.wrReg.valid := True
@@ -154,7 +163,7 @@ case class Flare32CpuExec(
           def getNonFwdRegFunc(
             decIdx: UInt,
             isGpr: Boolean,
-            whichReg: Int,
+            //whichReg: Int,
           ): UInt = {
             if (isGpr) {
               decodeIo.rGprVec(decIdx)
@@ -166,8 +175,18 @@ case class Flare32CpuExec(
           tempInstrDecEtc.doFwdAllRegs(
             //someCtrlLink=cIdEx,
             //execPayload=up(prevPayload)
-            execPayload=upPayload.exec,
+            execPayload=upPayload(1).exec,
             fwdRc=false,
+            extCond=(
+              //up.isFiring
+              down.isFiring
+            ),
+            second=Some(
+              (
+                cCurrNext.up.isFiring,
+                cCurrNext.up(io.currPayload).exec,
+              )
+            )
           )(
             getNonFwdRegFunc=getNonFwdRegFunc
           )
@@ -939,99 +958,99 @@ case class Flare32CpuExec(
                   decodeIo.rExecSetPc.payload := ira
                   ie := U(default -> True)
                 }
-                is (Flare32CpuInstrG4EncOp.ei) {           // Opcode 0x4: ei
+                is (Flare32CpuInstrG4EncOp.ei) {  // Opcode 0x4: ei
                   ie := U(default -> True)
                 }
-                is (Flare32CpuInstrG4EncOp.di) {           // Opcode 0x5: di
+                is (Flare32CpuInstrG4EncOp.di) {  // Opcode 0x5: di
                   ie := U(default -> False)
                 }
-                is (Flare32CpuInstrG4EncOp.pushRaRb) {     // Opcode 0x6: push rA, rB
+                is (Flare32CpuInstrG4EncOp.pushRaRb) { // Opcode 0x6: push rA, rB
                   haltIt()
                 }
-                is (Flare32CpuInstrG4EncOp.pushSaRb) {     // Opcode 0x7: push sA, rB
+                is (Flare32CpuInstrG4EncOp.pushSaRb) { // Opcode 0x7: push sA, rB
                   haltIt()
                 }
-                is (Flare32CpuInstrG4EncOp.popRaRb) {      // Opcode 0x8: pop rA, rB
+                is (Flare32CpuInstrG4EncOp.popRaRb) { // Opcode 0x8: pop rA, rB
                   haltIt()
                 }
-                is (Flare32CpuInstrG4EncOp.popSaRb) {      // Opcode 0x9: pop sA, rB
+                is (Flare32CpuInstrG4EncOp.popSaRb) { // Opcode 0x9: pop sA, rB
                   haltIt()
                 }
-                is (Flare32CpuInstrG4EncOp.popPcRb) {      // Opcode 0xa: pop pc, rB
+                is (Flare32CpuInstrG4EncOp.popPcRb) { // Opcode 0xa: pop pc, rB
                   haltIt()
                 }
-                is (Flare32CpuInstrG4EncOp.mulRaRb) {      // Opcode 0xb: mul rA, rB
+                is (Flare32CpuInstrG4EncOp.mulRaRb) { // Opcode 0xb: mul rA, rB
                   ra := ra * rb
                 }
-                is (Flare32CpuInstrG4EncOp.udivRaRb) {     // Opcode 0xc: udiv rA, rB
+                is (Flare32CpuInstrG4EncOp.udivRaRb) { // Opcode 0xc: udiv rA, rB
                   haltIt()
                   //cIdEx.haltIt()
                 }
-                is (Flare32CpuInstrG4EncOp.sdivRaRb) {     // Opcode 0xd: sdiv rA, rB
+                is (Flare32CpuInstrG4EncOp.sdivRaRb) { // Opcode 0xd: sdiv rA, rB
                   haltIt()
                   //cIdEx.haltIt()
                 }
-                is (Flare32CpuInstrG4EncOp.umodRaRb) {     // Opcode 0xe: umod rA, rB
+                is (Flare32CpuInstrG4EncOp.umodRaRb) { // Opcode 0xe: umod rA, rB
                   haltIt()
                   //cIdEx.haltIt()
                 }
-                is (Flare32CpuInstrG4EncOp.smodRaRb) {     // Opcode 0xf: smod rA, rB
+                is (Flare32CpuInstrG4EncOp.smodRaRb) { // Opcode 0xf: smod rA, rB
                   haltIt()
                   //cIdEx.haltIt()
                 }
                 //--------
-                is (Flare32CpuInstrG4EncOp.lumulRaRb) {    // Opcode 0x10: lumul rA, rB
+                is (Flare32CpuInstrG4EncOp.lumulRaRb) { // Opcode 0x10: lumul rA, rB
                   haltIt()
                   //cIdEx.haltIt()
                 }
-                is (Flare32CpuInstrG4EncOp.lsmulRaRb) {    // Opcode 0x11: lsmul rA, rB
+                is (Flare32CpuInstrG4EncOp.lsmulRaRb) { // Opcode 0x11: lsmul rA, rB
                   haltIt()
                   //cIdEx.haltIt()
                 }
-                is (Flare32CpuInstrG4EncOp.udiv64RaRb) {   // Opcode 0x12: udiv64 rA, rB
+                is (Flare32CpuInstrG4EncOp.udiv64RaRb) { // Opcode 0x12: udiv64 rA, rB
                   haltIt()
                   //cIdEx.haltIt()
                 }
-                is (Flare32CpuInstrG4EncOp.sdiv64RaRb) {   // Opcode 0x13: sdiv64 rA, rB
+                is (Flare32CpuInstrG4EncOp.sdiv64RaRb) { // Opcode 0x13: sdiv64 rA, rB
                   haltIt()
                   //cIdEx.haltIt()
                 }
-                is (Flare32CpuInstrG4EncOp.umod64RaRb) {   // Opcode 0x14: umod64 rA, rB
+                is (Flare32CpuInstrG4EncOp.umod64RaRb) { // Opcode 0x14: umod64 rA, rB
                   haltIt()
                   //cIdEx.haltIt()
                 }
-                is (Flare32CpuInstrG4EncOp.smod64RaRb) {   // Opcode 0x15: smod64 rA, rB
+                is (Flare32CpuInstrG4EncOp.smod64RaRb) { // Opcode 0x15: smod64 rA, rB
                   haltIt()
                   //cIdEx.haltIt()
                 }
-                is (Flare32CpuInstrG4EncOp.ldubRaRb) {     // Opcode 0x16: ldub rA, [rB]
+                is (Flare32CpuInstrG4EncOp.ldubRaRb) { // Opcode 0x16: ldub rA, [rB]
                   haltIt()
                 }
-                is (Flare32CpuInstrG4EncOp.ldsbRaRb) {     // Opcode 0x17: ldsb rA, [rB]
+                is (Flare32CpuInstrG4EncOp.ldsbRaRb) { // Opcode 0x17: ldsb rA, [rB]
                   haltIt()
                 }
-                is (Flare32CpuInstrG4EncOp.lduhRaRb) {     // Opcode 0x18: lduh rA, [rB]
+                is (Flare32CpuInstrG4EncOp.lduhRaRb) { // Opcode 0x18: lduh rA, [rB]
                   haltIt()
                 }
-                is (Flare32CpuInstrG4EncOp.ldshRaRb) {     // Opcode 0x19: ldsh rA, [rB]
+                is (Flare32CpuInstrG4EncOp.ldshRaRb) { // Opcode 0x19: ldsh rA, [rB]
                   haltIt()
                 }
-                is (Flare32CpuInstrG4EncOp.stbRaRb) {      // Opcode 0x1a: stb rA, [rB]
+                is (Flare32CpuInstrG4EncOp.stbRaRb) { // Opcode 0x1a: stb rA, [rB]
                   haltIt()
                 }
-                is (Flare32CpuInstrG4EncOp.sthRaRb) {      // Opcode 0x1b: sth rA, [rB]
+                is (Flare32CpuInstrG4EncOp.sthRaRb) { // Opcode 0x1b: sth rA, [rB]
                   haltIt()
                 }
-                is (Flare32CpuInstrG4EncOp.cpyRaSb) {      // Opcode 0x1c: cpy rA, sB
+                is (Flare32CpuInstrG4EncOp.cpyRaSb) { // Opcode 0x1c: cpy rA, sB
                   ra := sb
                 }
-                is (Flare32CpuInstrG4EncOp.cpySaRb) {      // Opcode 0x1d: cpy sA, rB
+                is (Flare32CpuInstrG4EncOp.cpySaRb) { // Opcode 0x1d: cpy sA, rB
                   sa := rb
                 }
-                is (Flare32CpuInstrG4EncOp.cpySaSb) {      // Opcode 0x1e: cpy sA, sB
+                is (Flare32CpuInstrG4EncOp.cpySaSb) { // Opcode 0x1e: cpy sA, sB
                   sa := sb
                 }
-                is (Flare32CpuInstrG4EncOp.indexRa) {      // Opcode 0x1f: index rA
+                is (Flare32CpuInstrG4EncOp.indexRa) { // Opcode 0x1f: index rA
                   haltIt()
                 }
                 //--------

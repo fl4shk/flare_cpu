@@ -441,130 +441,236 @@ case class Flare32CpuInstrDecEtc(
     execPayload: /*Payload[*/Flare32CpuPipePayloadExec/*]*/,
     //someCtrlLink: CtrlLink,
     fwdRc: Boolean,
+    extCond: Bool,
+    second: Option[(Bool, Flare32CpuPipePayloadExec)]=None,
   )(
     getNonFwdRegFunc: (
       UInt,       // `decIdx`
       Boolean,    // `isGpr`
-      Int,        // `whichReg`
+      //Int,        // `whichReg`
     ) => UInt,
+    //getNonFwdRegFunc1: (
+    //  UInt,     // `decIdx`
+    //  Boolean,  // `isGpr`
+    //  //Int,      // `whichReg`
+    //) => UInt,
   ): Unit = {
     //--------
     def doFwdOneReg(
       decIdx: UInt,
       //nonFwdReg: UInt,
       isGpr: Boolean,
-      whichReg: Int,
+      //whichReg: Int,
       //someCtrlLink: CtrlLink,
     ) = {
-      def tempExOutp = /*someCtrlLink*/(execPayload).get(isGpr)
-      def nonFwdReg = getNonFwdRegFunc(
-        decIdx,
-        isGpr,
-        whichReg,
-      )
-      //def tempRegWb = cExWb(psExOutp).get(isGpr)
-      Mux[UInt](
-        !(
-          decIdx === tempExOutp.regIdx
-          && tempExOutp.wrReg.fire
-        ),
-        nonFwdReg,
-        tempExOutp.wrReg.payload,
-      )
+      //def innerFunc(
+      //  someExecPayload: Flare32CpuPipePayloadExec,
+      //  someNonFwdReg: UInt,
+      //) = {
+      //  def tempExOutp = /*someCtrlLink*/(execPayload).get(isGpr)
+      //  def nonFwdReg = getNonFwdRegFunc(
+      //    decIdx,
+      //    isGpr,
+      //    //whichReg,
+      //  )
+      //  //def tempRegWb = cExWb(psExOutp).get(isGpr)
+      //  Mux[UInt](
+      //    (
+      //      decIdx === tempExOutp.regIdx
+      //      && tempExOutp.wrReg.fire
+      //      && extCond
+      //    ),
+      //    tempExOutp.wrReg.payload,
+      //    someNonFwdReg,
+      //  )
+      //}
+      second match {
+        case Some(mySecond) => {
+          //val tempNonFwdReg = (
+          //  innerFunc(
+          //    someExecPayload=execPayload,
+          //    someNonFwdReg=getNonFwdRegFunc(
+          //      decIdx,
+          //      isGpr,
+          //      //whichReg,
+          //    ),
+          //  )
+          //)
+          //innerFunc(
+          //  someExecPayload=myExecPayload1,
+          //  someNonFwdReg=getNonFwdRegFunc(
+          //    decIdx,
+          //    isGpr,
+          //    //whichReg,
+          //  ),
+          //)
+          //Mux[UInt](
+          //  decIdx === tempExOutp
+          //)
+          def tempExOutp = /*someCtrlLink*/(execPayload).get(isGpr)
+          def nonFwdReg = getNonFwdRegFunc(
+            decIdx,
+            isGpr,
+            //whichReg,
+          )
+          //def tempRegWb = cExWb(psExOutp).get(isGpr)
+          val condVec = Vec(Bool(), 2)
+          condVec(0) := (
+            decIdx === tempExOutp.regIdx
+            && tempExOutp.wrReg.fire
+            && extCond
+          )
+          condVec(1) := (
+            decIdx === mySecond._2.get(isGpr).regIdx
+            && mySecond._2.get(isGpr).wrReg.fire
+            && mySecond._1
+          )
+          val fwdVec = Vec(UInt(params.mainWidth bits), 2)
+          fwdVec(0) := tempExOutp.wrReg.payload
+          fwdVec(1) := mySecond._2.get(isGpr).wrReg.payload
+          val myFindFirst = condVec.sFindFirst(_ === True)
+          Mux[UInt](
+            myFindFirst._1,
+            //Mux[UInt](
+            //  myFindFirst._2 === 0,
+            //  tempExOutp.wrReg.payload,
+            //  mySecond._2.get(isGpr).wrReg.payload,
+            //),
+            fwdVec(myFindFirst._2),
+            nonFwdReg,
+          )
+          //condVec(2) := True
+          //Mux[UInt](
+          //  (
+          //  ),
+          //  Mux[UInt](
+          //    tempExOutp.wrReg.payload,
+          //    nonFwdReg,
+          //  ),
+          //  nonFwdReg
+          //)
+        }
+        case None => {
+          //innerFunc(
+          //  execPayload,
+          //  someNonFwdReg=getNonFwdRegFunc(
+          //    decIdx,
+          //    isGpr,
+          //    //whichReg,
+          //  ),
+          //)
+          def tempExOutp = /*someCtrlLink*/(execPayload).get(isGpr)
+          def nonFwdReg = getNonFwdRegFunc(
+            decIdx,
+            isGpr,
+            //whichReg,
+          )
+          //def tempRegWb = cExWb(psExOutp).get(isGpr)
+          Mux[UInt](
+            (
+              decIdx === tempExOutp.regIdx
+              && tempExOutp.wrReg.fire
+              && extCond
+            ),
+            tempExOutp.wrReg.payload,
+            nonFwdReg,
+          )
+        }
+      }
     }
     //--------
     if (!fwdRc) {
       ra := doFwdOneReg(
         decIdx=raIdx,
         isGpr=true,
-        whichReg=enumGprRa,
+        //whichReg=enumGprRa,
       )
       rb := doFwdOneReg(
         decIdx=rbIdx,
         isGpr=true,
-        whichReg=enumGprRb,
+        //whichReg=enumGprRb,
       )
       gprLr := doFwdOneReg(
         decIdx=Flare32CpuInstrEncConst.gprLrIdx,
         isGpr=true,
-        whichReg=enumGprLr,
+        //whichReg=enumGprLr,
       )
       gprFp := doFwdOneReg(
         decIdx=Flare32CpuInstrEncConst.gprFpIdx,
         isGpr=true,
-        whichReg=enumGprFp,
+        //whichReg=enumGprFp,
       )
       gprSp := doFwdOneReg(
         decIdx=Flare32CpuInstrEncConst.gprSpIdx,
         isGpr=true,
-        whichReg=enumGprSp,
+        //whichReg=enumGprSp,
       )
       sa := doFwdOneReg(
         decIdx=raIdx,
         isGpr=false,
-        whichReg=enumSprSa,
+        //whichReg=enumSprSa,
       )
       sb := doFwdOneReg(
         decIdx=rbIdx,
         isGpr=false,
-        whichReg=enumSprSa,
+        //whichReg=enumSprSa,
       )
       sprFlags := doFwdOneReg(
         decIdx=Flare32CpuInstrEncConst.sprFlagsIdx,
         isGpr=false,
-        whichReg=enumSprFlags,
+        //whichReg=enumSprFlags,
       )
       sprIds := doFwdOneReg(
         decIdx=Flare32CpuInstrEncConst.sprIdsIdx,
         isGpr=false,
-        whichReg=enumSprIds,
+        //whichReg=enumSprIds,
       )
       sprIra := doFwdOneReg(
         decIdx=Flare32CpuInstrEncConst.sprIraIdx,
         isGpr=false,
-        whichReg=enumSprIra,
+        //whichReg=enumSprIra,
       )
       sprIe := doFwdOneReg(
         decIdx=Flare32CpuInstrEncConst.sprIeIdx,
         isGpr=false,
-        whichReg=enumSprIe,
+        //whichReg=enumSprIe,
       )
       sprIty := doFwdOneReg(
         decIdx=Flare32CpuInstrEncConst.sprItyIdx,
         isGpr=false,
-        whichReg=enumSprIty,
+        //whichReg=enumSprIty,
       )
       sprSty := doFwdOneReg(
         decIdx=Flare32CpuInstrEncConst.sprStyIdx,
         isGpr=false,
-        whichReg=enumSprSty,
+        //whichReg=enumSprSty,
       )
 
       ra64Hi := doFwdOneReg(
         decIdx=ra64HiIdx,
         isGpr=true,
-        whichReg=enumGprRa64Hi
+        //whichReg=enumGprRa64Hi
       )
       ra64Lo := doFwdOneReg(
         decIdx=ra64LoIdx,
         isGpr=true,
-        whichReg=enumGprRa64Lo,
+        //whichReg=enumGprRa64Lo,
       )
       rb64Hi := doFwdOneReg(
         decIdx=rb64HiIdx,
         isGpr=true,
-        whichReg=enumGprRb64Hi,
+        //whichReg=enumGprRb64Hi,
       )
       rb64Lo := doFwdOneReg(
         decIdx=rb64LoIdx,
         isGpr=true,
-        whichReg=enumGprRb64Lo,
+        //whichReg=enumGprRb64Lo,
       )
     } else { // if (fwdRc)
       rc := doFwdOneReg(
         decIdx=rcIdx,
         isGpr=true,
-        whichReg=enumGprRc,
+        //whichReg=enumGprRc,
       )
     }
     //--------

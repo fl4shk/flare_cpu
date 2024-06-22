@@ -90,7 +90,8 @@ case class Flare32CpuDecode(
   prevPayload: Payload[Flare32CpuPipePayload],
   cPrevCurr: CtrlLink,
   cLastMain: CtrlLink,
-  lastMainExecPayload: Payload[Flare32CpuPipePayloadExec],
+  //lastMainExecPayload: Payload[Flare32CpuPipePayloadExec],
+  lastMainPayload: Payload[Flare32CpuPipePayload],
 ) extends Area {
   //--------
   val io = Flare32CpuDecodeIo(params=params)
@@ -186,7 +187,7 @@ case class Flare32CpuDecode(
         def getNonFwdRegFunc(
           decIdx: UInt,
           isGpr: Boolean,
-          whichReg: Int,
+          //whichReg: Int,
         ): UInt = {
           if (isGpr) {
             io.rGprVec(decIdx)
@@ -195,16 +196,25 @@ case class Flare32CpuDecode(
           }
         }
         //--------
-        when (cLastMain.up.isValid) {
-        // TODO: check that this works
+        //when (cLastMain.up.isValid) {
+          // TODO: check that this work s
+          //// if the write-back stage has `!up.isValid`, then
+          //// we'd already have the correct data in the registers that
+          //// aren't being forwarded to this pipeline stage. The Exec stage
+          //// is the only one that can stall with `!isReady` following the
+          //// Decode stage, since Write-back doesn't ever provide
+          //// backpressure, and there are no stages between Exec and
+          //// Write-back (at least at the time of this writing... not sure I
+          //// want to add more stages there).
           myInstrDecEtc.doFwdAllRegs(
             //someCtrlLink=cExWb,
-            execPayload=cLastMain.up(lastMainExecPayload),
+            execPayload=cLastMain.up(lastMainPayload).exec,
             fwdRc=false,
+            extCond=cLastMain.up.isFiring,
           )(
             getNonFwdRegFunc=getNonFwdRegFunc
           )
-        }
+        //}
         //--------
         switch (myInstrEnc.g0Pre.grp) {
           is (Flare32CpuInstrEncConst.g0Grp) {
@@ -255,16 +265,17 @@ case class Flare32CpuDecode(
               //  isGpr=true,
               //)
               //--------
-              when (cLastMain.up.isValid) {
-              // TODO: check that this works
+              //when (cLastMain.up.isValid) {
+                // TODO: check that this works
                 myInstrDecEtc.doFwdAllRegs(
                   //someCtrlLink=cExWb,
-                  execPayload=cLastMain.up(lastMainExecPayload),
+                  execPayload=cLastMain.up(lastMainPayload).exec,
                   fwdRc=true,
+                  extCond=cLastMain.up.isFiring,
                 )(
                   getNonFwdRegFunc=getNonFwdRegFunc
                 )
-              }
+              //}
               //--------
             }
           }
