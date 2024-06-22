@@ -18,8 +18,11 @@ import libcheesevoyage.general.PipeMemRmw
 import libcheesevoyage.math.LongDivPipelined
 
 object Flare32CpuCacheParams {
-  def defaultNumLinesPow = log2Up(512)        // \ 32 kiB
-  def defaultNumBytesPerLinePow = log2Up(64)  // /
+  def defaultNumLinesPow = (
+    //log2Up(512)        // 32 kiB (if each line is 64 bytes long)
+    log2Up(256)         // 16 kiB (if each line is 64 bytes long)
+  )
+  def defaultNumBytesPerLinePow = log2Up(64)  //
 
   val rawElemNumBytesPow8 = (8, log2Up(8 / 8))
   val rawElemNumBytesPow16 = (16, log2Up(16 / 8))
@@ -70,10 +73,23 @@ case class Flare32CpuCacheParams(
   numBytesPerLinePow: Int=Flare32CpuCacheParams.defaultNumBytesPerLinePow, 
 ) {
   //def lineIdxRange = log2Up(numBytesPerLine) - 1 downto 0
+  def validVecElemWidth = 32
+  def lineIdxRangePair = (
+    numLinesPow + numBytesPerLinePow - 1,
+    numBytesPerLinePow
+  )
+
   def lineIdxRange = (
     //mainWidth - numLinesPow - 1
-    numLinesPow + numBytesPerLinePow - 1 
-    downto numBytesPerLinePow
+    lineIdxRangePair._1
+    downto lineIdxRangePair._2
+  )
+
+  def validVecRange = (
+    lineIdxRangePair._1
+    downto (
+      lineIdxRangePair._2 + log2Up(validVecElemWidth)
+    )
   )
   val rawElemNumBytesPow8 = Flare32CpuCacheParams.rawElemNumBytesPow8
   val rawElemNumBytesPow16 = Flare32CpuCacheParams.rawElemNumBytesPow16
@@ -182,7 +198,10 @@ case class Flare32CpuParams(
     numLinesPow=icacheNumLinesPow,
     numBytesPerLinePow=icacheNumBytesPerLinePow,
   )
+  def icacheLineIdxRangePair = icacheParams.lineIdxRangePair
   def icacheLineIdxRange = icacheParams.lineIdxRange
+  def icacheValidVecElemWidth = icacheParams.validVecElemWidth
+  def icacheValidVecRange = icacheParams.validVecRange
   def icacheLineDataIdxRange(
     //rawElemNumBytesPow: (Int, Int)=icacheParams.rawElemNumBytesPow16
   ) = (
@@ -210,7 +229,16 @@ case class Flare32CpuParams(
     numLinesPow=dcacheNumLinesPow,
     numBytesPerLinePow=dcacheNumBytesPerLinePow,
   )
+  //def dcacheValidVecRange = (
+  //  dcacheLineIdxRangePair._1
+  //  downto (
+  //    dcacheLineIdxRangePair._2 + dcacheParams.validVecElemWidth
+  //  )
+  //)
+  def dcacheLineIdxRangePair = dcacheParams.lineIdxRangePair
   def dcacheLineIdxRange = dcacheParams.lineIdxRange
+  def dcacheValidVecElemWidth = dcacheParams.validVecElemWidth
+  def dcacheValidVecRange = dcacheParams.validVecRange
   def dcacheLineDataIdxRange(
     rawElemNumBytesPow: (Int, Int)
   ) = (

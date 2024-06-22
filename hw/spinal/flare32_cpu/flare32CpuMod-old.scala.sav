@@ -297,7 +297,7 @@ case class Flare32CpuDcacheLineAttrs(
 //  val cpuIo = Flare32CpuIcacheCpuIo(params=params)
 //  //--------
 //}
-//case class Flare32CpuIcache(
+//case class Flare32CpuPsIcache(
 //  params: Flare32CpuParams,
 //) extends Component {
 //}

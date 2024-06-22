@@ -43,6 +43,8 @@ case class Flare32CpuPipePayloadExec(
     if (isGpr) {gpr} else {spr}
   )
   //--------
+  val addr = UInt(params.mainWidth bits) // for loads/stores
+  //--------
 }
 
 case class Flare32CpuExecIo(
@@ -53,12 +55,13 @@ case class Flare32CpuExecIo(
   //val frontPayload = Payload(Flare32CpuPipePayload(params=params))
   ////val back = Node()
   //val backPayload = Payload(Flare32CpuPipePayload(params=params))
-  val currPayload = Payload(Flare32CpuPipePayload(params=params))
+  //val currPayload = Payload(Flare32CpuPipePayload(params=params))
   //--------
 }
-case class Flare32CpuExec(
+case class Flare32CpuPsExec(
   params: Flare32CpuParams,
   prevPayload: Payload[Flare32CpuPipePayload],
+  currPayload: Payload[Flare32CpuPipePayload],
   cPrevCurr: CtrlLink,
   cCurrNext: CtrlLink,
   decodeIo: Flare32CpuDecodeIo,
@@ -76,7 +79,7 @@ case class Flare32CpuExec(
       )
     }
     upPayload(1).allowOverride
-    up(io.currPayload) := upPayload(1)
+    up(currPayload) := upPayload(1)
 
     when (up.isFiring) {
       upPayload(0) := up(prevPayload)
@@ -108,7 +111,7 @@ case class Flare32CpuExec(
               //cIdEx(psExOutp).get(isGpr)
               //up(prevPayload).exec.get(isGpr)
               upPayload(1).exec.get(isGpr)
-              //down(io.currPayload).exec.get(isGpr=isGpr)
+              //down(currPayload).exec.get(isGpr=isGpr)
             )
             myWrReg.regIdx := regIdx
             myWrReg.wrReg.valid := True
@@ -179,12 +182,14 @@ case class Flare32CpuExec(
             fwdRc=false,
             extCond=(
               //up.isFiring
-              down.isFiring
+              up.isValid
+              //down.isFiring
             ),
             second=Some(
               (
-                cCurrNext.up.isFiring,
-                cCurrNext.up(io.currPayload).exec,
+                //cCurrNext.up.isFiring,
+                cCurrNext.up.isValid,
+                cCurrNext.up(currPayload).exec,
               )
             )
           )(

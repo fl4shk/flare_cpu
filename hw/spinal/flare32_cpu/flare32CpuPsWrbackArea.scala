@@ -24,7 +24,7 @@ import libcheesevoyage.math.LongDivPipelined
 //  val currPayload = Payload(Flare32CpuPipePayload(params=params))
 //}
 
-case class Flare32CpuWrback(
+case class Flare32CpuPsWrback(
   params: Flare32CpuParams,
   prevPayload: Payload[Flare32CpuPipePayload],
   cPrevCurr: CtrlLink,
@@ -35,7 +35,7 @@ case class Flare32CpuWrback(
   //--------
   //when (cExWb.down.isFiring)
   val cPrevCurrArea = new cPrevCurr.Area {
-    when (up.isValid) {
+    when (up.isFiring) {
       def wrGpr = (
         //cExWb.down(psExOutp).get(isGpr=true)
         up(prevPayload).exec.get(isGpr=true)

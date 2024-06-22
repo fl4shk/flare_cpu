@@ -74,7 +74,7 @@ case class Flare32CpuDecodeIo(
   //val front = Node()
   //val frontPayload = Payload(Flare32CpuPipePayload(params=params))
   //val back = Node()
-  val currPayload = Payload(Flare32CpuPipePayload(params=params))
+  //val currPayload = Payload(Flare32CpuPipePayload(params=params))
 
   val rExecSetPc = Reg(Flow(UInt(params.mainWidth bits)))
   rExecSetPc.init(rExecSetPc.getZero)
@@ -85,9 +85,10 @@ case class Flare32CpuDecodeIo(
     Reg(UInt(params.mainWidth bits)) init(0x0)
   )
 }
-case class Flare32CpuDecode(
+case class Flare32CpuPsDecode(
   params: Flare32CpuParams,
   prevPayload: Payload[Flare32CpuPipePayload],
+  currPayload: Payload[Flare32CpuPipePayload],
   cPrevCurr: CtrlLink,
   cLastMain: CtrlLink,
   //lastMainExecPayload: Payload[Flare32CpuPipePayloadExec],
@@ -105,7 +106,7 @@ case class Flare32CpuDecode(
     val upPayload = Flare32CpuPipePayload(params=params)
     upPayload := RegNext(upPayload) init(upPayload.getZero)
     upPayload.allowOverride
-    up(io.currPayload) := upPayload
+    up(currPayload) := upPayload
     when (up.isFiring) {
       upPayload := up(prevPayload)
       //def myInstrDecEtc = up(prevPayload).decode.instrDecEtc
@@ -210,7 +211,10 @@ case class Flare32CpuDecode(
             //someCtrlLink=cExWb,
             execPayload=cLastMain.up(lastMainPayload).exec,
             fwdRc=false,
-            extCond=cLastMain.up.isFiring,
+            extCond=(
+              //cLastMain.up.isFiring
+              cLastMain.up.isValid
+            ),
           )(
             getNonFwdRegFunc=getNonFwdRegFunc
           )
@@ -229,6 +233,7 @@ case class Flare32CpuDecode(
                   myInstrDecEtc.fullgrp := Flare32CpuInstrFullgrpDec.g0Lpre
                   myLpreInfo.have := True
                   myLpreInfo.lpreState := Flare32CpuLpreState.haveHi
+                  myHaveLpreHiOnly := True
                   myHavePreOrLpre := True
                 }
                 default {
@@ -271,7 +276,10 @@ case class Flare32CpuDecode(
                   //someCtrlLink=cExWb,
                   execPayload=cLastMain.up(lastMainPayload).exec,
                   fwdRc=true,
-                  extCond=cLastMain.up.isFiring,
+                  extCond=(
+                    //cLastMain.up.isFiring
+                    cLastMain.up.isValid
+                  ),
                 )(
                   getNonFwdRegFunc=getNonFwdRegFunc
                 )
@@ -319,6 +327,7 @@ case class Flare32CpuDecode(
         //myInstrDecEtc := myInstrDecEtc
       } otherwise {
         myHaveFullLpre := True
+        myHaveLpreHiOnly := False
         myLpreInfo.have := True
         myLpreInfo.lpreState := Flare32CpuLpreState.haveLo
         myLpreInfo.data(params.instrMainWidth - 1 downto 0).assignFromBits(

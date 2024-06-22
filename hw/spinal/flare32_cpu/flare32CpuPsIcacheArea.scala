@@ -41,20 +41,22 @@ case class Flare32CpuIcacheIo(
   params: Flare32CpuParams
 ) extends Area /*with IMasterSlave*/ {
   //val pop = /*master*/(Stream(UInt(params.instrMainWidth bits)))
-  val front = Node()
-  val frontPayload = Payload(Flare32CpuPipePayload(params=params))
-  val back = Node()
-  val backPayload = Payload(Flare32CpuPipePayload(params=params))
+  //val front = Node()
+  //val frontPayload = Payload(Flare32CpuPipePayload(params=params))
+  //val back = Node()
+  //val backPayload = Payload(Flare32CpuPipePayload(params=params))
   val ibus = /*master*/(Bmb(p=params.ibusParams))
   val clear = /*in*/(Bool())
+  //val currPayload = Payload(Flare32CpuPipePayload(params=params))
 
   //def asMaster(): Unit = {
   //  master(pop)
   //}
 }
 // for now, this is a direct-mapped instruction cache
-case class Flare32CpuIcache(
+case class Flare32CpuPsIcache(
   params: Flare32CpuParams,
+  currPayload: Payload[Flare32CpuPipePayload],
   linkArr: ArrayBuffer[Link],
 ) extends Area {
   val io = /*master*/(Flare32CpuIcacheIo(
@@ -67,7 +69,7 @@ case class Flare32CpuIcache(
     1
   )
   def pipeMemModType() = SamplePipeMemRmwModType(
-    wordType=Flow(Flare32CpuIcacheEntryPayload(params=params)),
+    wordType=/*Flow*/(Flare32CpuIcacheEntryPayload(params=params)),
     wordCount=params.icacheLineMemWordCount,
     hazardCmpType=Bool(),
     modStageCnt=pipeMemModStageCnt,
@@ -75,18 +77,18 @@ case class Flare32CpuIcache(
   )
   def pipeMemMemArrIdx = 0
   val pipeMem = PipeMemRmw[
-    Flow[Flare32CpuIcacheEntryPayload],  // WordT
+    /*Flow[*/Flare32CpuIcacheEntryPayload/*]*/,  // WordT
     Bool,                   // HazardCmpT
-    SamplePipeMemRmwModType[Flow[Flare32CpuIcacheEntryPayload], Bool],
-    SamplePipeMemRmwModType[Flow[Flare32CpuIcacheEntryPayload], Bool],
+    SamplePipeMemRmwModType[/*Flow[*/Flare32CpuIcacheEntryPayload/*]*/, Bool],
+    SamplePipeMemRmwModType[/*Flow[*/Flare32CpuIcacheEntryPayload/*]*/, Bool],
     //PipeMemRmwDualRdTypeDisabled[Flare32CpuIcacheEntry, Bool],
   ](
-    wordType=Flow(Flare32CpuIcacheEntryPayload(params=params)),
+    wordType=/*Flow*/(Flare32CpuIcacheEntryPayload(params=params)),
     wordCount=params.icacheLineMemWordCount,
     hazardCmpType=Bool(),
     modType=pipeMemModType(),
     modStageCnt=pipeMemModStageCnt,
-    pipeName="Flare32CpuIcache",
+    pipeName="Flare32CpuPsIcache",
     linkArr=Some(linkArr),
     memArrIdx=pipeMemMemArrIdx,
     dualRdType=(
@@ -106,7 +108,10 @@ case class Flare32CpuIcache(
     optEnableModDuplicate=(
       true
     ),
-    optEnableClear=true,
+    optEnableClear=(
+      //true
+      false
+    ),
     memRamStyle="block",
     vivadoDebug=false,
   )(

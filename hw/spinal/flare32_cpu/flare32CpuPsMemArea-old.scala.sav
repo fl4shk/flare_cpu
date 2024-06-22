@@ -18,7 +18,7 @@
 //import libcheesevoyage.general.PipeHelper
 //import libcheesevoyage.math.LongDivPipelined
 //
-//case class Flare32CpuMem(
+//case class Flare32CpuPsMem(
 //  params: Flare32CpuParams,
 //  prevPayload: Payload[Flare32CpuPipePayload],
 //  cPrevCurr: CtrlLink,
