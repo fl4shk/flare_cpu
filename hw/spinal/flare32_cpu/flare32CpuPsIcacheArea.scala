@@ -37,7 +37,7 @@ case class Flare32CpuPipePayloadIcache(
   //--------
 }
 
-case class Flare32CpuIcacheIo(
+case class Flare32CpuPsIcacheIo(
   params: Flare32CpuParams
 ) extends Area /*with IMasterSlave*/ {
   //val pop = /*master*/(Stream(UInt(params.instrMainWidth bits)))
@@ -59,7 +59,7 @@ case class Flare32CpuPsIcache(
   currPayload: Payload[Flare32CpuPipePayload],
   linkArr: ArrayBuffer[Link],
 ) extends Area {
-  val io = /*master*/(Flare32CpuIcacheIo(
+  val io = /*master*/(Flare32CpuPsIcacheIo(
     params=params
   ))
   //val linkArr = PipeHelper.mkLinkArr()

@@ -28,7 +28,7 @@ case class Flare32CpuPsWrback(
   params: Flare32CpuParams,
   prevPayload: Payload[Flare32CpuPipePayload],
   cPrevCurr: CtrlLink,
-  decodeIo: Flare32CpuDecodeIo,
+  decodeIo: Flare32CpuPsDecodeIo,
 ) extends Area {
   //--------
   //val io = Flare32CpuWrbackIo(params=params)

@@ -67,7 +67,7 @@ case class Flare32CpuPipePayloadDecode(
   val allPrefixInfo = /*Payload*/(Flare32CpuAllPrefixInfo(params=params))
   //--------
 }
-case class Flare32CpuDecodeIo(
+case class Flare32CpuPsDecodeIo(
   params: Flare32CpuParams,
   //cIfId: CtrlLink,
 ) extends Area {
@@ -95,7 +95,7 @@ case class Flare32CpuPsDecode(
   lastMainPayload: Payload[Flare32CpuPipePayload],
 ) extends Area {
   //--------
-  val io = Flare32CpuDecodeIo(params=params)
+  val io = Flare32CpuPsDecodeIo(params=params)
   //--------
   //when (io.front.isValid) {
   //}
@@ -201,6 +201,11 @@ case class Flare32CpuPsDecode(
             io.rSprVec(decIdx)
           }
         }
+        //--------
+        //for (idx <- 0 until params.numGprsSprs) {
+        //  myInstrDecEtc.nonFwdGprVec(idx) := io.rGprVec(idx)
+        //  myInstrDecEtc.nonFwdSprVec(idx) := io.rSprVec(idx)
+        //}
         //--------
         //when (cLastMain.up.isValid) {
           // TODO: check that this work s

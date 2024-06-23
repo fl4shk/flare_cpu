@@ -24,11 +24,25 @@ case class Flare32CpuWrReg(
   val regIdx = UInt(params.numGprsSprsPow bits)
   val wrReg = Flow(UInt(params.mainWidth bits))
 }
+object Flare32CpuLdstKind
+extends SpinalEnum(defaultEncoding=binarySequential) {
+  val
+    LDUB,
+    LDSB,
+    LDUH,
+    LDSH,
+    LDR,
+    STB,
+    STH,
+    STR
+    = newElement();
+}
 case class Flare32CpuLdstPayload(
   params: Flare32CpuParams,
 ) extends Bundle {
   val addr = UInt(params.mainWidth bits) 
-  val isStore = Bool()
+  //val isStore = Bool()
+  val kind = Flare32CpuLdstKind()
 }
 case class Flare32CpuPipePayloadExec(
   params: Flare32CpuParams,
@@ -55,7 +69,7 @@ case class Flare32CpuPipePayloadExec(
   //--------
 }
 
-case class Flare32CpuExecIo(
+case class Flare32CpuPsExecIo(
   params: Flare32CpuParams,
 ) extends Area {
   //--------
@@ -72,10 +86,11 @@ case class Flare32CpuPsExec(
   currPayload: Payload[Flare32CpuPipePayload],
   cPrevCurr: CtrlLink,
   cCurrNext: CtrlLink,
-  decodeIo: Flare32CpuDecodeIo,
+  cPostCurrNext: CtrlLink,
+  decodeIo: Flare32CpuPsDecodeIo,
 ) extends Area {
   //--------
-  val io = Flare32CpuExecIo(params=params)
+  val io = Flare32CpuPsExecIo(params=params)
   //--------
   val cPrevCurrArea = new cPrevCurr.Area {
     val upPayload = Vec.fill(2)(Flare32CpuPipePayload(params=params))
@@ -93,6 +108,14 @@ case class Flare32CpuPsExec(
     val tempInstrDecEtc = Flare32CpuInstrDecEtc(params=params)
     tempInstrDecEtc := myInstrDecEtc
     tempInstrDecEtc.allowOverride
+    //for (idx <- 0 until params.numGprsSprs) {
+    //  tempInstrDecEtc.nonFwdGprVec(idx) := (
+    //    up(prevPayload).decode.instrDecEtc.fwdGprVec(idx)
+    //  )
+    //  tempInstrDecEtc.nonFwdSprVec(idx) := (
+    //    up(prevPayload).decode.instrDecEtc.fwdSprVec(idx)
+    //  )
+    //}
 
     when (up.isValid) {
       upPayload(0) := up(prevPayload)
@@ -127,6 +150,20 @@ case class Flare32CpuPsExec(
             myWrReg.wrReg.valid := True
             myWrReg.wrReg.payload := payload
           }
+          def doWriteRa(
+            payload: UInt,
+          ): Unit = doWriteReg(
+            regIdx=raIdx,
+            payload=payload,
+            isGpr=true,
+          )
+          def doWriteSa(
+            payload: UInt,
+          ): Unit = doWriteReg(
+            regIdx=raIdx,
+            payload=payload,
+            isGpr=false,
+          )
           def doWriteGpr(
             regIdx: UInt,
             payload: UInt,
@@ -175,36 +212,49 @@ case class Flare32CpuPsExec(
             isGpr: Boolean,
             //whichReg: Int,
           ): UInt = {
-            if (isGpr) {
-              decodeIo.rGprVec(decIdx)
-            } else {
-              decodeIo.rSprVec(decIdx)
-            }
+            return U"1'b0"  // to provide an elaboration error, use a 1-bit
+                            // `UInt`
+            //if (isGpr) (
+            //  //decodeIo.rGprVec(decIdx)
+            //  //tempInstrDecEtc.gprVec(decIdx)
+            //) else (
+            //  //decodeIo.rSprVec(decIdx)
+            //  tempInstrDecEtc.sprVec(decIdx)
+            //)
           }
           //--------
           tempInstrDecEtc.doFwdAllRegs(
             //someCtrlLink=cIdEx,
             //execPayload=up(prevPayload)
-            execPayload=upPayload(1).exec,
+            execPayload=(
+              //upPayload(1).exec
+              //down(currPayload).exec
+              cCurrNext.up(currPayload).exec
+            ),
             fwdRc=false,
             extCond=(
               //up.isFiring
-              up.isValid
+              //up.isValid
               //down.isFiring
+              //down.isValid
+              cCurrNext.up.isValid
             ),
             second=Some(
               (
                 //cCurrNext.up.isFiring,
-                cCurrNext.up.isValid,
-                cCurrNext.up(currPayload).exec,
+                //cCurrNext.up.isValid,
+                //cCurrNext.up(currPayload).exec,
+                cPostCurrNext.up.isValid,
+                cPostCurrNext.up(currPayload).exec,
               )
-            )
+            ),
+            otherInstrDecEtc=Some(myInstrDecEtc),
           )(
             getNonFwdRegFunc=getNonFwdRegFunc
           )
           //--------
-          val outpRa = UInt(params.mainWidth bits)
-          def inpRa = tempInstrDecEtc.ra
+          //val outpRa = UInt(params.mainWidth bits)
+          def ra = tempInstrDecEtc.ra
           def rb = tempInstrDecEtc.rb
           def rc = tempInstrDecEtc.rc
           def lr = tempInstrDecEtc.gprLr
@@ -213,8 +263,8 @@ case class Flare32CpuPsExec(
           //def rd = tempInstrDecEtc.rd
           def sa = tempInstrDecEtc.sa
           def sb = tempInstrDecEtc.sb
-          val outpFlags = UInt(params.mainWidth bits)
-          def inpFlags = tempInstrDecEtc.sprFlags
+          //val outpFlags = UInt(params.mainWidth bits)
+          def flags = tempInstrDecEtc.sprFlags
           def ids = tempInstrDecEtc.sprIds
           def ira = tempInstrDecEtc.sprIra
           def ie = tempInstrDecEtc.sprIe
@@ -355,10 +405,20 @@ case class Flare32CpuPsExec(
             def myBits = params.elemNumBytesPow(
               rawElemNumBytesPow=rawElemNumBytesPow
             )._2
+            val outpFlags = UInt(params.mainWidth bits)
+            outpFlags := (
+              //0x0
+              flags
+            )
+            outpFlags.allowOverride
             outpFlags(params.flagIdxZ) := (
               result(myBits - 1 downto 0) === 0
             )
             outpFlags(params.flagIdxN) := result(myBits - 1)
+            doWriteSpr(
+              regIdx=myInstrDecEtc.enumSprFlags,
+              payload=outpFlags,
+            )
             //--------
           }
           def performAddSub(
@@ -397,7 +457,7 @@ case class Flare32CpuPsExec(
                 tempOperandA + tempOperandB
                 + (
                   if (withCarryIn) {
-                    inpFlags(params.flagIdxC downto params.flagIdxC)
+                    flags(params.flagIdxC downto params.flagIdxC)
                   } else { // if (!withCarryIn)
                     U"1'd0"
                   }
@@ -413,7 +473,7 @@ case class Flare32CpuPsExec(
                 tempOperandA + (~tempOperandB)
                 + (
                   if (withCarryIn) {
-                    inpFlags(params.flagIdxC downto params.flagIdxC)
+                    flags(params.flagIdxC downto params.flagIdxC)
                   } else { // if (!withCarryIn)
                     U"1'd1"
                   }
@@ -422,13 +482,20 @@ case class Flare32CpuPsExec(
             }
 
             if (doSetFlags) {
+              var useMyFlagsOut: Boolean = false
               val tempFlagsOut = flagsOut match {
-                case Some(myFlagsOut) => myFlagsOut;
-                case None => outpFlags
+                case Some(myFlagsOut) => {
+                  useMyFlagsOut = true
+                  myFlagsOut
+                }
+                case None => {
+                  //outpFlags
+                  UInt(params.mainWidth bits)
+                }
               }
               val tempFlags = cloneOf(tempFlagsOut)
-              tempFlags := 0x0
-              tempFlags.allowOverride
+              tempFlagsOut := 0x0
+              tempFlagsOut.allowOverride
               performSetFlagsZn(
                 rawElemNumBytesPow=rawElemNumBytesPow,
                 result=result,
@@ -438,6 +505,12 @@ case class Flare32CpuPsExec(
                 (tempOperandA ^ result.resized)
                 & (tempOperandB ^ result.resized)
               )(myBits - 1)
+              if (!useMyFlagsOut) {
+                doWriteSpr(
+                  regIdx=myInstrDecEtc.enumSprFlags,
+                  payload=tempFlagsOut,
+                )
+              }
             }
             //--------
           }
@@ -453,22 +526,26 @@ case class Flare32CpuPsExec(
                 tempInstrDecEtc.instrEnc.g1.op
               ) {
                 is (Flare32CpuInstrG1EncOp.addRaS5) {    // Opcode 0x0: add rA, #simm5
-                  outpRa := inpRa + simm
+                  val outpRa = ra + simm
+                  doWriteRa(payload=outpRa)
                 }
                 is (Flare32CpuInstrG1EncOp.addRaPcS5) {  // Opcode 0x1: add rA, pc, #simm5
-                  outpRa := myPcPlus2 + simm
+                  val outpRa = myPcPlus2 + simm
+                  doWriteRa(payload=outpRa)
                 }
                 is (Flare32CpuInstrG1EncOp.addRaSpS5) {  // Opcode 0x2: add rA, sp, #simm5
-                  outpRa := sp + simm
+                  val outpRa = sp + simm
+                  doWriteRa(payload=outpRa)
                 }
                 is (Flare32CpuInstrG1EncOp.addRaFpS5) {  // Opcode 0x3: add rA, fp, #simm5
-                  outpRa := fp + simm
+                  val outpRa = fp + simm
+                  doWriteRa(payload=outpRa)
                 }
                 is (Flare32CpuInstrG1EncOp.cmpRaS5) {    // Opcode 0x4: cmp rA, #simm5
                   val tempResult = UInt((params.mainWidth + 1) bits)
                   performAddSub(
                     rawElemNumBytesPow=params.rawElemNumBytesPow32,
-                    operandA=inpRa,
+                    operandA=ra,
                     operandB=simm,
                     withCarryIn=false,
                     doSub=true,
@@ -477,32 +554,39 @@ case class Flare32CpuPsExec(
                   )
                 }
                 is (Flare32CpuInstrG1EncOp.cpyRaS5) {    // Opcode 0x5: cpy rA, #simm5
-                  outpRa := simm
+                  val outpRa = simm
+                  doWriteRa(payload=outpRa)
                 }
                 is (Flare32CpuInstrG1EncOp.lslRaI5) {    // Opcode 0x6: lsl rA, #imm5
-                  outpRa := (
-                    inpRa << imm(log2Up(params.mainWidth) downto 0)
+                  val outpRa = (
+                    ra << imm(log2Up(params.mainWidth) downto 0)
                   )(params.mainWidth - 1 downto 0)
+                  doWriteRa(payload=outpRa)
                 }
                 is (Flare32CpuInstrG1EncOp.lsrRaI5) {    // Opcode 0x7: lsr rA, #imm5
-                  outpRa := inpRa >> imm(log2Up(params.mainWidth) downto 0)
+                  val outpRa = ra >> imm(log2Up(params.mainWidth) downto 0)
+                  doWriteRa(payload=outpRa)
                 }
                 is (Flare32CpuInstrG1EncOp.asrRaI5) {    // Opcode 0x8: asr rA, #imm5
-                  outpRa := (
+                  val outpRa = (
                     (
-                      inpRa.asSInt
+                      ra.asSInt
                       >> imm(log2Up(params.mainWidth) downto 0)
                     ).asUInt
                   )
+                  doWriteRa(payload=outpRa)
                 }
                 is (Flare32CpuInstrG1EncOp.andRaS5) {    // Opcode 0x9: and rA, #simm5
-                  outpRa := inpRa & simm
+                  val outpRa = ra & simm
+                  doWriteRa(payload=outpRa)
                 }
                 is (Flare32CpuInstrG1EncOp.orrRaS5) {    // Opcode 0xa: orr rA, #simm5
-                  outpRa := inpRa | simm
+                  val outpRa = ra | simm
+                  doWriteRa(payload=outpRa)
                 }
                 is (Flare32CpuInstrG1EncOp.xorRaS5) {    // Opcode 0xb: xor rA, #simm5
-                  outpRa := inpRa ^ simm
+                  val outpRa = ra ^ simm
+                  doWriteRa(payload=outpRa)
                 }
                 is (Flare32CpuInstrG1EncOp.zeRaI5) {     // Opcode 0xc: ze rA, #imm5
                   //ra := ra(imm - 1 downto 0)
@@ -519,9 +603,10 @@ case class Flare32CpuPsExec(
                   def tempShiftAmount = (
                     params.mainWidth - imm
                   )(log2Up(params.mainWidth) downto 0)
-                  outpRa := (
-                    (inpRa << tempShiftAmount) >> tempShiftAmount
+                  val outpRa = (
+                    (ra << tempShiftAmount) >> tempShiftAmount
                   )(params.mainWidth - 1 downto 0)
+                  doWriteRa(payload=outpRa)
                 }
                 is (Flare32CpuInstrG1EncOp.seRaI5) {     // Opcode 0xd: se rA, #imm5
                   //switch (imm) {
@@ -535,10 +620,11 @@ case class Flare32CpuPsExec(
                   def tempShiftAmount = (
                     params.mainWidth - imm
                   )(log2Up(params.mainWidth) downto 0)
-                  outpRa := (
-                    ((inpRa.asSInt << tempShiftAmount)
+                  val outpRa = (
+                    ((ra.asSInt << tempShiftAmount)
                     >> tempShiftAmount).asUInt
                   )(params.mainWidth - 1 downto 0)
+                  doWriteRa(payload=outpRa)
                 }
                 is (Flare32CpuInstrG1EncOp.swiRaS5) {    // Opcode 0xe: swi rA, #simm5
                 }
@@ -558,7 +644,7 @@ case class Flare32CpuPsExec(
                 is (Flare32CpuInstrG2EncOp.addRaRb) {   // Opcode 0x0: add rA, rB
                   val tempResult = UInt((params.mainWidth + 1) bits)
                   def tempRawEleNumBytesPow = params.rawElemNumBytesPow32
-                  def tempOperandA = inpRa
+                  def tempOperandA = ra
                   def tempOperandB = rb
                   def tempWithCarryIn = false
                   def tempDoSub = false
@@ -575,7 +661,8 @@ case class Flare32CpuPsExec(
                       doSetFlags=doSetFlags,
                       result=tempResult,
                     )
-                    outpRa := tempResult(inpRa.bitsRange)
+                    val outpRa = tempResult(ra.bitsRange)
+                    doWriteRa(payload=outpRa)
                   }
                   when (!f) {
                     myPerformAddSub(doSetFlags=false)
@@ -586,7 +673,7 @@ case class Flare32CpuPsExec(
                 is (Flare32CpuInstrG2EncOp.subRaRb) {   // Opcode 0x1: sub rA, rB
                   val tempResult = UInt((params.mainWidth + 1) bits)
                   def tempRawEleNumBytesPow = params.rawElemNumBytesPow32
-                  def tempOperandA = inpRa
+                  def tempOperandA = ra
                   def tempOperandB = rb
                   def tempWithCarryIn = false
                   def tempDoSub = true
@@ -603,7 +690,8 @@ case class Flare32CpuPsExec(
                       doSetFlags=doSetFlags,
                       result=tempResult,
                     )
-                    outpRa := tempResult(inpRa.bitsRange)
+                    val outpRa = tempResult(ra.bitsRange)
+                    doWriteRa(payload=outpRa)
                   }
                   when (!f) {
                     myPerformAddSub(doSetFlags=false)
@@ -631,7 +719,8 @@ case class Flare32CpuPsExec(
                       doSetFlags=doSetFlags,
                       result=tempResult,
                     )
-                    outpRa := tempResult(inpRa.bitsRange)
+                    val outpRa = tempResult(ra.bitsRange)
+                    doWriteRa(payload=outpRa)
                   }
                   when (!f) {
                     myPerformAddSub(doSetFlags=false)
@@ -659,7 +748,8 @@ case class Flare32CpuPsExec(
                       doSetFlags=doSetFlags,
                       result=tempResult,
                     )
-                    outpRa := tempResult(inpRa.bitsRange)
+                    val outpRa = tempResult(ra.bitsRange)
+                    doWriteRa(payload=outpRa)
                   }
                   when (!f) {
                     myPerformAddSub(doSetFlags=false)
@@ -670,7 +760,7 @@ case class Flare32CpuPsExec(
                 is (Flare32CpuInstrG2EncOp.cmpRaRb) {   // Opcode 0x4: cmp rA, rB
                   val tempResult = UInt((params.mainWidth + 1) bits)
                   def tempRawEleNumBytesPow = params.rawElemNumBytesPow32
-                  def tempOperandA = inpRa
+                  def tempOperandA = ra
                   def tempOperandB = rb
                   def tempWithCarryIn = false
                   def tempDoSub = true
@@ -699,7 +789,8 @@ case class Flare32CpuPsExec(
                   //ra := rb
                   val tempResult = UInt(params.mainWidth bits)
                   tempResult := rb
-                  outpRa := tempResult
+                  val outpRa = tempResult
+                  doWriteRa(payload=outpRa)
                   when (f) {
                     performSetFlagsZn(
                       rawElemNumBytesPow=params.rawElemNumBytesPow32,
@@ -710,9 +801,10 @@ case class Flare32CpuPsExec(
                 is (Flare32CpuInstrG2EncOp.lslRaRb) {   // Opcode 0x6: lsl rA, rB
                   //val tempResult = UInt(params.mainWidth bits)
                   val tempResult = (
-                    inpRa << rb(log2Up(params.mainWidth) downto 0)
+                    ra << rb(log2Up(params.mainWidth) downto 0)
                   )(params.mainWidth - 1 downto 0)
-                  outpRa := tempResult(params.mainWidth - 1 downto 0)
+                  val outpRa = tempResult(params.mainWidth - 1 downto 0)
+                  doWriteRa(payload=outpRa)
                   when (f) {
                     performSetFlagsZn(
                       rawElemNumBytesPow=params.rawElemNumBytesPow32,
@@ -723,9 +815,10 @@ case class Flare32CpuPsExec(
                 is (Flare32CpuInstrG2EncOp.lsrRaRb) {   // Opcode 0x7: lsr rA, rB
                   //val tempResult = UInt(params.mainWidth bits)
                   val tempResult = (
-                    inpRa >> rb(log2Up(params.mainWidth) downto 0)
+                    ra >> rb(log2Up(params.mainWidth) downto 0)
                   )
-                  outpRa := tempResult(params.mainWidth - 1 downto 0)
+                  val outpRa = tempResult(params.mainWidth - 1 downto 0)
+                  doWriteRa(payload=outpRa)
                   when (f) {
                     performSetFlagsZn(
                       rawElemNumBytesPow=params.rawElemNumBytesPow32,
@@ -736,10 +829,11 @@ case class Flare32CpuPsExec(
                 is (Flare32CpuInstrG2EncOp.asrRaRb) {   // Opcode 0x8: asr rA, rB
                   //val tempResult = UInt(params.mainWidth bits)
                   val tempResult = (
-                    inpRa.asSInt
+                    ra.asSInt
                     >> rb(log2Up(params.mainWidth) downto 0)
                   ).asUInt
-                  outpRa := tempResult(params.mainWidth - 1 downto 0)
+                  val outpRa = tempResult(params.mainWidth - 1 downto 0)
+                  doWriteRa(payload=outpRa)
                   when (f) {
                     performSetFlagsZn(
                       rawElemNumBytesPow=params.rawElemNumBytesPow32,
@@ -749,8 +843,9 @@ case class Flare32CpuPsExec(
                 }
                 is (Flare32CpuInstrG2EncOp.andRaRb) {   // Opcode 0x9: and rA, rB
                   val tempResult = UInt(params.mainWidth bits)
-                  tempResult := inpRa & rb
-                  outpRa := tempResult
+                  tempResult := ra & rb
+                  val outpRa = tempResult
+                  doWriteRa(payload=outpRa)
                   when (f) {
                     performSetFlagsZn(
                       rawElemNumBytesPow=params.rawElemNumBytesPow32,
@@ -760,8 +855,9 @@ case class Flare32CpuPsExec(
                 }
                 is (Flare32CpuInstrG2EncOp.orrRaRb) {   // Opcode 0xa: orr rA, rB
                   val tempResult = UInt(params.mainWidth bits)
-                  tempResult := inpRa | rb
-                  outpRa := tempResult
+                  tempResult := ra | rb
+                  val outpRa = tempResult
+                  doWriteRa(payload=outpRa)
                   when (f) {
                     performSetFlagsZn(
                       rawElemNumBytesPow=params.rawElemNumBytesPow32,
@@ -771,8 +867,9 @@ case class Flare32CpuPsExec(
                 }
                 is (Flare32CpuInstrG2EncOp.xorRaRb) {   // Opcode 0xb: xor rA, rB
                   val tempResult = UInt(params.mainWidth bits)
-                  tempResult := inpRa ^ rb
-                  outpRa := tempResult
+                  tempResult := ra ^ rb
+                  val outpRa = tempResult
+                  doWriteRa(payload=outpRa)
                   when (f) {
                     performSetFlagsZn(
                       rawElemNumBytesPow=params.rawElemNumBytesPow32,
@@ -783,7 +880,7 @@ case class Flare32CpuPsExec(
                 is (Flare32CpuInstrG2EncOp.adcRaRb) {   // Opcode 0xc: adc rA, rB
                   val tempResult = UInt((params.mainWidth + 1) bits)
                   def tempRawEleNumBytesPow = params.rawElemNumBytesPow32
-                  def tempOperandA = inpRa
+                  def tempOperandA = ra
                   def tempOperandB = rb
                   def tempWithCarryIn = true
                   def tempDoSub = false
@@ -800,7 +897,8 @@ case class Flare32CpuPsExec(
                       doSetFlags=doSetFlags,
                       result=tempResult,
                     )
-                    outpRa := tempResult(inpRa.bitsRange)
+                    val outpRa = tempResult(ra.bitsRange)
+                    doWriteRa(payload=outpRa)
                   }
                   when (!f) {
                     myPerformAddSub(doSetFlags=false)
@@ -811,7 +909,7 @@ case class Flare32CpuPsExec(
                 is (Flare32CpuInstrG2EncOp.sbcRaRb) {   // Opcode 0xd: sbc rA, rB
                   val tempResult = UInt((params.mainWidth + 1) bits)
                   def tempRawEleNumBytesPow = params.rawElemNumBytesPow32
-                  def tempOperandA = inpRa
+                  def tempOperandA = ra
                   def tempOperandB = rb
                   def tempWithCarryIn = true
                   def tempDoSub = true
@@ -828,7 +926,10 @@ case class Flare32CpuPsExec(
                       doSetFlags=doSetFlags,
                       result=tempResult,
                     )
-                    outpRa := tempResult(inpRa.bitsRange)
+                    val outpRa = tempResult(ra.bitsRange)
+                    doWriteRa(
+                      payload=outpRa,
+                    )
                   }
                   when (!f) {
                     myPerformAddSub(doSetFlags=false)
@@ -839,7 +940,7 @@ case class Flare32CpuPsExec(
                 is (Flare32CpuInstrG2EncOp.cmpbcRaRb) { // Opcode 0xe: cmpbc rA, rB
                   val tempResult = UInt((params.mainWidth + 1) bits)
                   def tempRawEleNumBytesPow = params.rawElemNumBytesPow32
-                  def tempOperandA = inpRa
+                  def tempOperandA = ra
                   def tempOperandB = rb
                   def tempWithCarryIn = true
                   def tempDoSub = true
@@ -888,85 +989,85 @@ case class Flare32CpuPsExec(
                   doSetPc()
                 }
                 is (Flare32CpuInstrG3EncOp.beqS9) {      // Opcode 0x2: beq simm9
-                  when (inpFlags(params.flagIdxZ)) {
+                  when (flags(params.flagIdxZ)) {
                     doSetPc()
                   }
                 }
                 is (Flare32CpuInstrG3EncOp.bneS9) {      // Opcode 0x3: bne simm9
-                  when (!inpFlags(params.flagIdxZ)) {
+                  when (!flags(params.flagIdxZ)) {
                     doSetPc()
                   }
                 }
                 is (Flare32CpuInstrG3EncOp.bmiS9) {      // Opcode 0x4: bmi simm9
-                  when (inpFlags(params.flagIdxN)) {
+                  when (flags(params.flagIdxN)) {
                     doSetPc()
                   }
                 }
                 is (Flare32CpuInstrG3EncOp.bplS9) {      // Opcode 0x5: bpl simm9
-                  when (!inpFlags(params.flagIdxN)) {
+                  when (!flags(params.flagIdxN)) {
                     doSetPc()
                   }
                 }
                 is (Flare32CpuInstrG3EncOp.bvsS9) {      // Opcode 0x6: bvs simm9
-                  when (inpFlags(params.flagIdxV)) {
+                  when (flags(params.flagIdxV)) {
                     doSetPc()
                   }
                 }
                 is (Flare32CpuInstrG3EncOp.bvcS9) {      // Opcode 0x7: bvc simm9
-                  when (!inpFlags(params.flagIdxV)) {
+                  when (!flags(params.flagIdxV)) {
                     doSetPc()
                   }
                 }
                 is (Flare32CpuInstrG3EncOp.bgeuS9) {     // Opcode 0x8: bgeu simm9
-                  when (inpFlags(params.flagIdxC)) {
+                  when (flags(params.flagIdxC)) {
                     doSetPc()
                   }
                 }
                 is (Flare32CpuInstrG3EncOp.bltuS9) {     // Opcode 0x9: bltu simm9
-                  when (!inpFlags(params.flagIdxC)) {
+                  when (!flags(params.flagIdxC)) {
                     doSetPc()
                   }
                 }
                 is (Flare32CpuInstrG3EncOp.bgtuS9) {     // Opcode 0xa: bgtu simm9
                   when (
-                    inpFlags(params.flagIdxC) && !inpFlags(params.flagIdxZ)
+                    flags(params.flagIdxC) && !flags(params.flagIdxZ)
                   ) {
                     doSetPc()
                   }
                 }
                 is (Flare32CpuInstrG3EncOp.bleuS9) {     // Opcode 0xb: bleu simm9
                   when (
-                    !inpFlags(params.flagIdxC) || inpFlags(params.flagIdxZ)
+                    !flags(params.flagIdxC) || flags(params.flagIdxZ)
                   ) {
                     doSetPc()
                   }
                 }
                 is (Flare32CpuInstrG3EncOp.bgesS9) {     // Opcode 0xc: bges simm9
                   when (
-                    inpFlags(params.flagIdxN) === inpFlags(params.flagIdxV)
+                    flags(params.flagIdxN) === flags(params.flagIdxV)
                   ) {
                     doSetPc()
                   }
                 }
                 is (Flare32CpuInstrG3EncOp.bltsS9) {     // Opcode 0xd: blts simm9
                   when (
-                    inpFlags(params.flagIdxN) =/= inpFlags(params.flagIdxV)
+                    flags(params.flagIdxN) =/= flags(params.flagIdxV)
                   ) {
                     doSetPc()
                   }
                 }
                 is (Flare32CpuInstrG3EncOp.bgtsS9) {     // Opcode 0xe: bgts simm9
                   when (
-                    inpFlags(params.flagIdxN) === inpFlags(params.flagIdxV)
-                    && !inpFlags(params.flagIdxZ)
+                    flags(params.flagIdxN) === flags(params.flagIdxV)
+                    && !flags(params.flagIdxZ)
                   ) {
                     doSetPc()
                   }
                 }
                 is (Flare32CpuInstrG3EncOp.blesS9) {     // Opcode 0xf: bles simm9
                   when (
-                    inpFlags(params.flagIdxN) =/= inpFlags(params.flagIdxV)
-                    || inpFlags(params.flagIdxZ)
+                    flags(params.flagIdxN) =/= flags(params.flagIdxV)
+                    || flags(params.flagIdxZ)
                   ) {
                     doSetPc()
                   }
@@ -978,13 +1079,13 @@ case class Flare32CpuPsExec(
                 //--------
                 is (Flare32CpuInstrG4EncOp.jlRa) {         // Opcode 0x0: jl rA
                   decodeIo.rExecSetPc.valid := True
-                  decodeIo.rExecSetPc.payload := inpRa
+                  decodeIo.rExecSetPc.payload := ra
                   //lr := cIdEx.down(pcPlus2)
                   lr := up(prevPayload).decode.pcPlus2
                 }
                 is (Flare32CpuInstrG4EncOp.jmpRa) {        // Opcode 0x1: jmp rA
                   decodeIo.rExecSetPc.valid := True
-                  decodeIo.rExecSetPc.payload := inpRa
+                  decodeIo.rExecSetPc.payload := ra
                 }
                 is (Flare32CpuInstrG4EncOp.jmpIra) {       // Opcode 0x2: jmp ira
                   decodeIo.rExecSetPc.valid := True
@@ -1014,17 +1115,28 @@ case class Flare32CpuPsExec(
                   haltIt()
                 }
                 is (Flare32CpuInstrG4EncOp.popPcRb) { // Opcode 0xa: pop pc, rB
-                  haltIt()
+                  //haltIt()
+                  val outpRa = U(params.mainWidth bits, default -> False)
+                  doWriteRa(
+                    payload=outpRa,
+                  )
                 }
                 is (Flare32CpuInstrG4EncOp.mulRaRb) { // Opcode 0xb: mul rA, rB
-                  outpRa := (inpRa * rb)(inpRa.bitsRange)
+                  val outpRa = (ra * rb)(ra.bitsRange)
+                  doWriteRa(
+                    payload=outpRa,
+                  )
                 }
                 is (Flare32CpuInstrG4EncOp.udivRaRb) { // Opcode 0xc: udiv rA, rB
-                  haltIt()
+                  //haltIt()
+                  val outpRa = U(params.mainWidth bits, default -> False)
                   //cIdEx.haltIt()
+                  doWriteRa(
+                    payload=outpRa,
+                  )
                 }
                 is (Flare32CpuInstrG4EncOp.sdivRaRb) { // Opcode 0xd: sdiv rA, rB
-                  haltIt()
+                  //haltIt()
                   //cIdEx.haltIt()
                 }
                 is (Flare32CpuInstrG4EncOp.umodRaRb) { // Opcode 0xe: umod rA, rB
@@ -1037,55 +1149,89 @@ case class Flare32CpuPsExec(
                 }
                 //--------
                 is (Flare32CpuInstrG4EncOp.lumulRaRb) { // Opcode 0x10: lumul rA, rB
-                  haltIt()
+                  //haltIt()
+                  //val outpRa = 0
                   //cIdEx.haltIt()
                 }
                 is (Flare32CpuInstrG4EncOp.lsmulRaRb) { // Opcode 0x11: lsmul rA, rB
-                  haltIt()
+                  //haltIt()
+                  //val outpRa = 0
                   //cIdEx.haltIt()
                 }
                 is (Flare32CpuInstrG4EncOp.udiv64RaRb) { // Opcode 0x12: udiv64 rA, rB
-                  haltIt()
+                  //haltIt()
+                  //outpRa = 0
                   //cIdEx.haltIt()
                 }
                 is (Flare32CpuInstrG4EncOp.sdiv64RaRb) { // Opcode 0x13: sdiv64 rA, rB
-                  haltIt()
+                  //haltIt()
+                  //outpRa = 0
                   //cIdEx.haltIt()
                 }
                 is (Flare32CpuInstrG4EncOp.umod64RaRb) { // Opcode 0x14: umod64 rA, rB
-                  haltIt()
+                  //haltIt()
+                  //outpRa = 0
                   //cIdEx.haltIt()
                 }
                 is (Flare32CpuInstrG4EncOp.smod64RaRb) { // Opcode 0x15: smod64 rA, rB
-                  haltIt()
+                  //haltIt()
+                  //outpRa = 0
                   //cIdEx.haltIt()
                 }
                 is (Flare32CpuInstrG4EncOp.ldubRaRb) { // Opcode 0x16: ldub rA, [rB]
-                  haltIt()
+                  //haltIt()
+                  //duplicateIt()
+                  def myLdst = upPayload(1).exec.ldst
+                  myLdst.valid := True
+                  myLdst.addr := rb
+                  myLdst.kind := Flare32CpuLdstKind.LDUB
                 }
                 is (Flare32CpuInstrG4EncOp.ldsbRaRb) { // Opcode 0x17: ldsb rA, [rB]
-                  haltIt()
+                  //haltIt()
+                  def myLdst = upPayload(1).exec.ldst
+                  myLdst.valid := True
+                  myLdst.addr := rb
+                  myLdst.kind := Flare32CpuLdstKind.LDSB
                 }
                 is (Flare32CpuInstrG4EncOp.lduhRaRb) { // Opcode 0x18: lduh rA, [rB]
-                  haltIt()
+                  //haltIt()
+                  def myLdst = upPayload(1).exec.ldst
+                  myLdst.valid := True
+                  myLdst.addr := rb
+                  myLdst.kind := Flare32CpuLdstKind.LDUH
                 }
                 is (Flare32CpuInstrG4EncOp.ldshRaRb) { // Opcode 0x19: ldsh rA, [rB]
-                  haltIt()
+                  //haltIt()
+                  def myLdst = upPayload(1).exec.ldst
+                  myLdst.valid := True
+                  myLdst.addr := rb
+                  myLdst.kind := Flare32CpuLdstKind.LDSH
                 }
                 is (Flare32CpuInstrG4EncOp.stbRaRb) { // Opcode 0x1a: stb rA, [rB]
-                  haltIt()
+                  //haltIt()
+                  def myLdst = upPayload(1).exec.ldst
+                  myLdst.valid := True
+                  myLdst.addr := rb
+                  myLdst.kind := Flare32CpuLdstKind.STB
                 }
                 is (Flare32CpuInstrG4EncOp.sthRaRb) { // Opcode 0x1b: sth rA, [rB]
-                  haltIt()
+                  //haltIt()
+                  def myLdst = upPayload(1).exec.ldst
+                  myLdst.valid := True
+                  myLdst.addr := rb
+                  myLdst.kind := Flare32CpuLdstKind.STH
                 }
                 is (Flare32CpuInstrG4EncOp.cpyRaSb) { // Opcode 0x1c: cpy rA, sB
-                  inpRa := sb
+                  val outpRa = sb
+                  doWriteRa(payload=outpRa)
                 }
                 is (Flare32CpuInstrG4EncOp.cpySaRb) { // Opcode 0x1d: cpy sA, rB
-                  sa := rb
+                  val outpSa = rb
+                  doWriteSa(payload=outpSa)
                 }
                 is (Flare32CpuInstrG4EncOp.cpySaSb) { // Opcode 0x1e: cpy sA, sB
-                  sa := sb
+                  val outpSa = sb
+                  doWriteSa(payload=outpSa)
                 }
                 is (Flare32CpuInstrG4EncOp.indexRa) { // Opcode 0x1f: index rA
                   haltIt()

@@ -286,11 +286,12 @@ case class Flare32Cpu(
   //  ),
   //)
   //val cExecDcache = dcache.pipeMem.mod.front.pipe.first
-  val cExecDcache = CtrlLink(
-    up=cDecodeExec.down,
-    down=dcache.pipeMem.io.front,
-  )
-  linkArr += cExecDcache
+  //val cExecDcache = CtrlLink(
+  //  up=cDecodeExec.down,
+  //  down=dcache.pipeMem.io.front,
+  //)
+  //linkArr += cExecDcache
+  val cExecDcache = dcache.pipeMem.mod.front.pipe.first
   //val dDecodeExecDcache = DirectLink(
   //  up=,
   //  down=cExecDcache.up
@@ -336,6 +337,11 @@ case class Flare32Cpu(
     cPrevCurr=cDecodeExec,
     cCurrNext=(
       cExecDcache
+    ),
+    //cNext2=(
+    //),
+    cPostCurrNext=(
+      cDcacheWrback
     ),
     decodeIo=decode.io,
   )

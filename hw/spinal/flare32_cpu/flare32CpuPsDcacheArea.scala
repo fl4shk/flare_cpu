@@ -46,7 +46,7 @@ case class Flare32CpuDcacheEntryPayload(
 //) extends Bundle {
 //  //val 
 //}
-case class Flare32CpuDcacheIo(
+case class Flare32CpuPsDcacheIo(
   params: Flare32CpuParams,
 ) extends Area {
   //--------
@@ -63,7 +63,7 @@ case class Flare32CpuPsDcache(
   linkArr: ArrayBuffer[Link],
 ) extends Area {
   //--------
-  val io = Flare32CpuDcacheIo(params=params)
+  val io = Flare32CpuPsDcacheIo(params=params)
   //--------
   def pipeMemModStageCnt = (
     //0
