@@ -1,4 +1,4 @@
-package flare32_cpu
+package flare_cpu
 import spinal.core._
 //import spinal.lib.bus.tilelink
 import spinal.lib._
@@ -18,7 +18,7 @@ import libcheesevoyage.general.PipeMemRmw
 import libcheesevoyage.general.PipeHelper
 import libcheesevoyage.math.LongDivPipelined
 
-object Flare32CpuLpreState
+object FlareCpuLpreState
 extends SpinalEnum(defaultEncoding=binarySequential) {
   val
     //noLpre,
@@ -26,26 +26,26 @@ extends SpinalEnum(defaultEncoding=binarySequential) {
     haveLo
     = newElement();
 }
-case class Flare32CpuPrefixInfo(
+case class FlareCpuPrefixInfo(
   dataWidth: Int,
   isLpre: Boolean, 
 ) extends Bundle {
   val have = Bool()
-  val lpreState = (isLpre) generate Flare32CpuLpreState()
+  val lpreState = (isLpre) generate FlareCpuLpreState()
   val data = UInt(dataWidth bits)
 }
-case class Flare32CpuAllPrefixInfo(
-  params: Flare32CpuParams,
+case class FlareCpuAllPrefixInfo(
+  params: FlareCpuParams,
 ) extends Bundle {
-  val pre = Flare32CpuPrefixInfo(
+  val pre = FlareCpuPrefixInfo(
     dataWidth=params.preWidth,
     isLpre=false,
   )
-  val lpre = Flare32CpuPrefixInfo(
+  val lpre = FlareCpuPrefixInfo(
     dataWidth=params.lpreWidth,
     isLpre=true,
   )
-  val index = Flare32CpuPrefixInfo(
+  val index = FlareCpuPrefixInfo(
     dataWidth=params.numGprsSprsPow,
     isLpre=false,
   )
@@ -54,8 +54,8 @@ case class Flare32CpuAllPrefixInfo(
   val haveLpreHiOnly = Bool()
   val haveFullLpre = Bool()
 }
-case class Flare32CpuPipePayloadDecode(
-  params: Flare32CpuParams,
+case class FlareCpuPipePayloadDecode(
+  params: FlareCpuParams,
 ) extends Bundle {
   //--------
   val irq = Bool()
@@ -63,18 +63,18 @@ case class Flare32CpuPipePayloadDecode(
   val pcPlus2 = UInt(params.mainWidth bits)
   val fetchInstr = UInt(params.instrMainWidth bits)
 
-  val instrDecEtc = /*Payload*/(Flare32CpuInstrDecEtc(params=params))
-  val allPrefixInfo = /*Payload*/(Flare32CpuAllPrefixInfo(params=params))
+  val instrDecEtc = /*Payload*/(FlareCpuInstrDecEtc(params=params))
+  val allPrefixInfo = /*Payload*/(FlareCpuAllPrefixInfo(params=params))
   //--------
 }
-case class Flare32CpuPsDecodeIo(
-  params: Flare32CpuParams,
+case class FlareCpuPsDecodeIo(
+  params: FlareCpuParams,
   //cIfId: CtrlLink,
 ) extends Area {
   //val front = Node()
-  //val frontPayload = Payload(Flare32CpuPipePayload(params=params))
+  //val frontPayload = Payload(FlareCpuPipePayload(params=params))
   //val back = Node()
-  //val currPayload = Payload(Flare32CpuPipePayload(params=params))
+  //val currPayload = Payload(FlareCpuPipePayload(params=params))
 
   val rExecSetPc = Reg(Flow(UInt(params.mainWidth bits)))
   rExecSetPc.init(rExecSetPc.getZero)
@@ -85,25 +85,26 @@ case class Flare32CpuPsDecodeIo(
     Reg(UInt(params.mainWidth bits)) init(0x0)
   )
 }
-case class Flare32CpuPsDecode(
-  params: Flare32CpuParams,
-  prevPayload: Payload[Flare32CpuPipePayload],
-  currPayload: Payload[Flare32CpuPipePayload],
+case class FlareCpuPsDecode(
+  params: FlareCpuParams,
+  prevPayload: Payload[FlareCpuPipePayload],
+  currPayload: Payload[FlareCpuPipePayload],
+  //lastMainExecPayload: Payload[FlareCpuPipePayloadExec],
+  lastMainPayload: Payload[FlareCpuPipePayload],
   cPrevCurr: CtrlLink,
+  cCurrNext: CtrlLink,
   cLastMain: CtrlLink,
-  //lastMainExecPayload: Payload[Flare32CpuPipePayloadExec],
-  lastMainPayload: Payload[Flare32CpuPipePayload],
 ) extends Area {
   //--------
-  val io = Flare32CpuPsDecodeIo(params=params)
+  val io = FlareCpuPsDecodeIo(params=params)
   //--------
   //when (io.front.isValid) {
   //}
   val cPrevCurrArea = new cPrevCurr.Area {
-    //val currPayload = Flare32CpuPipePayload(params=params)
+    //val currPayload = FlareCpuPipePayload(params=params)
     //currPayload := up(prevPayload)
     //currPayload.allowOverride
-    val upPayload = Flare32CpuPipePayload(params=params)
+    val upPayload = FlareCpuPipePayload(params=params)
     upPayload := RegNext(upPayload) init(upPayload.getZero)
     upPayload.allowOverride
     up(currPayload) := upPayload
@@ -129,8 +130,8 @@ case class Flare32CpuPsDecode(
       //def myInstrDecEtc = up(prevPayload).decode.instrDecEtc
       //def myFetchInstr = up(prevPayload).decode.fetchInstr.asBits
       //val myFetchInstr = UInt(params.instrMainWidth bits)
-      //val myInstrDecEtc = Flare32CpuInstrDecEtc(params=params)
-      //val myAllPrefixInfo = Flare32CpuAllPrefixInfo(params=params)
+      //val myInstrDecEtc = FlareCpuInstrDecEtc(params=params)
+      //val myAllPrefixInfo = FlareCpuAllPrefixInfo(params=params)
 
 
       def myPreInfo = myAllPrefixInfo.pre
@@ -144,12 +145,12 @@ case class Flare32CpuPsDecode(
       when (
         //!myLpreInfo.have
         //|| (
-        //  myLpreInfo.lpreState === Flare32CpuLpreState.haveLo
+        //  myLpreInfo.lpreState === FlareCpuLpreState.haveLo
         //)
         //!myHaveFullLpre
-        //myLpreInfo.lpreState =/= Flare32CpuLpreState.haveHi
-        //&& myLpreInfo.lpreState === Flare32CpuLpreState.haveLo
-        //&& myLpreInfo.lpreState === Flare32CpuLpreState.have
+        //myLpreInfo.lpreState =/= FlareCpuLpreState.haveHi
+        //&& myLpreInfo.lpreState === FlareCpuLpreState.haveLo
+        //&& myLpreInfo.lpreState === FlareCpuLpreState.have
         !myHaveLpreHiOnly
       ) {
         def myInstrEnc = myInstrDecEtc.instrEnc
@@ -184,7 +185,7 @@ case class Flare32CpuPsDecode(
         def doInvalidInstr(): Unit = {
           doClearPrefixes()
           myInstrDecEtc.isInvalid := True
-          //tempInstrDecEtc.fullgrp := Flare32CpuInstrFullgrpDec.invalid
+          //tempInstrDecEtc.fullgrp := FlareCpuInstrFullgrpDec.invalid
         }
         def doFinishedInstr(): Unit = {
           doClearPrefixes()
@@ -231,18 +232,18 @@ case class Flare32CpuPsDecode(
         //}
         //--------
         switch (myInstrEnc.g0Pre.grp) {
-          is (Flare32CpuInstrEncConst.g0Grp) {
+          is (FlareCpuInstrEncConst.g0Grp) {
             when (!myHavePreOrLpre) {
               switch (myInstrEnc.g0LpreHi.subgrp) {
-                is (Flare32CpuInstrEncConst.g0PreMaskedSubgrp) {
-                  myInstrDecEtc.fullgrp := Flare32CpuInstrFullgrpDec.g0Pre
+                is (FlareCpuInstrEncConst.g0PreMaskedSubgrp) {
+                  myInstrDecEtc.fullgrp := FlareCpuInstrFullgrpDec.g0Pre
                   myPreInfo.have := True
                   myHavePreOrLpre := True
                 }
-                is (Flare32CpuInstrEncConst.g0LpreSubgrp) {
-                  myInstrDecEtc.fullgrp := Flare32CpuInstrFullgrpDec.g0Lpre
+                is (FlareCpuInstrEncConst.g0LpreSubgrp) {
+                  myInstrDecEtc.fullgrp := FlareCpuInstrFullgrpDec.g0Lpre
                   myLpreInfo.have := True
-                  myLpreInfo.lpreState := Flare32CpuLpreState.haveHi
+                  myLpreInfo.lpreState := FlareCpuLpreState.haveHi
                   myHaveLpreHiOnly := True
                   myHavePreOrLpre := True
                 }
@@ -254,22 +255,22 @@ case class Flare32CpuPsDecode(
               doInvalidInstr()
             }
           }
-          is (Flare32CpuInstrEncConst.g1Grp) {
-            myInstrDecEtc.fullgrp := Flare32CpuInstrFullgrpDec.g1
+          is (FlareCpuInstrEncConst.g1Grp) {
+            myInstrDecEtc.fullgrp := FlareCpuInstrFullgrpDec.g1
             doFinishedInstr()
           }
-          is (Flare32CpuInstrEncConst.g2Grp) {
-            myInstrDecEtc.fullgrp := Flare32CpuInstrFullgrpDec.g2
+          is (FlareCpuInstrEncConst.g2Grp) {
+            myInstrDecEtc.fullgrp := FlareCpuInstrFullgrpDec.g2
             doFinishedInstr()
           }
-          is (Flare32CpuInstrEncConst.g3Grp) {
-            myInstrDecEtc.fullgrp := Flare32CpuInstrFullgrpDec.g3
+          is (FlareCpuInstrEncConst.g3Grp) {
+            myInstrDecEtc.fullgrp := FlareCpuInstrFullgrpDec.g3
             doFinishedInstr()
           }
-          is (Flare32CpuInstrEncConst.g4Grp) {
-            myInstrDecEtc.fullgrp := Flare32CpuInstrFullgrpDec.g4
+          is (FlareCpuInstrEncConst.g4Grp) {
+            myInstrDecEtc.fullgrp := FlareCpuInstrFullgrpDec.g4
             when (
-              myInstrEnc.g4.op =/= Flare32CpuInstrG4EncOp.indexRa
+              myInstrEnc.g4.op =/= FlareCpuInstrG4EncOp.indexRa
             ) {
               doFinishedInstr()
             } otherwise {
@@ -297,33 +298,33 @@ case class Flare32CpuPsDecode(
               //--------
             }
           }
-          is (Flare32CpuInstrEncConst.g5Grp) {
-            myInstrDecEtc.fullgrp := Flare32CpuInstrFullgrpDec.g5
+          is (FlareCpuInstrEncConst.g5Grp) {
+            myInstrDecEtc.fullgrp := FlareCpuInstrFullgrpDec.g5
             doFinishedInstr()
           }
-          is (Flare32CpuInstrEncConst.g6Grp) {
-            myInstrDecEtc.fullgrp := Flare32CpuInstrFullgrpDec.g6
+          is (FlareCpuInstrEncConst.g6Grp) {
+            myInstrDecEtc.fullgrp := FlareCpuInstrFullgrpDec.g6
             doFinishedInstr()
           }
-          is (Flare32CpuInstrEncConst.g7Grp) {
+          is (FlareCpuInstrEncConst.g7Grp) {
             doFinishedInstr()
             when (
               myInstrEnc.g7Sg00.subgrp
-              === Flare32CpuInstrEncConst.g7Sg00Subgrp
+              === FlareCpuInstrEncConst.g7Sg00Subgrp
             ) {
-              myInstrDecEtc.fullgrp := Flare32CpuInstrFullgrpDec.g7Sg00
+              myInstrDecEtc.fullgrp := FlareCpuInstrFullgrpDec.g7Sg00
               doFinishedInstr()
             } elsewhen (
               myInstrEnc.g7Sg010.subgrp
-              === Flare32CpuInstrEncConst.g7Sg010Subgrp
+              === FlareCpuInstrEncConst.g7Sg010Subgrp
             ) {
-              myInstrDecEtc.fullgrp := Flare32CpuInstrFullgrpDec.g7Sg010
+              myInstrDecEtc.fullgrp := FlareCpuInstrFullgrpDec.g7Sg010
               doFinishedInstr()
             } elsewhen (
               myInstrEnc.g7Sg0110.subgrp
-              === Flare32CpuInstrEncConst.g7Sg0110Subgrp
+              === FlareCpuInstrEncConst.g7Sg0110Subgrp
             ) {
-              myInstrDecEtc.fullgrp := Flare32CpuInstrFullgrpDec.g7Sg0110
+              myInstrDecEtc.fullgrp := FlareCpuInstrFullgrpDec.g7Sg0110
               doFinishedInstr()
             } otherwise {
               // invalid instruction, NOP
@@ -339,7 +340,7 @@ case class Flare32CpuPsDecode(
         myHaveFullLpre := True
         myHaveLpreHiOnly := False
         myLpreInfo.have := True
-        myLpreInfo.lpreState := Flare32CpuLpreState.haveLo
+        myLpreInfo.lpreState := FlareCpuLpreState.haveLo
         myLpreInfo.data(params.instrMainWidth - 1 downto 0).assignFromBits(
           myFetchInstr.asBits
         )

@@ -1,4 +1,4 @@
-PROJECT=flare32_cpu
+PROJECT=flare_cpu
 
 build/${PROJECT}.pdf: build/${PROJECT}.bbl
 	lualatex --output-directory=build ${PROJECT}

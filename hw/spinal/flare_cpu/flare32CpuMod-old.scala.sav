@@ -1,4 +1,4 @@
-package flare32_cpu
+package flare_cpu
 import spinal.core._
 //import spinal.lib.bus.tilelink
 import spinal.lib._
@@ -15,7 +15,7 @@ import libcheesevoyage.general.PipeSkidBufIo
 import libcheesevoyage.general.FpgacpuRamSimpleDualPort
 import libcheesevoyage.math.LongDivPipelined
 
-object Flare32CpuCacheParams {
+object FlareCpuCacheParams {
   def defaultNumLinesPow = log2Up(512)        // \ 32 kiB
   def defaultNumBytesPerLinePow = log2Up(64)  // /
 
@@ -38,25 +38,25 @@ object Flare32CpuCacheParams {
   }
 }
 
-case class Flare32CpuCacheParams(
+case class FlareCpuCacheParams(
   mainWidth: Int,
   lineElemNumBytes: Int,
-  numLinesPow: Int=Flare32CpuCacheParams.defaultNumLinesPow,
-  numBytesPerLinePow: Int=Flare32CpuCacheParams.defaultNumBytesPerLinePow, 
+  numLinesPow: Int=FlareCpuCacheParams.defaultNumLinesPow,
+  numBytesPerLinePow: Int=FlareCpuCacheParams.defaultNumBytesPerLinePow, 
 ) {
   //def lineIndexRange = log2Up(numBytesPerLine) - 1 downto 0
   def lineIndexRange = (
     mainWidth - numLinesPow - 1
     downto numBytesPerLinePow
   )
-  val rawElemNumBytesPow8 = Flare32CpuCacheParams.rawElemNumBytesPow8
-  val rawElemNumBytesPow16 = Flare32CpuCacheParams.rawElemNumBytesPow16
-  val rawElemNumBytesPow32 = Flare32CpuCacheParams.rawElemNumBytesPow32
-  val rawElemNumBytesPow64 = Flare32CpuCacheParams.rawElemNumBytesPow64
+  val rawElemNumBytesPow8 = FlareCpuCacheParams.rawElemNumBytesPow8
+  val rawElemNumBytesPow16 = FlareCpuCacheParams.rawElemNumBytesPow16
+  val rawElemNumBytesPow32 = FlareCpuCacheParams.rawElemNumBytesPow32
+  val rawElemNumBytesPow64 = FlareCpuCacheParams.rawElemNumBytesPow64
 
   def elemNumBytesPow(
     rawElemNumBytesPow: (Int, Int)
-  ) = Flare32CpuCacheParams.elemNumBytesPow(rawElemNumBytesPow)
+  ) = FlareCpuCacheParams.elemNumBytesPow(rawElemNumBytesPow)
 
   def lineDataIdxRange(rawElemNumBytesPow: (Int, Int)) = (
     numBytesPerLinePow - 1 downto elemNumBytesPow(rawElemNumBytesPow)._1
@@ -77,23 +77,23 @@ case class Flare32CpuCacheParams(
   )
 }
 
-case class Flare32CpuParams(
+case class FlareCpuParams(
   //optIncludeSimd: Boolean=false,
   //optIncludeFpu: Boolean=false,
-  icacheNumLinesPow: Int=Flare32CpuCacheParams.defaultNumLinesPow,
+  icacheNumLinesPow: Int=FlareCpuCacheParams.defaultNumLinesPow,
   icacheNumBytesPerLinePow: Int=(
-    Flare32CpuCacheParams.defaultNumBytesPerLinePow
+    FlareCpuCacheParams.defaultNumBytesPerLinePow
   ),
   icacheRamStyle: String="block",
   icacheRamRwAddrCollision: String="",
-  dcacheNumLinesPow: Int=Flare32CpuCacheParams.defaultNumLinesPow,
+  dcacheNumLinesPow: Int=FlareCpuCacheParams.defaultNumLinesPow,
   dcacheNumBytesPerLinePow: Int=(
-    Flare32CpuCacheParams.defaultNumBytesPerLinePow
+    FlareCpuCacheParams.defaultNumBytesPerLinePow
   ),
   dcacheRamStyle: String="block",
   dcacheRamRwAddrCollision: String="",
-  //icacheParams: Flare32CpuCacheParams,
-  //dcacheParams: Flare32CpuCacheParams,
+  //icacheParams: FlareCpuCacheParams,
+  //dcacheParams: FlareCpuCacheParams,
   numCpuCores: Int=2,
 ) {
   //--------
@@ -125,16 +125,16 @@ case class Flare32CpuParams(
   //def instrEncG1G5G6Simm5Width = 5
   //def instrEncG3Simm9Width = 9
   //--------
-  val rawElemNumBytesPow8 = Flare32CpuCacheParams.rawElemNumBytesPow8
-  val rawElemNumBytesPow16 = Flare32CpuCacheParams.rawElemNumBytesPow16
-  val rawElemNumBytesPow32 = Flare32CpuCacheParams.rawElemNumBytesPow32
-  val rawElemNumBytesPow64 = Flare32CpuCacheParams.rawElemNumBytesPow64
+  val rawElemNumBytesPow8 = FlareCpuCacheParams.rawElemNumBytesPow8
+  val rawElemNumBytesPow16 = FlareCpuCacheParams.rawElemNumBytesPow16
+  val rawElemNumBytesPow32 = FlareCpuCacheParams.rawElemNumBytesPow32
+  val rawElemNumBytesPow64 = FlareCpuCacheParams.rawElemNumBytesPow64
 
   def elemNumBytesPow(
     rawElemNumBytesPow: (Int, Int)
-  ) = Flare32CpuCacheParams.elemNumBytesPow(rawElemNumBytesPow)
+  ) = FlareCpuCacheParams.elemNumBytesPow(rawElemNumBytesPow)
   //--------
-  def icacheParams = Flare32CpuCacheParams(
+  def icacheParams = FlareCpuCacheParams(
     mainWidth=mainWidth,
     lineElemNumBytes=(instrMainWidth / 8),
     numLinesPow=icacheNumLinesPow,
@@ -161,7 +161,7 @@ case class Flare32CpuParams(
   //  / (instrMainWidth / 8).toInt
   //)
   //--------
-  def dcacheParams = Flare32CpuCacheParams(
+  def dcacheParams = FlareCpuCacheParams(
     mainWidth=mainWidth,
     lineElemNumBytes=(mainWidth / 8),
     numLinesPow=dcacheNumLinesPow,
@@ -230,28 +230,28 @@ case class Flare32CpuParams(
   //val test = AvalonMMInterconnect(
   //)
 }
-case class Flare32CpuIcacheLineAttrs(
-  params: Flare32CpuParams
+case class FlareCpuIcacheLineAttrs(
+  params: FlareCpuParams
 ) extends Bundle {
   val baseAddr = UInt(params.icacheLineBaseAddrWidth bits)
   val loaded = Bool()
 }
-case class Flare32CpuDcacheLineAttrs(
-  params: Flare32CpuParams
+case class FlareCpuDcacheLineAttrs(
+  params: FlareCpuParams
 ) extends Bundle {
   val baseAddr = UInt(params.icacheLineBaseAddrWidth bits)
   val loaded = Bool()
   val dirty = Bool()
 }
-//case class Flare32CpuIcacheWordType(
-//  params: Flare32CpuParams
+//case class FlareCpuIcacheWordType(
+//  params: FlareCpuParams
 //) extends Bundle {
 //  val baseAddr = UInt(params.icacheLineBaseAddrWidth bits)
 //  val data = UInt((params.icacheNumBytesPerLine * 8) bits)
 //  val loaded = Bool()
 //}
-//case class Flare32CpuDcacheWordType(
-//  params: Flare32CpuParams
+//case class FlareCpuDcacheWordType(
+//  params: FlareCpuParams
 //) extends Bundle {
 //  val baseAddr = UInt(params.dcacheLineBaseAddrWidth bits)
 //  val data = UInt((params.dcacheNumBytesPerLine * 8) bits)
@@ -259,8 +259,8 @@ case class Flare32CpuDcacheLineAttrs(
 //  val dirty = Bool()
 //}
 
-//case class Flare32CpuIcacheIo(
-//  params: Flare32CpuParams
+//case class FlareCpuIcacheIo(
+//  params: FlareCpuParams
 //) extends Bundle with IMasterSlave {
 //  //--------
 //  val rdAddrStm = slave Stream(
@@ -277,64 +277,64 @@ case class Flare32CpuDcacheLineAttrs(
 //  //--------
 //}
 
-//case class Flare32CpuIcachePayload(
-//  params: Flare32CpuParams,
+//case class FlareCpuIcachePayload(
+//  params: FlareCpuParams,
 //) extends Bundle {
 //}
 //
-//case class Flare32CpuIcacheCpuIo(
-//  params: Flare32CpuParams,
+//case class FlareCpuIcacheCpuIo(
+//  params: FlareCpuParams,
 //) extends Bundle {
 //}
 //
-//case class Flare32CpuIcacheIo(
-//  params: Flare32CpuParams,
+//case class FlareCpuIcacheIo(
+//  params: FlareCpuParams,
 //) extends Bundle {
 //  //--------
 //  // AXI host
 //  val ibus = master(Axi4(config=params.ibusConfig))
 //  //--------
-//  val cpuIo = Flare32CpuIcacheCpuIo(params=params)
+//  val cpuIo = FlareCpuIcacheCpuIo(params=params)
 //  //--------
 //}
-//case class Flare32CpuPsIcache(
-//  params: Flare32CpuParams,
+//case class FlareCpuPsIcache(
+//  params: FlareCpuParams,
 //) extends Component {
 //}
 
-//case class Flare32CpuDcacheIo(
-//  params: Flare32CpuParams,
+//case class FlareCpuDcacheIo(
+//  params: FlareCpuParams,
 //) extends Bundle {
 //  //--------
 //  // AXI host
 //  val dbus = master(Axi4(config=params.dbusConfig))
 //  //--------
 //}
-case class Flare32CpuIo(
-  params: Flare32CpuParams
+case class FlareCpuIo(
+  params: FlareCpuParams
 ) extends Bundle {
   //--------
   //--------
   //val bus = 
   // Instruction Cache Bus
-  //val ibus = master(tilelink.Bus(Flare32CpuParams.busParams))
+  //val ibus = master(tilelink.Bus(FlareCpuParams.busParams))
   val ibus = master(Axi4(config=params.ibusConfig))
 
   // Data Cache Bus
-  //val dbus = master(tilelink.Bus(Flare32CpuParams.busParams))
+  //val dbus = master(tilelink.Bus(FlareCpuParams.busParams))
   val dbus = master(Axi4(config=params.dbusConfig))
 
   val irq = in Bool()
   //--------
 }
-case class Flare32Cpu(
+case class FlareCpu(
   //clkRate: HertzNumber,
   //optIncludeSimd: Boolean=false,
   //optIncludeFpu: Boolean=false,
-  params: Flare32CpuParams,
+  params: FlareCpuParams,
 ) extends Component {
   //--------
-  val io = Flare32CpuIo(params=params)
+  val io = FlareCpuIo(params=params)
   def mainWidth = params.mainWidth
   def instrMainWidth = params.instrMainWidth
   def numGprsSprs = params.numGprsSprs
@@ -1067,7 +1067,7 @@ case class Flare32Cpu(
 
   val icache = new Area {
     val attrsMem = Mem(
-      wordType=Flare32CpuIcacheLineAttrs(params=params),
+      wordType=FlareCpuIcacheLineAttrs(params=params),
       wordCount=params.icacheNumLines,
     )
       .addAttribute("ramstyle", params.icacheRamStyle)
@@ -1116,7 +1116,7 @@ case class Flare32Cpu(
 
   val dcache = new Area {
     val attrsMem = Mem(
-      wordType=Flare32CpuDcacheLineAttrs(params=params),
+      wordType=FlareCpuDcacheLineAttrs(params=params),
       //wordType=UInt(instrMainWidth bits),
       wordCount=params.dcacheNumLines,
     )
@@ -2494,6 +2494,6 @@ case class Flare32Cpu(
   //--------
 }
 
-object Flare32CpuVerilog extends App {
-  Config.spinal.generateVerilog(Flare32Cpu(params=Flare32CpuParams()))
+object FlareCpuVerilog extends App {
+  Config.spinal.generateVerilog(FlareCpu(params=FlareCpuParams()))
 }

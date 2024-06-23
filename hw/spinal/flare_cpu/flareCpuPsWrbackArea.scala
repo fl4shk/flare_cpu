@@ -1,4 +1,4 @@
-package flare32_cpu
+package flare_cpu
 import spinal.core._
 //import spinal.lib.bus.tilelink
 import spinal.lib._
@@ -18,20 +18,20 @@ import libcheesevoyage.general.PipeMemRmw
 import libcheesevoyage.general.PipeHelper
 import libcheesevoyage.math.LongDivPipelined
 
-//case class Flare32CpuWrbackIo(
-//  params: Flare32CpuParams,
+//case class FlareCpuWrbackIo(
+//  params: FlareCpuParams,
 //) extends Area {
-//  val currPayload = Payload(Flare32CpuPipePayload(params=params))
+//  val currPayload = Payload(FlareCpuPipePayload(params=params))
 //}
 
-case class Flare32CpuPsWrback(
-  params: Flare32CpuParams,
-  prevPayload: Payload[Flare32CpuPipePayload],
+case class FlareCpuPsWrback(
+  params: FlareCpuParams,
+  prevPayload: Payload[FlareCpuPipePayload],
   cPrevCurr: CtrlLink,
-  decodeIo: Flare32CpuPsDecodeIo,
+  decodeIo: FlareCpuPsDecodeIo,
 ) extends Area {
   //--------
-  //val io = Flare32CpuWrbackIo(params=params)
+  //val io = FlareCpuWrbackIo(params=params)
   //--------
   //when (cExWb.down.isFiring)
   val cPrevCurrArea = new cPrevCurr.Area {

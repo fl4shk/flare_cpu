@@ -1,4 +1,4 @@
-package flare32_cpu
+package flare_cpu
 import spinal.core._
 //import spinal.lib.bus.tilelink
 import spinal.lib._
@@ -17,7 +17,7 @@ import libcheesevoyage.general._
 import libcheesevoyage.general.PipeMemRmw
 import libcheesevoyage.math.LongDivPipelined
 
-object Flare32CpuDcacheDataSize
+object FlareCpuDcacheDataSize
 extends SpinalEnum(defaultEncoding=binarySequential) {
   val
     SZ8,
@@ -25,37 +25,37 @@ extends SpinalEnum(defaultEncoding=binarySequential) {
     SZ32
     = newElement();
 }
-object Flare32CpuPipePayloadDcache {
+object FlareCpuPipePayloadDcache {
   def apply(
-    params: Flare32CpuParams
+    params: FlareCpuParams
   ) = (
-    Flow(Flare32CpuPipePayloadFlowPayloadDcache(params=params))
+    Flow(FlareCpuPipePayloadFlowPayloadDcache(params=params))
   )
 }
 
-case class Flare32CpuPipePayloadFlowPayloadDcache(
-  params: Flare32CpuParams,
+case class FlareCpuPipePayloadFlowPayloadDcache(
+  params: FlareCpuParams,
 ) extends Bundle {
   val data = UInt(params.mainWidth bits)
-  val size = Flare32CpuDcacheDataSize()
+  val size = FlareCpuDcacheDataSize()
   val isWr = Bool()
 }
 
-case class Flare32CpuDcacheEntryPayload(
-  params: Flare32CpuParams
+case class FlareCpuDcacheEntryPayload(
+  params: FlareCpuParams
 ) extends Bundle {
   //val valid = Bool()
-  val dirty = Bool()
+  //val dirty = Bool()
   val baseAddr = UInt(params.dcacheLineBaseAddrWidth bits)
   val data = params.dcacheLineMemWordType()
 }
-//case class Flare32CpuDcacheIoPushPayload(
-//  params: Flare32CpuParams
+//case class FlareCpuDcacheIoPushPayload(
+//  params: FlareCpuParams
 //) extends Bundle {
 //  //val 
 //}
-case class Flare32CpuPsDcacheIo(
-  params: Flare32CpuParams,
+case class FlareCpuPsDcacheIo(
+  params: FlareCpuParams,
   //optMainMemBram: Boolean,
 ) extends Area {
   //--------
@@ -65,19 +65,19 @@ case class Flare32CpuPsDcacheIo(
   //val dBramBus = (optMainMemBram) generate (
   //)
   //val clear = /*in*/(/*Stream*/(Bool()))
-  //val currPayload = Payload(Flare32CpuPipePayload(params=params))
+  //val currPayload = Payload(FlareCpuPipePayload(params=params))
   //--------
 }
-case class Flare32CpuPsDcache(
-  params: Flare32CpuParams,
-  prevPayload: Payload[Flare32CpuPipePayload],
-  currPayload: Payload[Flare32CpuPipePayload],
+case class FlareCpuPsDcache(
+  params: FlareCpuParams,
+  prevPayload: Payload[FlareCpuPipePayload],
+  currPayload: Payload[FlareCpuPipePayload],
   //cPrevCurr: CtrlLink,
   linkArr: ArrayBuffer[Link],
   //optMainMemBram: Boolean=true,
 ) extends Area {
   //--------
-  val io = Flare32CpuPsDcacheIo(
+  val io = FlareCpuPsDcacheIo(
     params=params,
     //optMainMemBram=optMainMemBram,
   )
@@ -89,23 +89,23 @@ case class Flare32CpuPsDcache(
   case class PipeMemModType(
   ) extends Bundle
     with PipeMemRmwPayloadBase[
-      Flare32CpuDcacheEntryPayload,
-      Flare32CpuPipePayloadExec,
+      FlareCpuDcacheEntryPayload,
+      FlareCpuPipePayloadExec,
     ]
   {
     val myExt = PipeMemRmwPayloadExt(
-      wordType=Flare32CpuDcacheEntryPayload(params=params),
+      wordType=FlareCpuDcacheEntryPayload(params=params),
       wordCount=params.dcacheLineMemWordCount,
-      hazardCmpType=Flare32CpuPipePayloadExec(params=params),
+      hazardCmpType=FlareCpuPipePayloadExec(params=params),
       modStageCnt=pipeMemModStageCnt,
       optEnableModDuplicate=true,
       optReorder=false,
     )
-    val pipePayload = Flare32CpuPipePayload(params=params)
+    val pipePayload = FlareCpuPipePayload(params=params)
     def setPipeMemRmwExt(
       ext: PipeMemRmwPayloadExt[
-        Flare32CpuDcacheEntryPayload,
-        Flare32CpuPipePayloadExec,
+        FlareCpuDcacheEntryPayload,
+        FlareCpuPipePayloadExec,
       ],
       memArrIdx: Int,
     ): Unit = {
@@ -113,8 +113,8 @@ case class Flare32CpuPsDcache(
     }
     def getPipeMemRmwExt(
       ext: PipeMemRmwPayloadExt[
-        Flare32CpuDcacheEntryPayload,
-        Flare32CpuPipePayloadExec,
+        FlareCpuDcacheEntryPayload,
+        FlareCpuPipePayloadExec,
       ],
       memArrIdx: Int,
     ): Unit = {
@@ -123,7 +123,7 @@ case class Flare32CpuPsDcache(
   }
 
   //def pipeMemModType() = SamplePipeMemRmwModType(
-  //  wordType=/*Flow*/(Flare32CpuDcacheEntryPayload(params=params)),
+  //  wordType=/*Flow*/(FlareCpuDcacheEntryPayload(params=params)),
   //  wordCount=params.dcacheLineMemWordCount,
   //  hazardCmpType=Bool(),
   //  modStageCnt=pipeMemModStageCnt,
@@ -162,7 +162,7 @@ case class Flare32CpuPsDcache(
     defaultEncoding=binarySequential
   ) {
     val
-      CHECK_FOR_DCACHE_HIT,
+      MAYBE_NO_BMB_ACCESS,
       //CMD_READ_INIT,
       //BMB_CACHED_CMD_READ_WAIT_READY,
       //BMB_CACHED_CMD_WRITE_WAIT_READY,
@@ -177,27 +177,27 @@ case class Flare32CpuPsDcache(
       = newElement();
   }
   val nextState = State()
-  val rState = RegNext(nextState) init(State.CHECK_FOR_DCACHE_HIT)
+  val rState = RegNext(nextState) init(State.MAYBE_NO_BMB_ACCESS)
 
   val pipeMem = PipeMemRmw[
-    Flare32CpuDcacheEntryPayload, // WordT
-    Flare32CpuPipePayloadExec,    // HazardCmpT
+    FlareCpuDcacheEntryPayload, // WordT
+    FlareCpuPipePayloadExec,    // HazardCmpT
     PipeMemModType,
     PipeMemRmwDualRdTypeDisabled[
-      Flare32CpuDcacheEntryPayload,
-      Flare32CpuPipePayloadExec,
+      FlareCpuDcacheEntryPayload,
+      FlareCpuPipePayloadExec,
     ],
   ](
-    wordType=Flare32CpuDcacheEntryPayload(params=params),
+    wordType=FlareCpuDcacheEntryPayload(params=params),
     wordCount=params.dcacheLineMemWordCount,
-    hazardCmpType=Flare32CpuPipePayloadExec(params=params),
+    hazardCmpType=FlareCpuPipePayloadExec(params=params),
     modType=PipeMemModType(),
     modStageCnt=0,
     pipeName="Dcache",
     linkArr=Some(linkArr),
     memArrIdx=pipeMemMemArrIdx,
     dualRdType=PipeMemRmwDualRdTypeDisabled[
-      Flare32CpuDcacheEntryPayload, Flare32CpuPipePayloadExec
+      FlareCpuDcacheEntryPayload, FlareCpuPipePayloadExec
     ](),
     optDualRd=false,
     optReorder=false,
@@ -232,6 +232,13 @@ case class Flare32CpuPsDcache(
             // choose to use this.
             // For program speed purposes, it may be wiser to use 32-bit
             // data anyway?
+            // Oh, but for 8-bit and 16-bit loads and stores, they are
+            // likely to not be consecutive instructions anyway, so this
+            // fmax increase may be worth it.
+            // `memset()`, `memcpy()`, and `memmove()` not withstanding...
+            // Apparently those functions can be implemented in a C
+            // standard conforming manner with 32-bit loads/stores, so
+            // I'll just do that.
             currLdst.addr(
               params.dcacheLineDataIdxRange(params.rawElemNumBytesPow32)
             ) === prevLdst.addr(
@@ -255,9 +262,12 @@ case class Flare32CpuPsDcache(
           RegNext(outp) init(outp.getZero)
         )
         when (cMid0Front.up.isValid) {
+          when (nextState =/= State.MAYBE_NO_BMB_ACCESS) {
+            cMid0Front.haltIt()
+          }
           switch (rState) {
-            is (State.CHECK_FOR_DCACHE_HIT) {
-              val memAddr = inp.myExt.memAddr 
+            is (State.MAYBE_NO_BMB_ACCESS) {
+              //val memAddr = inp.myExt.memAddr 
             }
             is (State.DBUS_BMB_CMD_WAIT_READY) {
             }

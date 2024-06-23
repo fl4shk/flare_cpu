@@ -1,4 +1,4 @@
-package flare32_cpu
+package flare_cpu
 import spinal.core._
 //import spinal.lib.bus.tilelink
 import spinal.lib._
@@ -17,28 +17,28 @@ import libcheesevoyage.general._
 import libcheesevoyage.general.PipeMemRmw
 import libcheesevoyage.math.LongDivPipelined
 
-//case class Flare32CpuIcacheLineAttrs(
-//  params: Flare32CpuParams
+//case class FlareCpuIcacheLineAttrs(
+//  params: FlareCpuParams
 //) extends Bundle {
 //  val baseAddr = UInt(params.icacheLineBaseAddrWidth bits)
 //  val loaded = Bool()
 //}
-//case class Flare32CpuDcacheLineAttrs(
-//  params: Flare32CpuParams
+//case class FlareCpuDcacheLineAttrs(
+//  params: FlareCpuParams
 //) extends Bundle {
 //  val baseAddr = UInt(params.icacheLineBaseAddrWidth bits)
 //  val loaded = Bool()
 //  val dirty = Bool()
 //}
-//case class Flare32CpuIcacheWordType(
-//  params: Flare32CpuParams
+//case class FlareCpuIcacheWordType(
+//  params: FlareCpuParams
 //) extends Bundle {
 //  val baseAddr = UInt(params.icacheLineBaseAddrWidth bits)
 //  val data = UInt((params.icacheNumBytesPerLine * 8) bits)
 //  val loaded = Bool()
 //}
-//case class Flare32CpuDcacheWordType(
-//  params: Flare32CpuParams
+//case class FlareCpuDcacheWordType(
+//  params: FlareCpuParams
 //) extends Bundle {
 //  val baseAddr = UInt(params.dcacheLineBaseAddrWidth bits)
 //  val data = UInt((params.dcacheNumBytesPerLine * 8) bits)
@@ -46,8 +46,8 @@ import libcheesevoyage.math.LongDivPipelined
 //  val dirty = Bool()
 //}
 
-//case class Flare32CpuIcacheIo(
-//  params: Flare32CpuParams
+//case class FlareCpuIcacheIo(
+//  params: FlareCpuParams
 //) extends Bundle with IMasterSlave {
 //  //--------
 //  val rdAddrStm = slave Stream(
@@ -64,33 +64,33 @@ import libcheesevoyage.math.LongDivPipelined
 //  //--------
 //}
 
-//case class Flare32CpuIcachePayload(
-//  params: Flare32CpuParams,
+//case class FlareCpuIcachePayload(
+//  params: FlareCpuParams,
 //) extends Bundle {
 //}
 //
-//case class Flare32CpuIcacheCpuIo(
-//  params: Flare32CpuParams,
+//case class FlareCpuIcacheCpuIo(
+//  params: FlareCpuParams,
 //) extends Bundle {
 //}
 //
-//case class Flare32CpuIcacheIo(
-//  params: Flare32CpuParams,
+//case class FlareCpuIcacheIo(
+//  params: FlareCpuParams,
 //) extends Bundle {
 //  //--------
 //  // AXI host
 //  val ibus = master(Axi4(config=params.ibusConfig))
 //  //--------
-//  val cpuIo = Flare32CpuIcacheCpuIo(params=params)
+//  val cpuIo = FlareCpuIcacheCpuIo(params=params)
 //  //--------
 //}
-//case class Flare32CpuPsIcache(
-//  params: Flare32CpuParams,
+//case class FlareCpuPsIcache(
+//  params: FlareCpuParams,
 //) extends Component {
 //}
 
-//case class Flare32CpuDcacheIo(
-//  params: Flare32CpuParams,
+//case class FlareCpuDcacheIo(
+//  params: FlareCpuParams,
 //) extends Bundle {
 //  //--------
 //  // AXI host
@@ -99,32 +99,32 @@ import libcheesevoyage.math.LongDivPipelined
 //}
 
 //--------
-case class Flare32CpuPipePayload(
-  params: Flare32CpuParams,
+case class FlareCpuPipePayload(
+  params: FlareCpuParams,
 ) extends Bundle {
   //--------
   // IF
-  val icache = Flare32CpuPipePayloadIcache(params=params)
+  val icache = FlareCpuPipePayloadIcache(params=params)
   //--------
   // ID
-  val decode = Flare32CpuPipePayloadDecode(params=params)
+  val decode = FlareCpuPipePayloadDecode(params=params)
   //--------
   // EX
-  val exec = Flare32CpuPipePayloadExec(params=params)
+  val exec = FlareCpuPipePayloadExec(params=params)
   //--------
   // dcache
-  val dcache = Flare32CpuPipePayloadDcache(params=params)
+  val dcache = FlareCpuPipePayloadDcache(params=params)
   //--------
 }
 
-//case class Flare32CpuIcacheIo(
-//  params: Flare32CpuParams,
+//case class FlareCpuIcacheIo(
+//  params: FlareCpuParams,
 //  //linkArr: ArrayBuffer[Link],
 //) extends Area {
 //}
 
-object Flare32CpuParamsTest extends App {
-  val p = Flare32CpuParams()
+object FlareCpuParamsTest extends App {
+  val p = FlareCpuParams()
   println(s"ibusParams.lengthWidth: ${p.ibusParams.access.lengthWidth}")
   println(s"dbusParams.lengthWidth: ${p.dbusParams.access.lengthWidth}")
   println("icache:")
@@ -161,19 +161,19 @@ object Flare32CpuParamsTest extends App {
   println(s"dcacheLineBaseAddrWidth: ${p.dcacheLineBaseAddrWidth}")
   println(s"dcacheLineBaseAddRange: ${p.dcacheLineBaseAddrRange}")
 }
-case class Flare32CpuIo(
-  params: Flare32CpuParams,
+case class FlareCpuIo(
+  params: FlareCpuParams,
 ) extends Bundle {
   //--------
   //--------
   ////val bus = 
   //// Instruction Cache Bus
-  ////val ibus = master(tilelink.Bus(Flare32CpuParams.busParams))
+  ////val ibus = master(tilelink.Bus(FlareCpuParams.busParams))
   ////val ibus = master(Axi4(config=params.ibusConfig))
   //val ibus = master(Bmb(p=params.ibusParams))
 
   //// Data Cache Bus
-  ////val dbus = master(tilelink.Bus(Flare32CpuParams.busParams))
+  ////val dbus = master(tilelink.Bus(FlareCpuParams.busParams))
   ////val dbus = master(Axi4(config=params.dbusConfig))
   //val dbus = master(Bmb(p=params.dbusParams))
 
@@ -181,11 +181,11 @@ case class Flare32CpuIo(
   //--------
 }
 
-case class Flare32Cpu(
-  params: Flare32CpuParams,
+case class FlareCpu(
+  params: FlareCpuParams,
 ) extends Component {
   //--------
-  val io = Flare32CpuIo(params=params)
+  val io = FlareCpuIo(params=params)
   //--------
   val linkArr = PipeHelper.mkLinkArr()
   //val pipe = PipeHelper(linkArr=linkArr)
@@ -229,7 +229,7 @@ case class Flare32Cpu(
   //val sArr = new ArrayBuffer[StageLink]()
   //val s2mArr = new ArrayBuffer[S2MLink]()
   //val cArr = new ArrayBuffer[CtrlLink]()
-  val nIcache, nDecode, nExec, /*nDcache,*/ /*nWrback,*/ nLast = Node()
+  val nIcache, nDecode, nExec, nDcacheModFront, nWrbackModFront = Node()
 
   val sIcacheDecode = StageLink(up=nIcache, down=Node())
   linkArr += sIcacheDecode
@@ -246,13 +246,13 @@ case class Flare32Cpu(
   linkArr += cDecodeExec
   //--------
   // these are outputs of the pipeline stages
-  val icachePayload = Payload(Flare32CpuPipePayload(params=params))
-  val decodePayload = Payload(Flare32CpuPipePayload(params=params))
-  val execPayload = Payload(Flare32CpuPipePayload(params=params))
-  val dcachePayload = Payload(Flare32CpuPipePayload(params=params))
-  //val wrbackPayload = Payload(Flare32CpuPipePayload(params=params))
+  val icachePayload = Payload(FlareCpuPipePayload(params=params))
+  val decodePayload = Payload(FlareCpuPipePayload(params=params))
+  val execPayload = Payload(FlareCpuPipePayload(params=params))
+  val dcachePayload = Payload(FlareCpuPipePayload(params=params))
+  //val wrbackPayload = Payload(FlareCpuPipePayload(params=params))
   //--------
-  //val icache = Flare32CpuPsIcache(
+  //val icache = FlareCpuPsIcache(
   //  params=params,
   //  currPayload=icachePayload,
   //  linkArr=linkArr,
@@ -260,7 +260,7 @@ case class Flare32Cpu(
   //io.ibus << icache.io.ibus
   nIcache(icachePayload) := nIcache(icachePayload).getZero
 
-  val dcache = Flare32CpuPsDcache(
+  val dcache = FlareCpuPsDcache(
     params=params,
     prevPayload=execPayload,
     currPayload=dcachePayload,
@@ -298,19 +298,63 @@ case class Flare32Cpu(
   //)
   //linkArr += dDecodeExecDcache
 
-  val cDcacheWrback = CtrlLink(
-    up=(
-      //Node()
-      //dcache.pipeMem.mod.front.pipe.last.down
-      dcache.pipeMem.io.modFront
-    ),
-    down=(
-      //nWrback
-      dcache.pipeMem.io.modBack
-    ),
+  //val cDcacheWrback = CtrlLink(
+  //  up=(
+  //    //Node()
+  //    //dcache.pipeMem.mod.front.pipe.last.down
+  //    dcache.pipeMem.io.modFront
+  //  ),
+  //  down=(
+  //    //nWrback
+  //    dcache.pipeMem.io.modBack
+  //  ),
+  //)
+  //linkArr += cDcacheWrback
+  val fDcacheWrback = ForkLink(
+    up=dcache.pipeMem.io.modFront,
+    downs=List(nDcacheModFront, nWrbackModFront),
+    synchronous=true,
   )
-  linkArr += cDcacheWrback
+  linkArr += fDcacheWrback
+
+  val sWrbackModFront = StageLink(
+    up=nWrbackModFront,
+    down=Node(),
+  )
+  linkArr += sWrbackModFront
+  val s2mWrbackModFront = S2MLink(
+    up=sWrbackModFront.down,
+    down=Node(),
+  )
+  linkArr += s2mWrbackModFront
+  val cWrbackModFront = CtrlLink(
+    up=s2mWrbackModFront.down,
+    down=Node(),
+  )
+  linkArr += cWrbackModFront
+
+  val dDcacheMod = DirectLink(
+    up=nDcacheModFront,
+    down=dcache.pipeMem.io.modBack,
+  )
+  linkArr += dDcacheMod
+  //val sDcacheModFront = StageLink(
+  //  up=nDcacheModFront,
+  //  down=Node(),
+  //)
+  //linkArr += sDcacheModFront
+  //val s2mDcacheModFront = S2MLink(
+  //  up=sDcacheModFront.down,
+  //  down=(
+  //    //Node()
+  //    dcache.pipeMem.io.modBack
+  //  ),
+  //)
+  //linkArr += s2mDcacheModFront
+
   dcache.pipeMem.io.back.ready := True
+
+  cWrbackModFront.down.ready := True
 
   //val dWrbackEndDcache = DirectLink(
   //  up=nWrback
@@ -319,18 +363,22 @@ case class Flare32Cpu(
   //val cIcacheDecode = CtrlLink(up=nIcache, down=nDecode)
   //val cDecodeExec = CtrlLink(up=nDecode, down=nExec)
   //--------
-  val decode = Flare32CpuPsDecode(
+  val decode = FlareCpuPsDecode(
     params=params,
     prevPayload=icachePayload,
     currPayload=decodePayload,
-    cPrevCurr=cIcacheDecode,
-    cLastMain=cDcacheWrback,
     lastMainPayload=(
       //wrbackPayload
       dcachePayload
     ),
+    cPrevCurr=cIcacheDecode,
+    cCurrNext=cDecodeExec,
+    cLastMain=(
+      //cDcacheWrback
+      cWrbackModFront
+    ),
   )
-  val exec = Flare32CpuPsExec(
+  val exec = FlareCpuPsExec(
     params=params,
     prevPayload=decodePayload,
     currPayload=execPayload,
@@ -341,15 +389,19 @@ case class Flare32Cpu(
     //cNext2=(
     //),
     cPostCurrNext=(
-      cDcacheWrback
+      //cDcacheWrback
+      cWrbackModFront
     ),
     decodeIo=decode.io,
   )
 
-  val wrback = Flare32CpuPsWrback(
+  val wrback = FlareCpuPsWrback(
     params=params,
     prevPayload=dcachePayload,
-    cPrevCurr=cDcacheWrback,
+    cPrevCurr=(
+      //cDcacheWrback
+      cWrbackModFront
+    ),
     decodeIo=decode.io,
   )
 
@@ -381,18 +433,18 @@ case class Flare32Cpu(
   Builder(linkArr.toSeq)
   //--------
 }
-object Flare32CpuVerilog extends App {
-  Config.spinal.generateVerilog(Flare32Cpu(params=Flare32CpuParams()))
+object FlareCpuVerilog extends App {
+  Config.spinal.generateVerilog(FlareCpu(params=FlareCpuParams()))
 }
 
-//case class Flare32Cpu(
+//case class FlareCpu(
 //  //clkRate: HertzNumber,
 //  //optIncludeSimd: Boolean=false,
 //  //optIncludeFpu: Boolean=false,
-//  params: Flare32CpuParams,
+//  params: FlareCpuParams,
 //) extends Component {
 //  //--------
-//  val io = Flare32CpuIo(params=params)
+//  val io = FlareCpuIo(params=params)
 //  def mainWidth = params.mainWidth
 //  def instrMainWidth = params.instrMainWidth
 //  def numGprsSprs = params.numGprsSprs
@@ -1125,7 +1177,7 @@ object Flare32CpuVerilog extends App {
 //
 //  val icache = new Area {
 //    val attrsMem = Mem(
-//      wordType=Flare32CpuIcacheLineAttrs(params=params),
+//      wordType=FlareCpuIcacheLineAttrs(params=params),
 //      wordCount=params.icacheNumLines,
 //    )
 //      .addAttribute("ramstyle", params.icacheRamStyle)
@@ -1174,7 +1226,7 @@ object Flare32CpuVerilog extends App {
 //
 //  val dcache = new Area {
 //    val attrsMem = Mem(
-//      wordType=Flare32CpuDcacheLineAttrs(params=params),
+//      wordType=FlareCpuDcacheLineAttrs(params=params),
 //      //wordType=UInt(instrMainWidth bits),
 //      wordCount=params.dcacheNumLines,
 //    )
@@ -2552,6 +2604,6 @@ object Flare32CpuVerilog extends App {
 //  //--------
 //}
 //
-//object Flare32CpuVerilog extends App {
-//  Config.spinal.generateVerilog(Flare32Cpu(params=Flare32CpuParams()))
+//object FlareCpuVerilog extends App {
+//  Config.spinal.generateVerilog(FlareCpu(params=FlareCpuParams()))
 //}

@@ -1,4 +1,4 @@
-package flare32_cpu
+package flare_cpu
 import spinal.core._
 //import spinal.lib.bus.tilelink
 import spinal.lib._
@@ -18,8 +18,8 @@ import libcheesevoyage.general.PipeMemRmw
 import libcheesevoyage.general.PipeHelper
 import libcheesevoyage.math.LongDivPipelined
 
-case class Flare32CpuIcacheEntryPayload(
-  params: Flare32CpuParams,
+case class FlareCpuIcacheEntryPayload(
+  params: FlareCpuParams,
 ) extends Bundle {
   //--------
   //val valid = Bool()
@@ -29,37 +29,37 @@ case class Flare32CpuIcacheEntryPayload(
   //--------
 }
 
-case class Flare32CpuPipePayloadIcache(
-  params: Flare32CpuParams,
+case class FlareCpuPipePayloadIcache(
+  params: FlareCpuParams,
 ) extends Bundle {
   //--------
   val instr = UInt(params.instrMainWidth bits) 
   //--------
 }
 
-case class Flare32CpuPsIcacheIo(
-  params: Flare32CpuParams
+case class FlareCpuPsIcacheIo(
+  params: FlareCpuParams
 ) extends Area /*with IMasterSlave*/ {
   //val pop = /*master*/(Stream(UInt(params.instrMainWidth bits)))
   //val front = Node()
-  //val frontPayload = Payload(Flare32CpuPipePayload(params=params))
+  //val frontPayload = Payload(FlareCpuPipePayload(params=params))
   //val back = Node()
-  //val backPayload = Payload(Flare32CpuPipePayload(params=params))
+  //val backPayload = Payload(FlareCpuPipePayload(params=params))
   val ibus = /*master*/(Bmb(p=params.ibusParams))
   val clear = /*in*/(Bool())
-  //val currPayload = Payload(Flare32CpuPipePayload(params=params))
+  //val currPayload = Payload(FlareCpuPipePayload(params=params))
 
   //def asMaster(): Unit = {
   //  master(pop)
   //}
 }
 // for now, this is a direct-mapped instruction cache
-case class Flare32CpuPsIcache(
-  params: Flare32CpuParams,
-  currPayload: Payload[Flare32CpuPipePayload],
+case class FlareCpuPsIcache(
+  params: FlareCpuParams,
+  currPayload: Payload[FlareCpuPipePayload],
   linkArr: ArrayBuffer[Link],
 ) extends Area {
-  val io = /*master*/(Flare32CpuPsIcacheIo(
+  val io = /*master*/(FlareCpuPsIcacheIo(
     params=params
   ))
   //val linkArr = PipeHelper.mkLinkArr()
@@ -69,7 +69,7 @@ case class Flare32CpuPsIcache(
     1
   )
   def pipeMemModType() = SamplePipeMemRmwModType(
-    wordType=/*Flow*/(Flare32CpuIcacheEntryPayload(params=params)),
+    wordType=/*Flow*/(FlareCpuIcacheEntryPayload(params=params)),
     wordCount=params.icacheLineMemWordCount,
     hazardCmpType=Bool(),
     modStageCnt=pipeMemModStageCnt,
@@ -77,22 +77,22 @@ case class Flare32CpuPsIcache(
   )
   def pipeMemMemArrIdx = 0
   val pipeMem = PipeMemRmw[
-    /*Flow[*/Flare32CpuIcacheEntryPayload/*]*/,  // WordT
+    /*Flow[*/FlareCpuIcacheEntryPayload/*]*/,  // WordT
     Bool,                   // HazardCmpT
-    SamplePipeMemRmwModType[/*Flow[*/Flare32CpuIcacheEntryPayload/*]*/, Bool],
-    SamplePipeMemRmwModType[/*Flow[*/Flare32CpuIcacheEntryPayload/*]*/, Bool],
-    //PipeMemRmwDualRdTypeDisabled[Flare32CpuIcacheEntry, Bool],
+    SamplePipeMemRmwModType[/*Flow[*/FlareCpuIcacheEntryPayload/*]*/, Bool],
+    SamplePipeMemRmwModType[/*Flow[*/FlareCpuIcacheEntryPayload/*]*/, Bool],
+    //PipeMemRmwDualRdTypeDisabled[FlareCpuIcacheEntry, Bool],
   ](
-    wordType=/*Flow*/(Flare32CpuIcacheEntryPayload(params=params)),
+    wordType=/*Flow*/(FlareCpuIcacheEntryPayload(params=params)),
     wordCount=params.icacheLineMemWordCount,
     hazardCmpType=Bool(),
     modType=pipeMemModType(),
     modStageCnt=pipeMemModStageCnt,
-    pipeName="Flare32CpuPsIcache",
+    pipeName="FlareCpuPsIcache",
     linkArr=Some(linkArr),
     memArrIdx=pipeMemMemArrIdx,
     dualRdType=(
-      //PipeMemRmwDualRdTypeDisabled[Flare32CpuIcacheEntry, Bool]()
+      //PipeMemRmwDualRdTypeDisabled[FlareCpuIcacheEntry, Bool]()
       pipeMemModType()
       // `pipeMem.io.dualRdFront` and `pipeMem.io.dualRdBack` will be
       // hooked up to the rest of the CPU pipeline

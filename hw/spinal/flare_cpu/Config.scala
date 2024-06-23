@@ -1,4 +1,4 @@
-package flare32_cpu
+package flare_cpu
 
 import spinal.core._
 import spinal.core.sim._

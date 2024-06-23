@@ -80,7 +80,7 @@ lazy val libcheesevoyage = (project in file("./submodules/libcheesevoyage"))
 //            spinalIdslPlugin
 //        )
 //    )
-//    .dependsOn(flare32_cpu)
+//    .dependsOn(flare_cpu)
 //lazy val libcheesevoyage = (project in file("."))
 //  .settings(
 //      Compile / scalaSource := baseDirectory.value / "hw" / "spinal",
@@ -89,10 +89,10 @@ lazy val libcheesevoyage = (project in file("./submodules/libcheesevoyage"))
 //  .settings(
 //      Compile / scalaSource := baseDirectory.value / "hw" / "spinal",
 //  )
-//scalacOptions += "-P:semanticdb:sourceroot:/media/other_data/fl4shk_home_stuff/Documents/prog/electronics/spinalhdl/small_projects_and_tests/flare32_cpu"
+//scalacOptions += "-P:semanticdb:sourceroot:/media/other_data/fl4shk_home_stuff/Documents/prog/electronics/spinalhdl/small_projects_and_tests/flare_cpu"
 //scalacOptions += "-Ybackend-parallelism 4"
 
-lazy val flare32_cpu = (project in file("."))
+lazy val flare_cpu = (project in file("."))
   //.aggregate(libcheesevoyage)
   .settings(
     Compile / scalaSource := baseDirectory.value / "hw" / "spinal",
@@ -128,7 +128,7 @@ lazy val flare32_cpu = (project in file("."))
     //)
 
   ).dependsOn(libcheesevoyage)
-//flare32_cpu.dependsOn(libcheesevoyage % "compile->libcheesevoyage")
-//flare32_cpu.dependsOn(libcheesevoyage)
+//flare_cpu.dependsOn(libcheesevoyage % "compile->libcheesevoyage")
+//flare_cpu.dependsOn(libcheesevoyage)
 
 fork := true

@@ -1,4 +1,4 @@
-//package flare32_cpu
+//package flare_cpu
 //import spinal.core._
 ////import spinal.lib.bus.tilelink
 //import spinal.lib._
@@ -18,10 +18,10 @@
 //import libcheesevoyage.general.PipeHelper
 //import libcheesevoyage.math.LongDivPipelined
 //
-//case class Flare32CpuPsMem(
-//  params: Flare32CpuParams,
-//  prevPayload: Payload[Flare32CpuPipePayload],
+//case class FlareCpuPsMem(
+//  params: FlareCpuParams,
+//  prevPayload: Payload[FlareCpuPipePayload],
 //  cPrevCurr: CtrlLink,
-//  decodeIo: Flare32CpuDecodeIo,
+//  decodeIo: FlareCpuDecodeIo,
 //) extends Area {
 //}

@@ -1,15 +1,16 @@
-# flare32\_cpu
-A 32-bit soft CPU being developed in SpinalHDL. There is no support
-for virtual memory at this time. Only integer operations are implemented in
-hardware.
+# flare\_cpu
+A 32-bit/64-bit (two versions) soft CPU being developed in SpinalHDL. There
+is no support for virtual memory at this time.
+Only integer operations are implemented in hardware, but floats will likely
+be added later
 
 <!--
 You will need [libcheesevoyage](https://github.com/fl4shk/libcheesevoyage)
 to use the HDL code.
 -->
 
-The instruction set of Flare32 has been documented in
-`./docs/flare32_cpu/flare32_cpu.pdf`
+The instruction set of Flare has been documented in
+`./docs/flare_cpu/flare32_cpu.pdf`
 
 Most of a GNU Binutils port has been written:
 [binutils-gdb-flare32](https://github.com/fl4shk/binutils-gdb-flare32)

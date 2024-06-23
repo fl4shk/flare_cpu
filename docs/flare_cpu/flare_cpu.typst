@@ -3,7 +3,7 @@
   size: 10pt,
 )
 #set document(
-  title: [Flare32 CPU],
+  title: [Flare CPU],
   author: "Andrew Clark (FL4SHK)",
   date: auto,
 )
