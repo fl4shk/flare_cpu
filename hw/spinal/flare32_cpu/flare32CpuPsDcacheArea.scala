@@ -181,7 +181,7 @@ case class Flare32CpuPsDcache(
 
   val pipeMem = PipeMemRmw[
     Flare32CpuDcacheEntryPayload, // WordT
-    Flare32CpuPipePayloadExec,                               // HazardCmpT
+    Flare32CpuPipePayloadExec,    // HazardCmpT
     PipeMemModType,
     PipeMemRmwDualRdTypeDisabled[
       Flare32CpuDcacheEntryPayload,
@@ -213,8 +213,38 @@ case class Flare32CpuPsDcache(
     memRamStyle="block",
     vivadoDebug=false,
   )(
-    doHazardCmpFunc=None,
-    doPrevHazardCmpFunc=false,
+    doHazardCmpFunc=Some(
+      (
+        curr,
+        prev,
+        isPostDelay,
+      ) => {
+        val currLdst = curr.hazardCmp.ldst
+        val prevLdst = prev.hazardCmp.ldst
+        (
+          currLdst.valid
+          && prevLdst.valid
+          && (
+            // For higher fmax purposes, test only 32-bit chunks, as that's
+            // the largest size of a load or store.
+            // We could speed this up further in terms of number of clock
+            // cycles, but as my fmax is already probably not good, I
+            // choose to use this.
+            // For program speed purposes, it may be wiser to use 32-bit
+            // data anyway?
+            currLdst.addr(
+              params.dcacheLineDataIdxRange(params.rawElemNumBytesPow32)
+            ) === prevLdst.addr(
+              params.dcacheLineDataIdxRange(params.rawElemNumBytesPow32)
+            )
+          )
+        )
+      }
+    ),
+    doPrevHazardCmpFunc=(
+      //false
+      true
+    ),
     doModSingleStageFunc=Some(
       (
         outp,
