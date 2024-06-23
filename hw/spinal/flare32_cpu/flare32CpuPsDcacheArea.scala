@@ -25,7 +25,15 @@ extends SpinalEnum(defaultEncoding=binarySequential) {
     SZ32
     = newElement();
 }
-case class Flare32CpuPipePayloadDcache(
+object Flare32CpuPipePayloadDcache {
+  def apply(
+    params: Flare32CpuParams
+  ) = (
+    Flow(Flare32CpuPipePayloadFlowPayloadDcache(params=params))
+  )
+}
+
+case class Flare32CpuPipePayloadFlowPayloadDcache(
   params: Flare32CpuParams,
 ) extends Bundle {
   val data = UInt(params.mainWidth bits)
@@ -48,9 +56,14 @@ case class Flare32CpuDcacheEntryPayload(
 //}
 case class Flare32CpuPsDcacheIo(
   params: Flare32CpuParams,
+  //optMainMemBram: Boolean,
 ) extends Area {
   //--------
-  val dbus = /*master*/(/*Stream*/(Bmb(p=params.dbusParams)))
+  val dbus = /*(!optMainMemBram) generate*/ (
+    /*master*/(/*Stream*/(Bmb(p=params.dbusParams)))
+  )
+  //val dBramBus = (optMainMemBram) generate (
+  //)
   //val clear = /*in*/(/*Stream*/(Bool()))
   //val currPayload = Payload(Flare32CpuPipePayload(params=params))
   //--------
@@ -61,9 +74,13 @@ case class Flare32CpuPsDcache(
   currPayload: Payload[Flare32CpuPipePayload],
   //cPrevCurr: CtrlLink,
   linkArr: ArrayBuffer[Link],
+  //optMainMemBram: Boolean=true,
 ) extends Area {
   //--------
-  val io = Flare32CpuPsDcacheIo(params=params)
+  val io = Flare32CpuPsDcacheIo(
+    params=params,
+    //optMainMemBram=optMainMemBram,
+  )
   //--------
   def pipeMemModStageCnt = (
     //0
@@ -105,13 +122,13 @@ case class Flare32CpuPsDcache(
     }
   }
 
-  def pipeMemModType() = SamplePipeMemRmwModType(
-    wordType=/*Flow*/(Flare32CpuDcacheEntryPayload(params=params)),
-    wordCount=params.dcacheLineMemWordCount,
-    hazardCmpType=Bool(),
-    modStageCnt=pipeMemModStageCnt,
-    optReorder=false,
-  )
+  //def pipeMemModType() = SamplePipeMemRmwModType(
+  //  wordType=/*Flow*/(Flare32CpuDcacheEntryPayload(params=params)),
+  //  wordCount=params.dcacheLineMemWordCount,
+  //  hazardCmpType=Bool(),
+  //  modStageCnt=pipeMemModStageCnt,
+  //  optReorder=false,
+  //)
   def pipeMemMemArrIdx = 0
 
   val doClear = Bool()
@@ -141,22 +158,46 @@ case class Flare32CpuPsDcache(
     )
     .setName("dcache_rValidClearCntPlus1")
   )
+  object State extends SpinalEnum(
+    defaultEncoding=binarySequential
+  ) {
+    val
+      CHECK_FOR_DCACHE_HIT,
+      //CMD_READ_INIT,
+      //BMB_CACHED_CMD_READ_WAIT_READY,
+      //BMB_CACHED_CMD_WRITE_WAIT_READY,
+      //BMB_NONCACHED_READ_CMD_WAIT_READY,
+      //BMB_NONCACHED_WRITE_CMD_WAIT_READY
+      DBUS_BMB_CMD_WAIT_READY,
+      DBUS_BMB_RSP_WAIT_VALID
+      //BMB_RSP_DEASSERT_READY
+      //RD_NONCACHED_BMB_CMD_WAIT_READY,
+      //WR_NONCACHED_BMB_CMD_WAIT_READY
+      //CMD_WRITE_INIT
+      = newElement();
+  }
+  val nextState = State()
+  val rState = RegNext(nextState) init(State.CHECK_FOR_DCACHE_HIT)
+
   val pipeMem = PipeMemRmw[
     Flare32CpuDcacheEntryPayload, // WordT
-    Bool,                               // HazardCmpT
-    SamplePipeMemRmwModType[Flare32CpuDcacheEntryPayload, Bool],
-    PipeMemRmwDualRdTypeDisabled[Flare32CpuDcacheEntryPayload, Bool],
+    Flare32CpuPipePayloadExec,                               // HazardCmpT
+    PipeMemModType,
+    PipeMemRmwDualRdTypeDisabled[
+      Flare32CpuDcacheEntryPayload,
+      Flare32CpuPipePayloadExec,
+    ],
   ](
     wordType=Flare32CpuDcacheEntryPayload(params=params),
     wordCount=params.dcacheLineMemWordCount,
-    hazardCmpType=Bool(),
-    modType=pipeMemModType(),
+    hazardCmpType=Flare32CpuPipePayloadExec(params=params),
+    modType=PipeMemModType(),
     modStageCnt=0,
     pipeName="Dcache",
     linkArr=Some(linkArr),
     memArrIdx=pipeMemMemArrIdx,
     dualRdType=PipeMemRmwDualRdTypeDisabled[
-      Flare32CpuDcacheEntryPayload, Bool
+      Flare32CpuDcacheEntryPayload, Flare32CpuPipePayloadExec
     ](),
     optDualRd=false,
     optReorder=false,
@@ -183,52 +224,68 @@ case class Flare32CpuPsDcache(
         outp := (
           RegNext(outp) init(outp.getZero)
         )
-        when (rValidClearCnt.msb) {
-          when (doClear) {
-            rValidClearCnt := rValidVec.size - 2
-            def myCntPlus1 = rValidVec.size - 1
-            rValidClearCntPlus1 := myCntPlus1
-            //rValidVec(myCntPlus1) := U(validVecElemWidth, U"1'b0")
-            rValidVec(myCntPlus1) := U"1'b0".resized
-          } otherwise { // when (!io.clear)
-            when (cMid0Front.up.isValid) {
-              for (idx <- 0 until validVecElemWidth) {
-                //--------
-                //when (
-                //  //rValidVec(inp.myExt.memAddr(validVecElemWidth))
-                //  //=== cMid0Front.up(prevPayload).exec.addr
-                //  //rValidVec(
-                //    cMid0Front.up(prevPayload).exec.addr(
-                //      params.dcacheValidVecRange
-                //    )
-                //  //)
-                //  //=== 0
-                //) {
-                //}
-                //--------
-
-                //when (
-                //  inp.myExt.memAddr(myRange)(
-                //  === 0
-                //) {
-                //}
-              }
-              //when (
-              //  rValidVec(inp.myExt.rdMemWord.baseAddr(0 downto 0)) === 0
-              //) {
-              //}
-              //when (~rValidVec(0)) {
-              //}
+        when (cMid0Front.up.isValid) {
+          switch (rState) {
+            is (State.CHECK_FOR_DCACHE_HIT) {
+              val memAddr = inp.myExt.memAddr 
             }
+            is (State.DBUS_BMB_CMD_WAIT_READY) {
+            }
+            is (State.DBUS_BMB_RSP_WAIT_VALID) {
+            }
+            //is (State.BMB_RSP_DEASSERT_READY) {
+            //}
           }
-        } otherwise {
-          rValidClearCnt := rValidClearCnt - 1
-          rValidClearCntPlus1 := rValidClearCntPlus1 - 1
-          //rValidVec(rValidClearCntPlus1.asUInt.resized) := (
-          //  (params.dcacheValidVecElemWidth bits, 0x0)
-          //)
-          rValidVec(rValidClearCntPlus1.asUInt.resized) := U"1'b0".resized
         }
+        //when (rValidClearCnt.msb) {
+        //  when (doClear) {
+        //    rValidClearCnt := rValidVec.size - 2
+        //    def myCntPlus1 = rValidVec.size - 1
+        //    rValidClearCntPlus1 := myCntPlus1
+        //    //rValidVec(myCntPlus1) := U(validVecElemWidth, U"1'b0")
+        //    rValidVec(myCntPlus1) := U"1'b0".resized
+        //  } otherwise { // when (!doClear)
+        //    when (cMid0Front.up.isValid) {
+        //      switch (rState) {
+        //        
+        //      }
+        //      //for (idx <- 0 until validVecElemWidth) {
+        //      //  //--------
+        //      //  //when (
+        //      //  //  //rValidVec(inp.myExt.memAddr(validVecElemWidth))
+        //      //  //  //=== cMid0Front.up(prevPayload).exec.addr
+        //      //  //  //rValidVec(
+        //      //  //    cMid0Front.up(prevPayload).exec.addr(
+        //      //  //      params.dcacheValidVecRange
+        //      //  //    )
+        //      //  //  //)
+        //      //  //  //=== 0
+        //      //  //) {
+        //      //  //}
+        //      //  //--------
+
+        //      //  //when (
+        //      //  //  inp.myExt.memAddr(myRange)(
+        //      //  //  === 0
+        //      //  //) {
+        //      //  //}
+        //      //}
+        //      //when (
+        //      //  rValidVec(inp.myExt.rdMemWord.baseAddr(0 downto 0)) === 0
+        //      //) {
+        //      //}
+        //      //when (~rValidVec(0)) {
+        //      //}
+        //    }
+        //  }
+        //} otherwise {
+        //  rValidClearCnt := rValidClearCnt - 1
+        //  rValidClearCntPlus1 := rValidClearCntPlus1 - 1
+        //  //rValidVec(rValidClearCntPlus1.asUInt.resized) := (
+        //  //  (params.dcacheValidVecElemWidth bits, 0x0)
+        //  //)
+        //  rValidVec(rValidClearCntPlus1.asUInt.resized) := U"1'b0".resized
+        //}
       }
     ),
   )

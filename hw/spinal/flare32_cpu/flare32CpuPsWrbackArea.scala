@@ -36,19 +36,27 @@ case class Flare32CpuPsWrback(
   //when (cExWb.down.isFiring)
   val cPrevCurrArea = new cPrevCurr.Area {
     when (up.isValid) {
-      def wrGpr = (
-        //cExWb.down(psExOutp).get(isGpr=true)
-        up(prevPayload).exec.get(isGpr=true)
-      )
-      def wrSpr = (
-        //cExWb.down(psExOutp).get(isGpr=false)
-        up(prevPayload).exec.get(isGpr=false)
-      )
-      when (wrGpr.wrReg.fire) {
-        decodeIo.rGprVec(wrGpr.regIdx) := wrGpr.wrReg.payload
-      }
-      when (wrSpr.wrReg.fire) {
-        decodeIo.rSprVec(wrSpr.regIdx) := wrSpr.wrReg.payload
+      when (
+        !up(prevPayload).dcache.valid
+        || (
+          up(prevPayload).dcache.valid
+          && !up(prevPayload).dcache.isWr
+        )
+      ) {
+        def wrGpr = (
+          //cExWb.down(psExOutp).get(isGpr=true)
+          up(prevPayload).exec.get(isGpr=true)
+        )
+        def wrSpr = (
+          //cExWb.down(psExOutp).get(isGpr=false)
+          up(prevPayload).exec.get(isGpr=false)
+        )
+        when (wrGpr.wrReg.fire) {
+          decodeIo.rGprVec(wrGpr.regIdx) := wrGpr.wrReg.payload
+        }
+        when (wrSpr.wrReg.fire) {
+          decodeIo.rSprVec(wrSpr.regIdx) := wrSpr.wrReg.payload
+        }
       }
     }
   }
