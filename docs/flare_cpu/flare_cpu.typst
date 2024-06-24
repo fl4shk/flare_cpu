@@ -14,7 +14,7 @@
 == General Information
 //--------
 - Addresses are 32-bit.
-- Big-endian byte ordering is used. 
+- Little-endian byte ordering is used. 
 - Bytes are octets (8 bits).
 - Instructions must be aligned to 16 bits, so jump and
   branch targets must also be aligned to 16 bits.
@@ -79,7 +79,7 @@ Here are the bits of `flags`:
   All other bit positions of `flags` are reserved.
 
 = Instruction Set
-== Instruction Group 0: `pre` and `lpre`
+== Instruction Group 0: `pre`, `lpre`, and atomics
 For `pre`, the following encoding is used, with each character
 representing one bit: \
 `0000 iiii iiii iiii`, where 
@@ -89,6 +89,30 @@ For `lpre`, the following encoding is used, with each character
 representing one bit: \
 `0001 0iii iiii iiii  iiii iiii iiii iiii`, where
 - `i` is a 27-bit constant.
+
+For `cmpxchg` and `xchg`, the following encoding is used, with each
+character representing one bit: \
+`0001 100l bbbb aaaa`, where
+- `l` encodes whether to lock (`1`) or not lock (`0`)
+- `b` encodes register `rB`
+- `a` encodes register `rA`
+
+This instruction acts as `cmpxchg` if `index` is in effect, using
+`index_reg` as the `expected` (or `rC`) value, but otherwise this
+instruction acts as `xchg`. More on `index` later in this document.
+
+The assembly syntax of these instructions is as follows:
+- For `l=0` (without lock):
+  - `cmpxchg [rA], rC, rB`
+  - `xchg rA, rB`
+- For `l=1` (with lock):
+  - `cmpxchg.l [rA], rC, rB`
+  - `xchg.l [rA], rB`
+
+`cmpxchg`/`cmpxchg.l` sets the `Z` flag to `1` upon success and `0` upon
+failure.
+
+=== `pre` and `lpre`
 
 `pre` and `lpre` are mechanisms by which immediates
 larger than normal can be used, essentially acting like variable width
@@ -398,8 +422,9 @@ Here is a list of instructions from this encoding group.
   //--------
   //- Effect: Set `rA[31:16]` to zero.
   - Effect:
-    Sign-extend `rA[imm:0]` to 32 bits, then copy that
-    value to `rA`.
+    //Sign-extend `rA[imm:0]` to 32 bits, then copy that
+    //value to `rA`.
+    Set each bit of `rA[31:imm]` to the bit `rA[imm]`.
   //--------
 - Opcode `0xe`:
   `swi rA, #simm`
@@ -757,7 +782,7 @@ Here is a list of instructions from this encoding group.
 == Instruction Group 4
 The following encoding is used, with each character representing one
 bit: \
-`100o oooo bbbb aaaa`, where
+`1000 oooo bbbb aaaa`, where
 
 - `o` is the opcode
 - `b` encodes register `rB` or register
@@ -880,9 +905,9 @@ Here is a list of instructions from this encoding group.
   //  //--------
   - Effect: pops `pc` off the stack, using
     `rB` as the stack pointer, pre-incrementing `rB`.
-  - Note that `pc` is considered to be 32-bit for the
-    purpose of the load from memory and incrementing `rB`,
-    even if `pc` is `flags` or `ie`.
+  //- Note that `pc` is considered to be 32-bit for the
+  //  purpose of the load from memory and incrementing `rB`,
+  //  even if `pc` is `flags` or `ie`.
   - Note: As a pseudo instruction, omitting "`, rB`" will
     automatically select `sp` as the particular stack
     pointer. 
@@ -896,21 +921,33 @@ Here is a list of instructions from this encoding group.
   `udiv rA, rB`
   //--------
   - Effect: `rA <= u32(rA) / u32(rB);`
+  - Note: This instruction executes more quickly if the values of
+    `rA` and `rB` that are input to this instruction were the
+    same for the previous 32-bit divide or modulo instruction.
   //--------
 - Opcode `0xd`:
   `sdiv rA, rB`
   //--------
   - Effect: `rA <= s32(rA) / s32(rB);`
+  - Note: This instruction executes more quickly if the values of
+    `rA` and `rB` that are input to this instruction were the
+    same for the previous 32-bit divide or modulo instruction.
   //--------
 - Opcode `0xe`:
   `umod rA, rB`
   //--------
   - Effect: `rA <= u32(rA) \// u32(rB);`
+  - Note: This instruction executes more quickly if the values of
+    `rA` and `rB` that are input to this instruction were the
+    same for the previous 32-bit divide or modulo instruction.
   //--------
 - Opcode `0xf`:
   `smod rA, rB`
   //--------
   - Effect: `rA <= s32(rA) \// s32(rB);`
+  - Note: This instruction executes more quickly if the values of
+    `rA` and `rB` that are input to this instruction were the
+    same for the previous 32-bit divide or modulo instruction.
   //--------
 - Opcode `0x10`:
   `lumul rA, rB`
@@ -971,6 +1008,13 @@ Here is a list of instructions from this encoding group.
     `rB`'s value is `0x00000000`, i.e. if the
     operation is actually a 64-bit by 32-bit -> 64-bit unsigned
     divide.
+  //- Note: This instruction executes more quickly if the values of
+  //  `concat{rA, r{A + 1}}` and `concat{rB, r{B + 1}}` before this divide
+  //  were previously the same for the previous divide or modulo instruction.
+  - Note: This instruction executes more quickly if the values of
+    `concat{rA, r{A + 1}}`  and `concat{rB, r{B + 1}}` that are input to
+    this instruction were the same for the previous 64-bit divide or modulo
+    instruction.
   //--------
 - Opcode `0x13`:
   `sdiv64 rA, rB`
@@ -997,6 +1041,10 @@ Here is a list of instructions from this encoding group.
   - Note: This instruction executes more quickly if
     `rB` is equal to bits `[63:32]` of
     `s64(r{B+1})`.
+  - Note: This instruction executes more quickly if the values of
+    `concat{rA, r{A + 1}}`  and `concat{rB, r{B + 1}}` that are input to
+    this instruction were the same for the previous 64-bit divide or modulo
+    instruction.
   //--------
 - Opcode `0x14`:
   `umod64 rA, rB`
@@ -1021,6 +1069,10 @@ Here is a list of instructions from this encoding group.
     `rB`'s value is `0x00000000`, i.e. if the
     operation is actually a 64-bit by 32-bit -> 64-bit unsigned
     modulo.
+  - Note: This instruction executes more quickly if the values of
+    `concat{rA, r{A + 1}}`  and `concat{rB, r{B + 1}}` that are input to
+    this instruction were the same for the previous 64-bit divide or modulo
+    instruction.
   //--------
 - Opcode `0x15`:
   `smod64 rA, rB`
@@ -1043,6 +1095,10 @@ Here is a list of instructions from this encoding group.
   - Note: This instruction executes more quickly if
     `rB` is equal to bits `[63:32]` of
     `s64(r{B+1})`.
+  - Note: This instruction executes more quickly if the values of
+    `concat{rA, r{A + 1}}`  and `concat{rB, r{B + 1}}` that are input to
+    this instruction were the same for the previous 64-bit divide or modulo
+    instruction.
   //--------
 - Opcode `0x16`:
   `ldub rA, [rB]`
