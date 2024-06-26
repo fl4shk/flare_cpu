@@ -1,5 +1,5 @@
 
-mul_test_0.elf:     file format elf32-flare32
+mul_test_0.elf:     file format elf32-flare
 
 
 Disassembly of section .text:

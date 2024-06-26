@@ -3,7 +3,7 @@
 # Separate each entry by spaces.
 
 
-PREFIX:=flare32-unknown-elf-
+PREFIX:=flare-unknown-elf-
 
 SHARED_SRC_DIRS:=src \
 

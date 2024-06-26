@@ -9,4 +9,6 @@ _start:
 	lsr r0, #31
 	lsl r0, #32
 	cpy r1, #31
+	cpy r1, #testificate
+	ldr r3, [r1, r2]
 	ze r0, #testificate 
