@@ -98,7 +98,7 @@ character representing one bit: \
 - `a` encodes register `rA`
 
 This instruction acts as `cmpxchg` if `index` is in effect, using
-`cmpxchg_index_reg` as the `expected` (or `rC`) value, but otherwise this
+`indexRegA` as the `expected` (or `rC`) value, but otherwise this
 instruction acts as `xchg`. More on `index` later in this document.
 
 The assembly syntax of these instructions is as follows:
@@ -166,7 +166,7 @@ lasts for one or two instructions after the `pre` or
 was in effect.
 
 `index` is an instruction (defined later) that allows a
-subsequent load or store instruction to perform `base_reg + index_reg`
+subsequent load or store instruction to perform `base_reg + indexRegSum`
 indexing. When an `index` instruction is found, it
 is considered to be in effect. Like `pre` and `lpre`,
 `index` is inserted automatically by the assembler.
@@ -921,40 +921,56 @@ Here is a list of instructions from this encoding group.
   `udiv rA, rB`
   //--------
   - Effect: `rA <= u32(rA) / u32(rB);`
-  - Note: This instruction executes more quickly if the values of
-    `rA` and `rB` that are input to this instruction were the
-    same for the previous 32-bit divide or modulo instruction.
+  - Note: If `index` is in effect, this instruction becomes 
+  //- Note: This instruction executes more quickly if the values of
+  //  `rA` and `rB` that are input to this instruction were the
+  //  same for the previous 32-bit divide or modulo instruction.
+  - Note: This instruction has another form,
+    `udivmod rA, rB, rC`, where `rC` is used as the
+    modulo output register of the 32-bit divide.
+    This form of this instruction is encoded as `index rC, r0`
+    followed by `udiv rA, rB`
   //--------
 - Opcode `0xd`:
   `sdiv rA, rB`
   //--------
   - Effect: `rA <= s32(rA) / s32(rB);`
-  - Note: This instruction executes more quickly if the values of
-    `rA` and `rB` that are input to this instruction were the
-    same for the previous 32-bit divide or modulo instruction.
+  //- Note: This instruction executes more quickly if the values of
+  //  `rA` and `rB` that are input to this instruction were the
+  //  same for the previous 32-bit divide or modulo instruction.
+  - Note: This instruction has another form,
+    `sdivmod rA, rB, rC`, where `rC` is used as the
+    modulo output register of the 32-bit divide.
+    This form of this instruction is encoded as `index rC, r0`
+    followed by `sdiv rA, rB`
   //--------
-- Opcode `0xe`:
-  `umod rA, rB`
-  //--------
-  - Effect: `rA <= u32(rA) \// u32(rB);`
-  - Note: This instruction executes more quickly if the values of
-    `rA` and `rB` that are input to this instruction were the
-    same for the previous 32-bit divide or modulo instruction.
-  //--------
-- Opcode `0xf`:
-  `smod rA, rB`
-  //--------
-  - Effect: `rA <= s32(rA) \// s32(rB);`
-  - Note: This instruction executes more quickly if the values of
-    `rA` and `rB` that are input to this instruction were the same for the
-    previous 32-bit divide or modulo instruction.
-  //--------
-- Opcode `0x10`:
+//- Opcode `0xe`:
+//  `umod rA, rB`
+//  //--------
+//  - Effect: `rA <= u32(rA) % u32(rB);`
+//  //- Note: This instruction executes more quickly if the values of
+//  //  `rA` and `rB` that are input to this instruction were the
+//  //  same for the previous 32-bit divide or modulo instruction.
+//  //--------
+//- Opcode `0xf`:
+//  `smod rA, rB`
+//  //--------
+//  - Effect: `rA <= s32(rA) % s32(rB);`
+//  //- Note: This instruction executes more quickly if the values of
+//  //  `rA` and `rB` that are input to this instruction were the same for the
+//  //  previous 32-bit divide or modulo instruction.
+//  //--------
+- Opcode `0x0e`:
   `lumul rA, rB`
   //--------
   - Effect: This instruction multiplies `rA` by
     `rB`, performing an unsigned 32-bit by 32-bit -> 64-bit
-    multiply, storing result in `concat{r0, r1}`.
+    multiply, storing result in //`concat{r0, r1}`.
+    - `concat{r0, r1}` (only if `index` is not in effect).
+    - `concat{index_rA, index_rB}` (only if `index` is in effect), which
+      uses the assembly syntax `lumul rC, rD, rA, rB`, where
+      - `rC` becomes `index_rA`, and 
+      - `rD` becomes `index_rB`
   //- Effect: This instruction multiplies
   // //`concat{rA, r{A+1}}`
   // //by `concat{rB, r{B+1}}`,
@@ -967,12 +983,20 @@ Here is a list of instructions from this encoding group.
   // //and
   // //`rB` were encoded with `(B[0x0] == 0b0)`,
   //--------
-- Opcode `0x11`:
+- Opcode `0x0f`:
   `lsmul rA, rB`
   //--------
   - Effect: This instruction multiplies `rA` by
     `rB`, performing a signed 32-bit by 32-bit -> 64-bit
-    multiply, storing result in `concat{r0, r1}`.
+    //multiply, storing result in
+    //- `concat{r0, r1}` (only if `index` is not in effect).
+    //- `concat{index_rA, index_rB}` (only if `index` is in effect).
+    multiply, storing result in //`concat{r0, r1}`.
+    - `concat{r0, r1}` (only if `index` is not in effect).
+    - `concat{index_rA, index_rB}` (only if `index` is in effect), which
+      uses the assembly syntax `lumul rC, rD, rA, rB`, where
+      - `rC` becomes `index_rA`, and 
+      - `rD` becomes `index_rB`
   //- Effect: This instruction multiplies
   // //`concat{rA, r{A+1}}`
   // //by `concat{rB, r{B+1}}`,
@@ -985,7 +1009,7 @@ Here is a list of instructions from this encoding group.
   // and
   // `rB` were encoded with `(B[0x0] == 0b0)`,
   //--------
-- Opcode `0x12`:
+- Opcode `0x10`:
   `udiv64 rA, rB`
   //--------
   //- Effect: performs a 64-bit by 64-bit unsigned division of
@@ -1004,19 +1028,25 @@ Here is a list of instructions from this encoding group.
     `rA` were encoded with `(A[0x0] == 0b0)`
     and
     `rB` were encoded with `(B[0x0] == 0b0)`,
-  - Note: This instruction executes more quickly if
-    `rB`'s value is `0x00000000`, i.e. if the
-    operation is actually a 64-bit by 32-bit -> 64-bit unsigned
-    divide.
+  - Note: This instruction has another form,
+    `udivmod64 rA, rB, rC, rD`, where `concat(rC, rD)` is used as the
+    64-bit register pair in which the modulo result of the 64-bit divide is
+    stored.
+    This form of this instruction is encoded as `index rC, rD`
+    followed by `udiv64 rA, rB`
+  //- Note: This instruction executes more quickly if
+  //  `rB`'s value is `0x00000000`, i.e. if the
+  //  operation is actually a 64-bit by 32-bit -> 64-bit unsigned
+  //  divide.
   //- Note: This instruction executes more quickly if the values of
   //  `concat{rA, r{A + 1}}` and `concat{rB, r{B + 1}}` before this divide
   //  were previously the same for the previous divide or modulo instruction.
-  - Note: This instruction executes more quickly if the values of
-    `concat{rA, r{A + 1}}`  and `concat{rB, r{B + 1}}` that are input to
-    this instruction were the same for the previous 64-bit divide or modulo
-    instruction.
+  //- Note: This instruction executes more quickly if the values of
+  //  `concat{rA, r{A + 1}}`  and `concat{rB, r{B + 1}}` that are input to
+  //  this instruction were the same for the previous 64-bit divide or modulo
+  //  instruction.
   //--------
-- Opcode `0x13`:
+- Opcode `0x11`:
   `sdiv64 rA, rB`
   //--------
   //- Effect: performs a 64-bit by 64-bit signed division of
@@ -1038,153 +1068,232 @@ Here is a list of instructions from this encoding group.
     `rA` were encoded with `(A[0x0] == 0b0)`
     and
     `rB` were encoded with `(B[0x0] == 0b0)`,
-  - Note: This instruction executes more quickly if
-    `rB` is equal to bits `[63:32]` of
-    `s64(r{B+1})`.
-  - Note: This instruction executes more quickly if the values of
-    `concat{rA, r{A + 1}}`  and `concat{rB, r{B + 1}}` that are input to
-    this instruction were the same for the previous 64-bit divide or modulo
-    instruction.
-  //--------
-- Opcode `0x14`:
-  `umod64 rA, rB`
-  //--------
-  //- Effect: performs a 64-bit by 64-bit unsigned modulo of
-  // `{r0, r1}` by `{rA, rB}`, storing 64-bit
-  // result in `{r0, r1}`.
   //- Note: This instruction executes more quickly if
-  // `rA`'s value is `0x00000000`, i.e. if the
-  // operation is actually a 64-bit by 32-bit -> 64-bit unsigned
-  // modulo.
-  - Effect: performs a 64-bit by 64-bit unsigned modulo of
-    `concat{rA, r{A + 1}}`
-    by `concat{rB, r{B + 1}}`,
-    storing 64-bit result in
-    `concat{rA, r{A + 1}}`.
-  - Note: This instruction operates as if
-    `rA` were encoded with `(A[0x0] == 0b0)`
-    and
-    `rB` were encoded with `(B[0x0] == 0b0)`,
-  - Note: This instruction executes more quickly if
-    `rB`'s value is `0x00000000`, i.e. if the
-    operation is actually a 64-bit by 32-bit -> 64-bit unsigned
-    modulo.
-  - Note: This instruction executes more quickly if the values of
-    `concat{rA, r{A + 1}}`  and `concat{rB, r{B + 1}}` that are input to
-    this instruction were the same for the previous 64-bit divide or modulo
-    instruction.
+  //  `rB` is equal to bits `[63:32]` of
+  //  `s64(r{B+1})`.
+  //- Note: This instruction executes more quickly if the values of
+  //  `concat{rA, r{A + 1}}`  and `concat{rB, r{B + 1}}` that are input to
+  //  this instruction were the same for the previous 64-bit divide or modulo
+  //  instruction.
+  - Note: This instruction has another form,
+    `sdivmod64 rA, rB, rC, rD`, where `concat(rC, rD)` is used as the
+    64-bit register pair in which the modulo result of the 64-bit divide is
+    stored.
+    This form of this instruction is encoded as `index rC, rD`
+    followed by `sdiv64 rA, rB`
   //--------
-- Opcode `0x15`:
-  `smod64 rA, rB`
+//- Opcode `0x14`:
+//  `umod64 rA, rB`
+//  //--------
+//  //- Effect: performs a 64-bit by 64-bit unsigned modulo of
+//  // `{r0, r1}` by `{rA, rB}`, storing 64-bit
+//  // result in `{r0, r1}`.
+//  //- Note: This instruction executes more quickly if
+//  // `rA`'s value is `0x00000000`, i.e. if the
+//  // operation is actually a 64-bit by 32-bit -> 64-bit unsigned
+//  // modulo.
+//  - Effect: performs a 64-bit by 64-bit unsigned modulo of
+//    `concat{rA, r{A + 1}}`
+//    by `concat{rB, r{B + 1}}`,
+//    storing 64-bit result in
+//    `concat{rA, r{A + 1}}`.
+//  - Note: This instruction operates as if
+//    `rA` were encoded with `(A[0x0] == 0b0)`
+//    and
+//    `rB` were encoded with `(B[0x0] == 0b0)`,
+//  - Note: This instruction executes more quickly if
+//    `rB`'s value is `0x00000000`, i.e. if the
+//    operation is actually a 64-bit by 32-bit -> 64-bit unsigned
+//    modulo.
+//  - Note: This instruction executes more quickly if the values of
+//    `concat{rA, r{A + 1}}`  and `concat{rB, r{B + 1}}` that are input to
+//    this instruction were the same for the previous 64-bit divide or modulo
+//    instruction.
+//  //--------
+//- Opcode `0x15`:
+//  `smod64 rA, rB`
+//  //--------
+//  //- Effect: performs a 64-bit by 64-bit signed modulo of
+//  // `{r0, r1}` by `{rA, rB}`, storing 64-bit
+//  // result in `{r0, r1}`.
+//  //- Note: This instruction executes more quickly if
+//  // `rA` is equal to bits `[63:32]` of
+//  // `sign_extend_to_64(rB)`.
+//  - Effect: performs a 64-bit by 64-bit signed modulo of
+//    `concat{rA, r{A + 1}}`
+//    by `concat{rB, r{B + 1}}`,
+//    storing 64-bit result in
+//    `concat{rA, r{A + 1}}`.
+//  - Note: This instruction operates as if
+//    `rA` were encoded with `(A[0x0] == 0b0)`
+//    and
+//    `rB` were encoded with `(B[0x0] == 0b0)`,
+//  - Note: This instruction executes more quickly if
+//    `rB` is equal to bits `[63:32]` of
+//    `s64(r{B+1})`.
+//  - Note: This instruction executes more quickly if the values of
+//    `concat{rA, r{A + 1}}`  and `concat{rB, r{B + 1}}` that are input to
+//    this instruction were the same for the previous 64-bit divide or modulo
+//    instruction.
   //--------
-  //- Effect: performs a 64-bit by 64-bit signed modulo of
-  // `{r0, r1}` by `{rA, rB}`, storing 64-bit
-  // result in `{r0, r1}`.
-  //- Note: This instruction executes more quickly if
-  // `rA` is equal to bits `[63:32]` of
-  // `sign_extend_to_64(rB)`.
-  - Effect: performs a 64-bit by 64-bit signed modulo of
-    `concat{rA, r{A + 1}}`
-    by `concat{rB, r{B + 1}}`,
-    storing 64-bit result in
-    `concat{rA, r{A + 1}}`.
-  - Note: This instruction operates as if
-    `rA` were encoded with `(A[0x0] == 0b0)`
-    and
-    `rB` were encoded with `(B[0x0] == 0b0)`,
-  - Note: This instruction executes more quickly if
-    `rB` is equal to bits `[63:32]` of
-    `s64(r{B+1})`.
-  - Note: This instruction executes more quickly if the values of
-    `concat{rA, r{A + 1}}`  and `concat{rB, r{B + 1}}` that are input to
-    this instruction were the same for the previous 64-bit divide or modulo
-    instruction.
-  //--------
-- Opcode `0x16`:
+- Opcode `0x12`:
   `ldub rA, [rB]`
   //--------
   - Effect: Load an 8-bit value from memory at the the effective address
     computed as either
     - `rB` (only if `index` is *not* in effect)
-    - or `<index_reg>` (only if `index` is in effect),
+    - or `<indexRegSum>` (only if `index` is in effect),
     then zero-extend the 8-bit value to 32 bits, then write the
     zero-extended 32-bit value into `rA`.
-  //- The `index_reg` value is guaranteed to be zero
+  //- The `indexRegSum` value is guaranteed to be zero
   //  unless an `index` is in effect.
   - Shorthand for having the assembler insert an
     `index rB, rC` instruction before this one:
       `ldub rA, [rB, rC]`
+  - Shorthand for having the assembler insert an `index rB, #simm`
+    instruction before this one:
+    `ldub rA, [rB, #simm]`
   //--------
-- Opcode `0x17`:
+- Opcode `0x13`:
   `ldsb rA, [rB]`
   //--------
   - Effect: Load an 8-bit value from memory the effective address
     computed as either
     - `rB` (only if `index` is *not* in effect)
-    - or `<index_reg>` (only if `index` is in effect),
+    - or `<indexRegSum>` (only if `index` is in effect),
     then sign-extend the 8-bit value to 32 bits, then write the
     sign-extended 32-bit value into `rA`.
-  //- The `index_reg` value is guaranteed to be zero
+  //- The `indexRegSum` value is guaranteed to be zero
   //  unless an `index` is in effect.
   - Shorthand for having the assembler insert an
     `index rB, rC` instruction before this one:
       `ldsb rA, [rB, rC]`
+  - Shorthand for having the assembler insert an `index rB, #simm`
+    instruction before this one:
+    `ldsb rA, [rB, #simm]`
   //--------
-- Opcode `0x18`:
+- Opcode `0x14`:
   `lduh rA, [rB]`
   //--------
   - Effect: Load a 16-bit value from memory at the effective address
     computed as either
     - `rB` (only if `index` is *not* in effect)
-    - or `<index_reg>` (only if `index` is in effect),
+    - or `<indexRegSum>` (only if `index` is in effect),
     then zero-extend the 16-bit value to 32 bits, then write the
     zero-extended 32-bit value into `rA`.
-  //- The `index_reg` value is guaranteed to be zero
+  //- The `indexRegSum` value is guaranteed to be zero
   //  unless an `index` is in effect.
   - Shorthand for having the assembler insert an
     `index rB, rC` instruction before this one:
       `lduh rA, [rB, rC]`
+  - Shorthand for having the assembler insert an `index rB, #simm`
+    instruction before this one:
+    `lduh rA, [rB, #simm]`
   //--------
-- Opcode `0x19`:
+- Opcode `0x15`:
   `ldsh rA, [rB]`
   //--------
   - Effect: Load a 16-bit value from memory at the effective address
     computed as either
     - `rB` (only if `index` is *not* in effect)
-    - or `<index_reg>` (only if `index` is in effect),
+    - or `<indexRegSum>` (only if `index` is in effect),
     then sign-extends the 16-bit value to 32 bits, then writes the
     sign-extended 32-bit value into `rA`.
-  //- The `index_reg` value is guaranteed to be zero
+  //- The `indexRegSum` value is guaranteed to be zero
   //  unless an `index` is in effect.
   - Shorthand for having the assembler insert an `index rB, rC` instruction
     before this one:
     `ldsh rA, [rB, rC]`
+  - Shorthand for having the assembler insert an `index rB, #simm`
+    instruction before this one:
+    `ldsh rA, [rB, #simm]`
   //--------
-- Opcode `0x1a`:
+- Opcode `0x16`:
+  `ldr rA, [rB]`
+  //--------
+  - Effect: Store `rA` to memory at the effective address computed as
+    either
+    - `rB` (only if `index` is *not* in effect)
+    - or `<indexRegSum>` (only if `index` is in effect),
+  - Shorthand for having the assembler insert an `index rB, rC` instruction
+    before this one: `ldr rA, [rB, rC]`
+  - Shorthand for having the assembler insert an `index rB, #simm`
+    instruction before this one: `ldr rA, [rB, #simm]`
+  //--------
+//- Opcode `0x17`:
+//  `ldq rA, [rB]`
+//  //--------
+//  - Effect: Store 64-bit `rA` to memory at the effective address computed
+//    as either
+//    - 64-bit `rB` (only if `index` is *not* in effect)
+//    - or `<indexRegSum>` (only if `index` is in effect),
+//  - Shorthand for having the assembler insert an `index rB, rC` instruction
+//    before this one: `ldq rA, [rB, rC]`
+//  - Shorthand for having the assembler insert an `index rB, #simm`
+//    instruction before this one: `ldq rA, [rB, #simm]`
+  //--------
+  //--------
+- Opcode `0x18`:
   `stb rA, [rB]`
   //--------
   - Effect: Store `rA[7:0]` to memory at the the effective address
     computed as either
     - `rB` (only if `index` is *not* in effect)
-    - or `<index_reg>` (only if `index` is in effect),
-  //- The `index_reg` value is guaranteed to be zero
+    - or `<indexRegSum>` (only if `index` is in effect),
+  //- The `indexRegSum` value is guaranteed to be zero
   //  unless an `index` is in effect.
   - Shorthand for having the assembler insert an
     `index rB, rC` instruction before this one:
-      `stb rA, [rB, rC]`
+    `stb rA, [rB, rC]`
+  - Shorthand for having the assembler insert an `index rB, #simm`
+    instruction before this one:
+    `stb rA, [rB, #simm]`
   //--------
-- Opcode `0x1b`:
+- Opcode `0x19`:
   `sth rA, [rB]`
   //--------
   - Effect: Store `rA[15:0]` to memory at the the effective address
     computed as either
     - `rB` (only if `index` is *not* in effect)
-    - or `<index_reg>` (only if `index` is in effect),
-  //- The `index_reg` value is guaranteed to be zero
+    - or `<indexRegSum>` (only if `index` is in effect),
+  //- The `indexRegSum` value is guaranteed to be zero
   //  unless an `index` is in effect.
   - Shorthand for having the assembler insert an `index rB, rC` instruction
     before this one: `sth rA, [rB, rC]`
+  - Shorthand for having the assembler insert an `index rB, #simm`
+    instruction before this one:
+    `sth rA, [rB, #simm]`
   //--------
+- Opcode `0x1a`:
+  `str rA, [rB]`
+  //--------
+  - Effect: Store `rA` to memory at the the effective address
+    computed as either
+    - `rB` (only if `index` is *not* in effect)
+    - or `<indexRegSum>` (only if `index` is in effect),
+  //- The `indexRegSum` value is guaranteed to be zero
+  //  unless an `index` is in effect.
+  - Shorthand for having the assembler insert an `index rB, rC` instruction
+    before this one: `str rA, [rB, rC]`
+  - Shorthand for having the assembler insert an `index rB, #simm`
+    instruction before this one:
+    `str rA, [rB, #simm]`
+    //--------
+//- Opcode `0x1b`:
+//  `stq rA, [rB]`
+//  //--------
+//  - Effect: Store 64-bit `rA` to memory at the the effective address
+//    computed as either
+//    - 64-bit `rB` (only if `index` is *not* in effect)
+//    - or `<indexRegSum>` (only if `index` is in effect),
+//  //- The `indexRegSum` value is guaranteed to be zero
+//  //  unless an `index` is in effect.
+//  - Shorthand for having the assembler insert an `index rB, rC` instruction
+//    before this one: `stq rA, [rB, rC]`
+//  - Shorthand for having the assembler insert an `index rB, #simm`
+//    instruction before this one:
+//    `stq rA, [rB, #simm]`
+//  //--------
 - Opcode `0x1c`:
   `cpy rA, sB`
   //--------
@@ -1200,147 +1309,223 @@ Here is a list of instructions from this encoding group.
   //--------
   - Effect: `sA <= sB;`
   //--------
-- Opcode `0x1f`:
-  `index rA, rB`
-  //--------
-  - Effect: Performs the following:
-    - `index_reg <= rA + rB;`
-    - `cmpxchg_index_reg <= rA;`
-    and stores that `index` is in effect.
-  - Note: If `index` is in effect and the current
-    instruction is `index`, the current instruction will be
-    treated as a NOP, and `index` will stop being in effect.
-  - Note: `pre` and `index` can be combined
-    with one another (though this is only useful for `ldr`
-    and `str`).
-  - Note: A non-`pre` instruction following
-    `index` will store that that `index` is not in
-    effect any more. (It will also store that `pre` is not
-    in effect any more).
-  - Note: If `index` is in effect, the current
-    instruction cannot be interrupted by an IRQ.
-  - Note: Any time `index` stops being in effect,
-    `pre` will stop being in effect as well.
+//- Opcode `0x1b`:
+//  `index rA, rB`
+//  //--------
+//  - Effect: Performs the following:
+//    - `indexRegSum <= rA + rB;`
+//    - `indexRegA <= rA;`
+//    - `indexRegB <= rB;`
+//    and stores that `index` is in effect.
+//  - Note: If `index` is in effect and the current
+//    instruction is `index`, the current instruction will be
+//    treated as a NOP, and `index` will stop being in effect.
+//  - Note: `pre` and `index` can be combined
+//    with one another (though this is only useful for `ldr`
+//    and `str`).
+//  - Note: A non-`pre` instruction following
+//    `index` will store that that `index` is not in
+//    effect any more. (It will also store that `pre` is not
+//    in effect any more).
+//  - Note: If `index` is in effect, the current
+//    instruction cannot be interrupted by an IRQ.
+//  - Note: Any time `index` stops being in effect,
+//    `pre` will stop being in effect as well.
   //--------
 
-== Instruction Group 5: Immediate Indexed Load
+== Instruction Group 5, Subgroup `0b0`: `index rA, rB`
 The following encoding is used, with each character representing one
 bit: \
-`101i iiii bbbb aaaa`, where
-- `i` is a 5-bit sign-extended immediate, which can
-  be expanded by `pre` or `lpre`, and is denoted `simm`
+`1010 000r bbbb aaaa`, where
+- `r` is a reserved bit value, which should be zero until the 64-bit
+  version of this spec is defined.
+  defined
 - `b` encodes register `rB`
 - `a` encodes register `rA`
 
 The one instruction from this encoding group is
-`ldr rA, [rB, #simm]`.
+`index rA, rB`
+//--------
+- Effect: Performs the following:
+  - `indexRegSum <= indexRaSimm.haveIt ? indexRegSum + rB : rA + rB;`
+  - `indexRegA <= rA;`
+  - `indexRegB <= rB;`
+  and stores that `indexRaRb` is in effect.
+- Note: If this prefix occurs when `indexRaSimm` is
+  already in effect, then the overall instruction becomes a NOP, and
+  `indexRaRb`, `indexRaSimm`, `pre`, and `lpre` will all no longer be in
+  effect.
+//- Note: If `index` is in effect and the current
+//  instruction is `index`, the current instruction will be
+//  treated as a NOP, and `index` will stop being in effect.
+////- Note: `pre` and `index` can be combined
+////  with one another (though this is only useful for `ldr`
+////  and `str`).
+//- Note: A non-`pre` instruction following
+//  `index` will store that that `index` is not in
+//  effect any more. (It will also store that `pre` is not
+//  in effect any more).
+//- Note: If `index` is in effect, the current
+//  instruction cannot be interrupted by an IRQ.
+//- Note: Any time `index` stops being in effect,
+//  `pre` will stop being in effect as well.
+
+== Instruction Group 5, Subgroup `0b1`: `index rA, #simm`
+The following encoding is used, with each character representing one
+bit: \
+`1011 riii iiii aaaa`, where
+- `r` is a reserved bit value, which should be encoded as zero until the
+  64-bit version of this spec is defined.
+- `i` is a 7-bit sign-extended immediate, which can be expanded by `pre`
+  or `lpre`, and is denoted `simm`
+- `a` encodes register `rA`
+
+The one instruction from this encoding group is
+`index rA, #simm`
+//--------
+- Effect: Performs the following:
+  - `indexRegSum <= indexRaRb.haveIt ? indexRegSum + simm : rA + simm;`
+  - `indexRegA <= rA;`
+  - `indexRegB <= simm;`
+  and stores that `indexRaSimm` is in effect.
+- Note: If this prefix occurs when `indexRaSimm` is
+  already in effect, then the overall instruction becomes a NOP, and
+  `indexRaRb`, `indexRaSimm`, `pre`, and `lpre` will all no longer be in
+  effect.
+//- Note: If `index` is in effect and the current
+//  instruction is `index`, the current instruction will be
+//  treated as a NOP, and `index` will stop being in effect.
+////- Note: `pre` and `index` can be combined
+////  with one another (though this is only useful for `ldr`
+////  and `str`).
+//- Note: A non-`pre` instruction following
+//  `index` will store that that `index` is not in
+//  effect any more. (It will also store that `pre` is not
+//  in effect any more).
+//- Note: If `index` is in effect, the current
+//  instruction cannot be interrupted by an IRQ.
+//- Note: Any time `index` stops being in effect,
+//  `pre` will stop being in effect as well.
+
+
+//== Instruction Group 5: Immediate Indexed Load
+//The following encoding is used, with each character representing one
+//bit: \
+//`101o oooo bbbb aaaa`, where
+////- `i` is a 5-bit sign-extended immediate, which can
+////  be expanded by `pre` or `lpre`, and is denoted `simm`
+//- `b` encodes register `rB`
+//- `a` encodes register `rA`
+//
+//The one instruction from this encoding group is
+//`ldr rA, [rB, #simm]`.
+////This is a 32-bit load into `rA`, where the effective address to
+////load from is computed as either `rB + simm` or `<indexRegSum> + simm`,
+////depending on if `index` is in effect
+////the sign-extended form of `simm`.
 //This is a 32-bit load into `rA`, where the effective address to
-//load from is computed as either `rB + simm` or `<index_reg> + simm`,
-//depending on if `index` is in effect
-//the sign-extended form of `simm`.
-This is a 32-bit load into `rA`, where the effective address to
-load from is computed as either
-`rB + simm` (only if `index` is not in effect)
-or `<index_reg> + simm` (only if `index` is in effect).
-This instruction uses the sign-extended form of `simm`.
+//load from is computed as either
+//`rB + simm` (only if `index` is not in effect)
+//or `<indexRegSum> + simm` (only if `index` is in effect).
+//This instruction uses the sign-extended form of `simm`.
+//
+////The `<indexRegSum>` value is guaranteed to be zero unless an
+////`index` is in effect.
+//
+////Shorthand for having the assembler insert an `index rC`
+////instruction before this one: `ldr rA, [rB, rC, #simm]`
+//The following pseudo instructions exist within the assembler for this
+//encoding group:
+//- `ldr rA, [rB]`
+//  //--------
+//  - This pseudo instruction assembles to the following:
+//    //--------
+//    - `ldr rA, [rB, #0x0]`
+//    //--------
+//  //--------
+//- `ldr rA, [rB, rC]`
+//  //--------
+//  - This pseudo instruction assembles to the following:
+//    //--------
+//    - `index rB, rC`
+//    - `ldr rA, [r0, #0x0]`
+//    //--------
+//  //--------
+//- `ldr rA, [rB, rC, #simm]`
+//  //--------
+//  - This pseudo instruction assembles to the following:
+//    //--------
+//    - `index rB, rC`
+//    - `ldr rA, [r0, #simm]`
+//    //--------
+//  //--------
 
-//The `<index_reg>` value is guaranteed to be zero unless an
-//`index` is in effect.
+//The `<indexRegSum>` value is zero in all cases except
+//the previous instruction was `index indexRegSum` and if
+//`indexRegSum`'s value was non-zero. 
 
-//Shorthand for having the assembler insert an `index rC`
-//instruction before this one: `ldr rA, [rB, rC, #simm]`
-The following pseudo instructions exist within the assembler for this
-encoding group:
-- `ldr rA, [rB]`
-  //--------
-  - This pseudo instruction assembles to the following:
-    //--------
-    - `ldr rA, [rB, #0x0]`
-    //--------
-  //--------
-- `ldr rA, [rB, rC]`
-  //--------
-  - This pseudo instruction assembles to the following:
-    //--------
-    - `index rB, rC`
-    - `ldr rA, [r0, #0x0]`
-    //--------
-  //--------
-- `ldr rA, [rB, rC, #simm]`
-  //--------
-  - This pseudo instruction assembles to the following:
-    //--------
-    - `index rB, rC`
-    - `ldr rA, [r0, #simm]`
-    //--------
-  //--------
-
-//The `<index_reg>` value is zero in all cases except
-//the previous instruction was `index index_reg` and if
-//`index_reg`'s value was non-zero. 
-
-== Instruction Group 6: Immediate Indexed Store
-The following encoding is used, with each character representing one
-bit: \
-`110i iiii bbbb aaaa`, where
-- `i` is a 5-bit sign-extended immediate, which can
-  be expanded by `pre` or `lpre`, and is denoted
-  `simm`
-- `b` encodes register `rB`
-- `a` encodes register `rA`
-
-The one instruction from this encoding group is
-`str rA, [rB, #simm]`.
+//== Instruction Group 6: Immediate Indexed Store
+//The following encoding is used, with each character representing one
+//bit: \
+//`110i iiii bbbb aaaa`, where
+//- `i` is a 5-bit sign-extended immediate, which can
+//  be expanded by `pre` or `lpre`, and is denoted
+//  `simm`
+//- `b` encodes register `rB`
+//- `a` encodes register `rA`
+//
+//The one instruction from this encoding group is
+//`str rA, [rB, #simm]`.
+////This is a 32-bit store of `rA`, where the effective address to
+////store to is computed as `<indexRegSum> + rB + simm`, using the
+////sign-extended form of `simm`.
+////This is a 32-bit store of `rA`, where the effective address to
+////store to is computed as either `rB + simm` or `<indexRegSum> + simm`
+////(only if `index` is in effect) the sign-extended form of `simm`.
 //This is a 32-bit store of `rA`, where the effective address to
-//store to is computed as `<index_reg> + rB + simm`, using the
-//sign-extended form of `simm`.
-//This is a 32-bit store of `rA`, where the effective address to
-//store to is computed as either `rB + simm` or `<index_reg> + simm`
-//(only if `index` is in effect) the sign-extended form of `simm`.
-This is a 32-bit store of `rA`, where the effective address to
-store to is computed as either
-`rB + simm` (only if `index` is not in effect)
-or `<index_reg> + simm` (only if `index` is in effect).
-This instruction uses the sign-extended form of `simm`.
+//store to is computed as either
+//`rB + simm` (only if `index` is not in effect)
+//or `<indexRegSum> + simm` (only if `index` is in effect).
+//This instruction uses the sign-extended form of `simm`.
+//
+////The `<indexRegSum>` value is guaranteed to be zero unless an
+////`index` is in effect.
+//
+////Shorthand for having the assembler insert an `index rC`
+////instruction before this one: `str rA, [rB, rC, #simm]`
+//
+////The assembler will insert an `index rC` instruction before this
+////instruction if either of the following syntaxes:
+//The following pseudo instructions exist within the assembler for this
+//encoding group:
+//
+//- `str rA, [rB]`
+//  //--------
+//  - This pseudo instruction assembles to the following:
+//    //--------
+//    - `str rA, [rB, #0x0]`
+//    //--------
+//  //--------
+//- `str rA, [rB, rC]`
+//  //--------
+//  - This pseudo instruction assembles to the following:
+//    //--------
+//    - `index rB, rC`
+//    - `str rA, [r0, #0x0]`
+//    //--------
+//  //--------
+//- `str rA, [rB, rC, #simm]`
+//  //--------
+//  - This pseudo instruction assembles to the following:
+//    //--------
+//    - `index rB, rC`
+//    - `str rA, [r0, #simm]`
+//    //--------
+//  //--------
 
-//The `<index_reg>` value is guaranteed to be zero unless an
-//`index` is in effect.
-
-//Shorthand for having the assembler insert an `index rC`
-//instruction before this one: `str rA, [rB, rC, #simm]`
-
-//The assembler will insert an `index rC` instruction before this
-//instruction if either of the following syntaxes:
-The following pseudo instructions exist within the assembler for this
-encoding group:
-
-- `str rA, [rB]`
-  //--------
-  - This pseudo instruction assembles to the following:
-    //--------
-    - `str rA, [rB, #0x0]`
-    //--------
-  //--------
-- `str rA, [rB, rC]`
-  //--------
-  - This pseudo instruction assembles to the following:
-    //--------
-    - `index rB, rC`
-    - `str rA, [r0, #0x0]`
-    //--------
-  //--------
-- `str rA, [rB, rC, #simm]`
-  //--------
-  - This pseudo instruction assembles to the following:
-    //--------
-    - `index rB, rC`
-    - `str rA, [r0, #simm]`
-    //--------
-  //--------
-
-//The `index_reg` value is zero in all cases except
-//the previous instruction was `index index_reg` and if
-//`index_reg`'s value was non-zero. 
+//The `indexRegSum` value is zero in all cases except
+//the previous instruction was `index indexRegSum` and if
+//`indexRegSum`'s value was non-zero. 
 
 == Instruction Group 7, Subgroup `0b00`: Extra 8-bit and 16-bit Ops
 The following encoding is used, with each character representing one
@@ -1461,18 +1646,18 @@ bit: \
 The one instruction from this encoding group  is
 `icreload [rA, #simm]`.
 //This instruction forcibly reloads the icache line at an effective
-//address computed as `<index_reg> + rA + simm`, using the
+//address computed as `<indexRegSum> + rA + simm`, using the
 //sign-extended form of `simm`.
 This instruction forcibly reloads the icache line at an effective
 address computed as `rA + simm` (only if `index` is *not* in effect) or
-`<index_reg> + simm` (only if `index` is in effect), using the
+`<indexRegSum> + simm` (only if `index` is in effect), using the
 sign-extended form of `simm`.
 As a side note, this instruction will attempt to read the data from
 dcache, and will only read from memory if dcache doesn't have that
 data.
 Icache lines and dcache lines are the same length, 64 bytes.
 
-//The `<index_reg>` value is guaranteed to be zero unless an
+//The `<indexRegSum>` value is guaranteed to be zero unless an
 //`index` is in effect.
 
 The following pseudo instructions exist within the assembler for this
@@ -1500,7 +1685,7 @@ encoding group:
     - `icreload [r0, #simm]`
     //--------
   //--------
-== Instruction Group 7, Subgroup `0b0111`: Icache Flush Instruction
+== Instruction Group 7, Subgroup `0b01110`: Icache Flush Instruction
 The following encoding is used, with each character representing one
 bit: \
 `1110 1110 0000 0000`//, where
@@ -1518,14 +1703,14 @@ The one instruction from this encoding group is
 //The one instruction from this encoding group  is
 //`icreload [rA, #simm]`.
 //This instruction forcibly reloads the icache line at an effective
-//address computed as `<index_reg> + rA + simm`, using the
+//address computed as `<indexRegSum> + rA + simm`, using the
 //sign-extended form of `simm`.
 //As a side note, this instruction will attempt to read the data from
 //dcache, and will only read from memory if dcache doesn't have that
 //data.
 //Icache lines and dcache lines are the same length, 64 bytes.
 //
-//The `<index_reg>` value is guaranteed to be zero unless an
+//The `<indexRegSum>` value is guaranteed to be zero unless an
 //`index` is in effect.
 //
 //The following pseudo instructions exist within the assembler for this

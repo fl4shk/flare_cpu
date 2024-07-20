@@ -97,8 +97,10 @@ case class FlareCpuPsDcache(
       wordType=FlareCpuDcacheEntryPayload(params=params),
       wordCount=params.dcacheLineMemWordCount,
       hazardCmpType=FlareCpuPipePayloadExec(params=params),
+      modRdPortCnt=1,
       modStageCnt=pipeMemModStageCnt,
-      optEnableModDuplicate=true,
+      //optEnableModDuplicate=true,
+      optModHazardKind=PipeMemRmw.modHazardKindFwd,
       optReorder=false,
     )
     val pipePayload = FlareCpuPipePayload(params=params)
@@ -192,6 +194,7 @@ case class FlareCpuPsDcache(
     wordCount=params.dcacheLineMemWordCount,
     hazardCmpType=FlareCpuPipePayloadExec(params=params),
     modType=PipeMemModType(),
+    modRdPortCnt=1,
     modStageCnt=0,
     pipeName="Dcache",
     linkArr=Some(linkArr),
@@ -204,8 +207,11 @@ case class FlareCpuPsDcache(
     initBigInt=Some(
       Array.fill(params.dcacheLineMemWordCount)(BigInt(0)).toSeq
     ),
-    optEnableModDuplicate=(
-      true
+    //optEnableModDuplicate=(
+    //  true
+    //),
+    optModHazardKind=(
+      PipeMemRmw.modHazardKindFwd
     ),
     optEnableClear=(
       false,
@@ -217,6 +223,7 @@ case class FlareCpuPsDcache(
       (
         curr,
         prev,
+        zdx,
         isPostDelay,
       ) => {
         val currLdst = curr.hazardCmp.ldst
@@ -252,11 +259,16 @@ case class FlareCpuPsDcache(
       //false
       true
     ),
-    doModSingleStageFunc=Some(
+    doModInModFrontFunc=Some(
       (
+        nextPrevTxnWasHazard,
+        rPrevTxnWasHazard,
         outp,
         inp,
         cMid0Front,
+        modFront,
+        tempModFrontPayload,
+        myModMemWord,
       ) => {
         outp := (
           RegNext(outp) init(outp.getZero)

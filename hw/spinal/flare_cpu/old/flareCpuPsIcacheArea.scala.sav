@@ -72,7 +72,9 @@ case class FlareCpuPsIcache(
     wordType=/*Flow*/(FlareCpuIcacheEntryPayload(params=params)),
     wordCount=params.icacheLineMemWordCount,
     hazardCmpType=Bool(),
+    modRdPortCnt=1,
     modStageCnt=pipeMemModStageCnt,
+    optModHazardKind=PipeMemRmw.modHazardKindFwd,
     optReorder=false,
   )
   def pipeMemMemArrIdx = 0

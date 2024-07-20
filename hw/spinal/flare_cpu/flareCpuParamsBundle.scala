@@ -64,6 +64,7 @@ object FlareCpuCacheParams {
     //  (rawElemNumBytesPow64._2, 64)
     //}
   }
+  //--------
 }
 
 case class FlareCpuCacheParams(
@@ -128,6 +129,13 @@ case class FlareCpuCacheParams(
   )
 }
 
+object FlareCpuParams {
+  def enumRegFileGprEven = 0
+  def enumRegFileGprOddNonSp = 1
+  def enumRegFileGprSp = 2
+  def enumRegFileSpr = 3
+}
+
 case class FlareCpuParams(
   //optIncludeSimd: Boolean=false,
   //optIncludeFpu: Boolean=false,
@@ -150,6 +158,19 @@ case class FlareCpuParams(
     1
   ), 
 ) {
+  //--------
+  def regWordType() = UInt(mainWidth bits)
+  def gprFileEvenWordCount = 8
+  def regFileHazardCmpType() = Bool()
+  def regFileNonSpModRdPortCnt = 2
+  def gprFileSpModRdPortCnt = 1
+  def regFileModStageCnt = 1      // `MEM` is the only "modStage"
+  def regFileOptModHazardKind = (
+    PipeMemRmw.modHazardKindFwd
+  )
+  def cacheOptModHazardKind = (
+    PipeMemRmw.modHazardKindFwd
+  )
   //--------
   def flagIdxZ = 0
   def flagIdxC = 1
@@ -258,32 +279,33 @@ case class FlareCpuParams(
   //  / (instrMainWidth / 8).toInt
   //)
   //--------
-  val ibusParams = BmbParameter(
-    addressWidth=mainWidth,
-    dataWidth=(
-      //instrMainWidth
-      //icacheLineElemWidth
-      mainWidth
-    ),
-    sourceWidth=0,
-    contextWidth=0,
-    lengthWidth=(
-      //icacheLineMemWordCount
-      //icacheLineMemWordCount
-      /*log2Up*/(
-        icacheNumBytesPerLinePow
-        //- log2Up(mainWidth)
-        - log2Up(mainWidth / 8)
-      )
-    ),
-    alignment=BmbParameter.BurstAlignement.WORD,
-    alignmentMin=0,
-    accessLatencyMin=1,
-    canRead=true,
-    canWrite=false, // icache only reads
-    canExclusive=false,   // I don't know what this is for yet
-    maximumPendingTransaction=1,
-  )
+  //val ibusParams = BmbParameter(
+  //  addressWidth=mainWidth,
+  //  dataWidth=(
+  //    //instrMainWidth
+  //    //icacheLineElemWidth
+  //    mainWidth
+  //  ),
+  //  sourceWidth=0,
+  //  contextWidth=0,
+  //  lengthWidth=(
+  //    //icacheLineMemWordCount
+  //    //icacheLineMemWordCount
+  //    /*log2Up*/(
+  //      icacheNumBytesPerLinePow
+  //      //- log2Up(mainWidth)
+  //      - log2Up(mainWidth / 8)
+  //    )
+  //  ),
+  //  alignment=BmbParameter.BurstAlignement.WORD,
+  //  alignmentMin=0,
+  //  accessLatencyMin=1,
+  //  canRead=true,
+  //  canWrite=false, // icache only reads
+  //  canExclusive=false,   // I don't know what this is for yet
+  //  maximumPendingTransaction=1,
+  //)
+
   //def ibusConfig = Axi4Config(
   //  addressWidth=mainWidth,
   //  dataWidth=instrMainWidth,
@@ -302,7 +324,7 @@ case class FlareCpuParams(
   //  useStrb=false, // icache only reads
   //  useAllStrb=false,
   //)
-  val dbusParams = BmbParameter(
+  val busParams = BmbParameter(
     addressWidth=mainWidth,
     dataWidth=mainWidth,
     sourceWidth=0,

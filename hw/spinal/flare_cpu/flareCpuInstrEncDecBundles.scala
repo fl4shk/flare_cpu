@@ -62,6 +62,8 @@ object FlareCpuInstrEncConst {
   def g7Sg010Subgrp = U"3'b010"
   def g7Sg0110SubgrpWidth = 4
   def g7Sg0110Subgrp = U"4'b0110"
+  def g7Sg01110SubgrpWidth = 5
+  def g7Sg01110Subgrp = U"5'b01110"
   //--------
   def gprR0Idx = U"4'd0"
   def gprR1Idx = U"4'd1"
@@ -226,25 +228,29 @@ object FlareCpuInstrG4EncOp extends SpinalEnum(
     mulRaRb,      // Opcode 0xb: mul rA, rB
     udivRaRb,     // Opcode 0xc: udiv rA, rB
     sdivRaRb,     // Opcode 0xd: sdiv rA, rB
-    umodRaRb,     // Opcode 0xe: umod rA, rB
-    smodRaRb,     // Opcode 0xf: smod rA, rB
+    //umodRaRb,     // Opcode 0xe: umod rA, rB
+    //smodRaRb,     // Opcode 0xf: smod rA, rB
+    lumulRaRb,    // Opcode 0xe: lumul rA, rB
+    lsmulRaRb,    // Opcode 0xf: lsmul rA, rB
     //--------
-    lumulRaRb,    // Opcode 0x10: lumul rA, rB
-    lsmulRaRb,    // Opcode 0x11: lsmul rA, rB
-    udiv64RaRb,   // Opcode 0x12: udiv64 rA, rB
-    sdiv64RaRb,   // Opcode 0x13: sdiv64 rA, rB
-    umod64RaRb,   // Opcode 0x14: umod64 rA, rB
-    smod64RaRb,   // Opcode 0x15: smod64 rA, rB
-    ldubRaRb,     // Opcode 0x16: ldub rA, [rB]
-    ldsbRaRb,     // Opcode 0x17: ldsb rA, [rB]
-    lduhRaRb,     // Opcode 0x18: lduh rA, [rB]
-    ldshRaRb,     // Opcode 0x19: ldsh rA, [rB]
-    stbRaRb,      // Opcode 0x1a: stb rA, [rB]
-    sthRaRb,      // Opcode 0x1b: sth rA, [rB]
-    cpyRaSb,      // Opcode 0x1c: cpy rA, sB
-    cpySaRb,      // Opcode 0x1d: cpy sA, rB
-    cpySaSb,      // Opcode 0x1e: cpy sA, sB
-    indexRa       // Opcode 0x1f: index rA
+    ////lumulRaRb,    // Opcode 0x10: lumul rA, rB
+    ////lsmulRaRb,    // Opcode 0x11: lsmul rA, rB
+    //udiv64RaRb,   // Opcode 0x12: udiv64 rA, rB
+    //sdiv64RaRb,   // Opcode 0x13: sdiv64 rA, rB
+    ////umod64RaRb,   // Opcode 0x14: umod64 rA, rB
+    ////smod64RaRb,   // Opcode 0x15: smod64 rA, rB
+    udiv64RaRb,   // Opcode 0x10: udiv64 rA, rB
+    sdiv64RaRb,   // Opcode 0x11: sdiv64 rA, rB
+    ldubRaRb,     // Opcode 0x12: ldub rA, [rB]
+    ldsbRaRb,     // Opcode 0x13: ldsb rA, [rB]
+    lduhRaRb,     // Opcode 0x14: lduh rA, [rB]
+    ldshRaRb,     // Opcode 0x15: ldsh rA, [rB]
+    stbRaRb,      // Opcode 0x16: stb rA, [rB]
+    sthRaRb,      // Opcode 0x17: sth rA, [rB]
+    cpyRaSb,      // Opcode 0x18: cpy rA, sB
+    cpySaRb,      // Opcode 0x19: cpy sA, rB
+    cpySaSb,      // Opcode 0x1a: cpy sA, sB
+    indexRaRb       // Opcode 0x1b: index rA, rB
     //--------
     = newElement();
 }
@@ -326,6 +332,14 @@ case class FlareCpuInstrG7Sg0110Enc(
   def fullgrp = Cat(grp, subgrp)
 }
 
+case class FlareCpuInstrG7Sg01110Enc(
+  params: FlareCpuParams,
+) extends Bundle {
+  val grp = UInt(FlareCpuInstrEncConst.g7GrpWidth bits)
+  val subgrp = UInt(FlareCpuInstrEncConst.g7Sg01110SubgrpWidth bits)
+  def fullgrp = Cat(grp, subgrp)
+}
+
 object FlareCpuInstrFullgrpDec extends SpinalEnum(
   defaultEncoding=binarySequential
 ) {
@@ -341,6 +355,7 @@ object FlareCpuInstrFullgrpDec extends SpinalEnum(
     g7Sg00,
     g7Sg010,
     g7Sg0110,
+    g7Sg01110,
     invalid
     = newElement();
 }
@@ -358,473 +373,656 @@ case class FlareCpuInstrEnc(
   val g7Sg00 = FlareCpuInstrG7Sg00Enc(params=params)
   val g7Sg010 = FlareCpuInstrG7Sg010Enc(params=params)
   val g7Sg0110 = FlareCpuInstrG7Sg0110Enc(params=params)
+  val g7Sg01110 = FlareCpuInstrG7Sg01110Enc(params=params)
+}
+object FlareCpuInstrDecOp
+extends SpinalEnum(defaultEncoding=binarySequential) {
+  // decoded instruction opcode
+  val
+    //--------
+    bubble,   // fake instruction, acts as a NOP and prevents forwarding in
+              // the `PipeMemRmw`s
+              // used, for example, for `index`, `lpre`'s low immediate bits
+    lpreSimmHi,
+    //lpreSimmLo, // fake instruction, acts as a bubble
+    preSimm,
+    //--------
+    cmpxchg, // without lock
+    cmpxchgLock, // with lock
+    xchg,     // without lock
+    xchgLock,   // with lock
+    //--------
+    //addRaRbSimm, // only `fp`, `sp`, or `pc` can be `rB`
+    addRaSimm,
+    addRaPcSimm,
+    addRaSpSimm,
+    addRaFpSimm,
+
+    cmpRaSimm,
+    cpyRaSimm,
+    lslRaImm,
+    lsrRaImm,
+
+    asrRaImm,
+    andRaSimm,
+    orrRaSimm,
+    xorRaSimm,
+
+    zeRaImm,
+    seRaImm,
+    swiRaImm,
+    swiImm,
+    //--------
+    addRaRb,
+    subRaRb,
+    addRaSpRb,
+    addRaFpRb,
+    //--------
+    cmpRaRb,
+    cpyRaRb,
+    lslRaRB,
+    lsrRaRb,
+    asrRaRb,
+    andRaRb,
+    orrRaRb,
+    xorRaRb,
+    //--------
+    adcRaRb,
+    sbcRaRb,
+    cmpbcRaRb,
+    //--------
+    addRaRbFlags,
+    subRaRbFlags,
+    addRaSpRbFlags,
+    addRaFpRbFlags,
+    //--------
+    cmpRaRbFlags,
+    cpyRaRbFlags,
+    lslRaRBFlags,
+    lsrRaRbFlags,
+    asrRaRbFlags,
+    andRaRbFlags,
+    orrRaRbFlags,
+    xorRaRbFlags,
+    //--------
+    adcRaRbFlags,
+    sbcRaRbFlags,
+    cmpbcRaRbFlags,
+    //--------
+    blSimm,
+    braSimm,
+    beqSimm,
+    bneSimm,
+    bmiSimm,
+    bplSimm,
+    bvsSimm,
+    bvcSimm,
+    bgeuSimm,
+    bltuSimm,
+    bgtuSimm,
+    bleuSimm,
+    bgesSimm,
+    bltsSimm,
+    bgtsSimm,
+    blesSimm,
+    //--------
+    jlRa,
+    jmpRa,
+    jmpIra,
+    reti,
+    ei,
+    di,
+    //--------
+    pushRaRb,
+    pushSaRb,
+    popRaRb,
+    popSaRb,
+    popPcRb,
+    //--------
+    mulRaRb,
+    //--------
+    udivRaRb,
+    sdivRaRb,
+    udivmodRaRbRc,
+    sdivmodRaRbRc,
+    //--------
+    lumulRcRdRaRb,
+    lsmulRcRdRaRb,
+    //--------
+    udiv64RaRb,
+    sdiv64RaRb,
+    udivmod64RaRbRcRd,
+    sdivmod64RaRbRcRd,
+    //--------
+    ldubRaRbLdst,
+    ldsbRaRbLdst,
+    lduhRaRbLdst,
+    ldshRaRbLdst,
+    stbRaRbLdst,
+    sthRaRbLdSt,
+    //--------
+    cpyRaSb,
+    cpySaRb,
+    cpySaSb,
+    //--------
+    indexRaRb,
+    //--------
+    ldrRaRbSimmLdst,
+    strRaRbSimmLdst,
+    //--------
+    ldrSaRbLdst,
+    ldrSaSbLdst,
+    strSaRbLdst,
+    strSaSbLdst,
+    //--------
+    cmpbRaRb,
+    cmphRaRb,
+    lsrbRaRb,
+    lsrhRaRb,
+    asrbRaRb,
+    asrhRaRb,
+    //--------
+    icreloadRaSimm,
+    //--------
+    icflush
+    //--------
+    = newElement()
 }
 case class FlareCpuInstrDecEtc(
   params: FlareCpuParams,
-  //decodeIo: FlareCpuPsDecodeIo,
-  //isDecode: Boolean,
 ) extends Bundle {
   //--------
-  // This `Bundle` also includes register values read from the two
-  // register files
-  //--------
-  //val isNop = Bool()
+  //val bubble = Bool()
   val isInvalid = Bool()
   val haveFullInstr = Bool()
   val fullgrp = FlareCpuInstrFullgrpDec()
   val fullSimm = UInt(params.mainWidth bits)
   val fullImm = UInt(params.mainWidth bits)
   val fullPcrelSimm = UInt(params.mainWidth bits)
+  val indexValid = Bool()
+  //val indexRa = UInt(params.mainWidth bits)
+  //val indexRb = UInt(params.mainWidth bits)
+  //val indexSum = UInt(params.mainWidth bits)
+  val fwl = Bool()
+  val decOp = FlareCpuInstrDecOp()
 
-  def enumGprRa = 0 
-  def enumGprRb = 1
-  def enumGprRc = 2
-  def enumGprLr = 3
-  def enumGprFp = 4
-  def enumGprSp = 5
-  def enumSprSa = 6
-  def enumSprSb = 7
-  def enumSprFlags = 8
-  def enumSprIds = 9
-  def enumSprIra = 10
-  def enumSprIe = 11
-  def enumSprIty = 12
-  def enumSprSty = 13
-  def enumGprRa64Hi = 14
-  def enumGprRa64Lo = 15
-  def enumGprRb64Hi = 16
-  def enumGprRb64Lo = 17
-
-  //val nonFwdGprVec = Vec.fill(params.numGprsSprs)(
-  //  UInt(params.mainWidth bits)
-  //)
-  ////val fwdGprVec = Vec.fill(params.numGprsSprs)(
-  ////  UInt(params.mainWidth bits)
-  ////)
-  //val nonFwdSprVec = Vec.fill(params.numGprsSprs)(
-  //  UInt(params.mainWidth bits)
-  //)
-  ////val fwdSprVec = Vec.fill(params.numGprsSprs)(
-  ////  UInt(params.mainWidth bits)
-  ////)
-
-  val ra = UInt(params.mainWidth bits)         // `rA`
-  val rb = UInt(params.mainWidth bits)         // `rB`
-  val rc = UInt(params.mainWidth bits)         // `rC`
-  val gprLr = UInt(params.mainWidth bits)      // `lr`
-  val gprFp = UInt(params.mainWidth bits)      // `fp`
-  val gprSp = UInt(params.mainWidth bits)      // `sp`
-  //val rd = UInt(params.mainWidth bits)         // `rD`
-  val sa = UInt(params.mainWidth bits)         // `sA`
-  val sb = UInt(params.mainWidth bits)         // `sB`
-  val sprFlags = UInt(params.mainWidth bits)   // `flags`
-  val sprIds = UInt(params.mainWidth bits)     // `ids`
-  val sprIra = UInt(params.mainWidth bits)     // `ira`
-  val sprIe = UInt(params.mainWidth bits)      // `ie`
-  val sprIty = UInt(params.mainWidth bits)     // `ity`
-  val sprSty = UInt(params.mainWidth bits)     // `sty`
-
-
-  val raIdx = UInt(params.numGprsSprsPow bits) //
-  val rbIdx = UInt(params.numGprsSprsPow bits) //
-  val rcIdx = UInt(params.numGprsSprsPow bits) // 
-  //val rdIdx = UInt(params.numGprsSprsPow bits) // 
-
-  //val saIdx = UInt(params.numGprsSprsPow bits) //
-  //val sbIdx = UInt(params.numGprsSprsPow bits) //
-
-
-  val ra64Hi = UInt(params.mainWidth bits)     //
-  val ra64Lo = UInt(params.mainWidth bits)     //
-  val rb64Hi = UInt(params.mainWidth bits)     //
-  val rb64Lo = UInt(params.mainWidth bits)     //
-
-  //val ra64HiIdx = UInt(params.numGprsSprsPow bits)
-  //val ra64LoIdx = UInt(params.numGprsSprsPow bits)
-  //val rb64HiIdx = UInt(params.numGprsSprsPow bits)
-  //val rb64LoIdx = UInt(params.numGprsSprsPow bits)
-
-  def ra64HiIdx = Cat(
-    raIdx(raIdx.high downto 1),
-    False,
-  ).asUInt
-  def ra64LoIdx = Cat(
-    raIdx(raIdx.high downto 1),
-    True,
-  ).asUInt
-  def rb64HiIdx = Cat(
-    rbIdx(rbIdx.high downto 1),
-    False,
-  ).asUInt
-  def rb64LoIdx = Cat(
-    rbIdx(rbIdx.high downto 1),
-    True,
-  ).asUInt
-
-  //def doSet64Idxs(): Unit = {
-  //  ra64HiIdx := Cat(
-  //    raIdx(raIdx.high downto 1),
-  //    False,
-  //  ).asUInt
-  //  ra64LoIdx := Cat(
-  //    raIdx(raIdx.high downto 1),
-  //    True,
-  //  ).asUInt
-  //  rb64HiIdx := Cat(
-  //    rbIdx(rbIdx.high downto 1),
-  //    False,
-  //  ).asUInt
-  //  rb64LoIdx := Cat(
-  //    rbIdx(rbIdx.high downto 1),
-  //    True,
-  //  ).asUInt
-  //}
-  //def getNonFwdRegFunc(
-  //  decIdx: UInt,
-  //  isGpr: Boolean,
-  //  //whichReg: Int,
-  //  //isDecode: Boolean,
-  //): UInt = {
-  //  if (isGpr) (
-  //    nonFwdGprVec(decIdx)
-  //  ) else (
-  //    //io.rSprVec(decIdx)
-  //    nonFwdSprVec(decIdx)
-  //  )
-  //}
-
-  def doFwdAllRegs(
-    execPayload: /*Payload[*/FlareCpuPipePayloadExec/*]*/,
-    //someCtrlLink: CtrlLink,
-    fwdRc: Boolean,
-    extCond: Bool,
-    //isDecode: Boolean,
-    second: Option[(Bool, FlareCpuPipePayloadExec)]=None,
-    otherInstrDecEtc: Option[FlareCpuInstrDecEtc]=None,
-  )(
-    getNonFwdRegFunc: (
-      UInt,       // `decIdx`
-      Boolean,    // `isGpr`
-      //Int,        // `whichReg`
-    ) => UInt,
-    //getNonFwdRegFunc1: (
-    //  UInt,     // `decIdx`
-    //  Boolean,  // `isGpr`
-    //  //Int,      // `whichReg`
-    //) => UInt,
-  )
-  : Unit = {
-    //--------
-    def doFwdOneReg(
-      decIdx: UInt,
-      isGpr: Boolean,
-      nonFwdRegArg: Option[UInt],
-      //whichReg: Int,
-      //someCtrlLink: CtrlLink,
-    ) = {
-      //def innerFunc(
-      //  someExecPayload: FlareCpuPipePayloadExec,
-      //  someNonFwdReg: UInt,
-      //) = {
-      //  def tempExOutp = /*someCtrlLink*/(execPayload).get(isGpr)
-      //  def nonFwdReg = getNonFwdRegFunc(
-      //    decIdx,
-      //    isGpr,
-      //    //whichReg,
-      //  )
-      //  //def tempRegWb = cExWb(psExOutp).get(isGpr)
-      //  Mux[UInt](
-      //    (
-      //      decIdx === tempExOutp.regIdx
-      //      && tempExOutp.wrReg.fire
-      //      && extCond
-      //    ),
-      //    tempExOutp.wrReg.payload,
-      //    someNonFwdReg,
-      //  )
-      //}
-      val nonFwdReg = nonFwdRegArg match {
-        case Some(myNonFwdReg) => {
-          myNonFwdReg
-        }
-        case None => {
-          getNonFwdRegFunc(
-            decIdx,
-            isGpr,
-            //whichReg,
-          )
-        }
-      }
-      second match {
-        case Some(mySecond) => {
-          //val tempNonFwdReg = (
-          //  innerFunc(
-          //    someExecPayload=execPayload,
-          //    someNonFwdReg=getNonFwdRegFunc(
-          //      decIdx,
-          //      isGpr,
-          //      //whichReg,
-          //    ),
-          //  )
-          //)
-          //innerFunc(
-          //  someExecPayload=myExecPayload1,
-          //  someNonFwdReg=getNonFwdRegFunc(
-          //    decIdx,
-          //    isGpr,
-          //    //whichReg,
-          //  ),
-          //)
-          //Mux[UInt](
-          //  decIdx === tempExOutp
-          //)
-          def tempExOutp = /*someCtrlLink*/(execPayload).get(isGpr)
-
-          //def tempRegWb = cExWb(psExOutp).get(isGpr)
-          val condVec = Vec(Bool(), 2)
-          condVec(0) := (
-            decIdx === tempExOutp.regIdx
-            && tempExOutp.wrReg.fire
-            && extCond
-          )
-          condVec(1) := (
-            decIdx === mySecond._2.get(isGpr).regIdx
-            && mySecond._2.get(isGpr).wrReg.fire
-            && mySecond._1
-          )
-          val fwdVec = Vec(UInt(params.mainWidth bits), 2)
-          fwdVec(0) := tempExOutp.wrReg.payload
-          fwdVec(1) := mySecond._2.get(isGpr).wrReg.payload
-          val myFindFirst = condVec.sFindFirst(_ === True)
-          Mux[UInt](
-            myFindFirst._1,
-            //Mux[UInt](
-            //  myFindFirst._2 === 0,
-            //  tempExOutp.wrReg.payload,
-            //  mySecond._2.get(isGpr).wrReg.payload,
-            //),
-            fwdVec(myFindFirst._2),
-            nonFwdReg,
-          )
-          //condVec(2) := True
-          //Mux[UInt](
-          //  (
-          //  ),
-          //  Mux[UInt](
-          //    tempExOutp.wrReg.payload,
-          //    nonFwdReg,
-          //  ),
-          //  nonFwdReg
-          //)
-        }
-        case None => {
-          //innerFunc(
-          //  execPayload,
-          //  someNonFwdReg=getNonFwdRegFunc(
-          //    decIdx,
-          //    isGpr,
-          //    //whichReg,
-          //  ),
-          //)
-          def tempExOutp = /*someCtrlLink*/(execPayload).get(isGpr)
-          def nonFwdReg = getNonFwdRegFunc(
-            decIdx,
-            isGpr,
-            //whichReg,
-          )
-          //def tempRegWb = cExWb(psExOutp).get(isGpr)
-          Mux[UInt](
-            (
-              decIdx === tempExOutp.regIdx
-              && tempExOutp.wrReg.fire
-              && extCond
-            ),
-            tempExOutp.wrReg.payload,
-            nonFwdReg,
-          )
-        }
-      }
-    }
-    //--------
-    //for (idx <- 0 until params.numGprsSprs) {
-    //  fwdGprVec(idx) := doFwdOneReg(
-    //    decIdx=idx,
-    //    isGpr=true,
-    //  )
-    //  fwdSprVec(idx) := doFwdOneReg(
-    //    decIdx=idx,
-    //    isGpr=false,
-    //  )
-    //}
-    if (!fwdRc) {
-      ra := doFwdOneReg(
-        decIdx=raIdx,
-        isGpr=true,
-        //whichReg=enumGprRa,
-        nonFwdRegArg=otherInstrDecEtc match {
-          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.ra)
-          case None => None
-        },
-      )
-      rb := doFwdOneReg(
-        decIdx=rbIdx,
-        isGpr=true,
-        //whichReg=enumGprRb,
-        nonFwdRegArg=otherInstrDecEtc match {
-          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.rb)
-          case None => None
-        },
-      )
-      gprLr := doFwdOneReg(
-        decIdx=FlareCpuInstrEncConst.gprLrIdx,
-        isGpr=true,
-        //whichReg=enumGprLr,
-        nonFwdRegArg=otherInstrDecEtc match {
-          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.gprLr)
-          case None => None
-        },
-      )
-      gprFp := doFwdOneReg(
-        decIdx=FlareCpuInstrEncConst.gprFpIdx,
-        isGpr=true,
-        //whichReg=enumGprFp,
-        nonFwdRegArg=otherInstrDecEtc match {
-          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.gprFp)
-          case None => None
-        },
-      )
-      gprSp := doFwdOneReg(
-        decIdx=FlareCpuInstrEncConst.gprSpIdx,
-        isGpr=true,
-        //whichReg=enumGprSp,
-        nonFwdRegArg=otherInstrDecEtc match {
-          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.gprSp)
-          case None => None
-        },
-      )
-      sa := doFwdOneReg(
-        decIdx=raIdx,
-        isGpr=false,
-        //whichReg=enumSprSa,
-        nonFwdRegArg=otherInstrDecEtc match {
-          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.sa)
-          case None => None
-        },
-      )
-      sb := doFwdOneReg(
-        decIdx=rbIdx,
-        isGpr=false,
-        //whichReg=enumSprSa,
-        nonFwdRegArg=otherInstrDecEtc match {
-          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.sb)
-          case None => None
-        },
-      )
-      sprFlags := doFwdOneReg(
-        decIdx=FlareCpuInstrEncConst.sprFlagsIdx,
-        isGpr=false,
-        //whichReg=enumSprFlags,
-        nonFwdRegArg=otherInstrDecEtc match {
-          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.sprFlags)
-          case None => None
-        },
-      )
-      sprIds := doFwdOneReg(
-        decIdx=FlareCpuInstrEncConst.sprIdsIdx,
-        isGpr=false,
-        //whichReg=enumSprIds,
-        nonFwdRegArg=otherInstrDecEtc match {
-          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.sprIds)
-          case None => None
-        },
-      )
-      sprIra := doFwdOneReg(
-        decIdx=FlareCpuInstrEncConst.sprIraIdx,
-        isGpr=false,
-        //whichReg=enumSprIra,
-        nonFwdRegArg=otherInstrDecEtc match {
-          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.sprIra)
-          case None => None
-        },
-      )
-      sprIe := doFwdOneReg(
-        decIdx=FlareCpuInstrEncConst.sprIeIdx,
-        isGpr=false,
-        //whichReg=enumSprIe,
-        nonFwdRegArg=otherInstrDecEtc match {
-          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.sprIe)
-          case None => None
-        },
-      )
-      sprIty := doFwdOneReg(
-        decIdx=FlareCpuInstrEncConst.sprItyIdx,
-        isGpr=false,
-        //whichReg=enumSprIty,
-        nonFwdRegArg=otherInstrDecEtc match {
-          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.sprIty)
-          case None => None
-        },
-      )
-      sprSty := doFwdOneReg(
-        decIdx=FlareCpuInstrEncConst.sprStyIdx,
-        isGpr=false,
-        //whichReg=enumSprSty,
-        nonFwdRegArg=otherInstrDecEtc match {
-          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.sprSty)
-          case None => None
-        },
-      )
-
-      ra64Hi := doFwdOneReg(
-        decIdx=ra64HiIdx,
-        isGpr=true,
-        //whichReg=enumGprRa64Hi
-        nonFwdRegArg=otherInstrDecEtc match {
-          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.ra64Hi)
-          case None => None
-        },
-      )
-      ra64Lo := doFwdOneReg(
-        decIdx=ra64LoIdx,
-        isGpr=true,
-        //whichReg=enumGprRa64Lo,
-        nonFwdRegArg=otherInstrDecEtc match {
-          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.ra64Lo)
-          case None => None
-        },
-      )
-      rb64Hi := doFwdOneReg(
-        decIdx=rb64HiIdx,
-        isGpr=true,
-        //whichReg=enumGprRb64Hi,
-        nonFwdRegArg=otherInstrDecEtc match {
-          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.rb64Hi)
-          case None => None
-        },
-      )
-      rb64Lo := doFwdOneReg(
-        decIdx=rb64LoIdx,
-        isGpr=true,
-        //whichReg=enumGprRb64Lo,
-        nonFwdRegArg=otherInstrDecEtc match {
-          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.rb64Lo)
-          case None => None
-        },
-      )
-    } else { // if (fwdRc)
-      rc := doFwdOneReg(
-        decIdx=rcIdx,
-        isGpr=true,
-        //whichReg=enumGprRc,
-        nonFwdRegArg=otherInstrDecEtc match {
-          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.rc)
-          case None => None
-        },
-      )
-    }
-    //--------
-  }
-  //--------
-  val instrEnc = FlareCpuInstrEnc(params=params)
+  val regFileGprEvenModMemWordValid = Bool()
+  val regFileGprOddNonSpModMemWordValid = Bool()
+  val regFileGprSpModMemWordValid = Bool()
+  val regFileSprModMemWordValid = Bool()
+  val raIdx = /*Flow*/(UInt(params.numGprsSprsPow bits))
+  val rbIdx = /*Flow*/(UInt(params.numGprsSprsPow bits))
+  val saIdx = /*Flow*/(UInt(params.numGprsSprsPow bits))
+  val sbIdx = /*Flow*/(UInt(params.numGprsSprsPow bits))
+  def 
   //--------
 }
+//case class FlareCpuInstrDecEtc(
+//  params: FlareCpuParams,
+//  //decodeIo: FlareCpuPsDecodeIo,
+//  //isDecode: Boolean,
+//) extends Bundle {
+//  //--------
+//  // This `Bundle` also includes register values read from the two
+//  // register files
+//  //--------
+//  //val isNop = Bool()
+//  val isInvalid = Bool()
+//  val haveFullInstr = Bool()
+//  val fullgrp = FlareCpuInstrFullgrpDec()
+//  val fullSimm = UInt(params.mainWidth bits)
+//  val fullImm = UInt(params.mainWidth bits)
+//  val fullPcrelSimm = UInt(params.mainWidth bits)
+//
+//  def enumGprRa = 0 
+//  def enumGprRb = 1
+//  def enumGprRc = 2
+//  def enumGprLr = 3
+//  def enumGprFp = 4
+//  def enumGprSp = 5
+//  def enumSprSa = 6
+//  def enumSprSb = 7
+//  def enumSprFlags = 8
+//  def enumSprIds = 9
+//  def enumSprIra = 10
+//  def enumSprIe = 11
+//  def enumSprIty = 12
+//  def enumSprSty = 13
+//  def enumGprRa64Hi = 14
+//  def enumGprRa64Lo = 15
+//  def enumGprRb64Hi = 16
+//  def enumGprRb64Lo = 17
+//
+//  //val nonFwdGprVec = Vec.fill(params.numGprsSprs)(
+//  //  UInt(params.mainWidth bits)
+//  //)
+//  ////val fwdGprVec = Vec.fill(params.numGprsSprs)(
+//  ////  UInt(params.mainWidth bits)
+//  ////)
+//  //val nonFwdSprVec = Vec.fill(params.numGprsSprs)(
+//  //  UInt(params.mainWidth bits)
+//  //)
+//  ////val fwdSprVec = Vec.fill(params.numGprsSprs)(
+//  ////  UInt(params.mainWidth bits)
+//  ////)
+//
+//  val ra = UInt(params.mainWidth bits)         // `rA`
+//  val rb = UInt(params.mainWidth bits)         // `rB`
+//  val rc = UInt(params.mainWidth bits)         // `rC`
+//  val gprLr = UInt(params.mainWidth bits)      // `lr`
+//  val gprFp = UInt(params.mainWidth bits)      // `fp`
+//  val gprSp = UInt(params.mainWidth bits)      // `sp`
+//  //val rd = UInt(params.mainWidth bits)         // `rD`
+//  val sa = UInt(params.mainWidth bits)         // `sA`
+//  val sb = UInt(params.mainWidth bits)         // `sB`
+//  val sprFlags = UInt(params.mainWidth bits)   // `flags`
+//  val sprIds = UInt(params.mainWidth bits)     // `ids`
+//  val sprIra = UInt(params.mainWidth bits)     // `ira`
+//  val sprIe = UInt(params.mainWidth bits)      // `ie`
+//  val sprIty = UInt(params.mainWidth bits)     // `ity`
+//  val sprSty = UInt(params.mainWidth bits)     // `sty`
+//
+//
+//  val raIdx = UInt(params.numGprsSprsPow bits) //
+//  val rbIdx = UInt(params.numGprsSprsPow bits) //
+//  val rcIdx = UInt(params.numGprsSprsPow bits) // 
+//  //val rdIdx = UInt(params.numGprsSprsPow bits) // 
+//
+//  //val saIdx = UInt(params.numGprsSprsPow bits) //
+//  //val sbIdx = UInt(params.numGprsSprsPow bits) //
+//
+//
+//  val ra64Hi = UInt(params.mainWidth bits)     //
+//  val ra64Lo = UInt(params.mainWidth bits)     //
+//  val rb64Hi = UInt(params.mainWidth bits)     //
+//  val rb64Lo = UInt(params.mainWidth bits)     //
+//
+//  //val ra64HiIdx = UInt(params.numGprsSprsPow bits)
+//  //val ra64LoIdx = UInt(params.numGprsSprsPow bits)
+//  //val rb64HiIdx = UInt(params.numGprsSprsPow bits)
+//  //val rb64LoIdx = UInt(params.numGprsSprsPow bits)
+//
+//  def ra64HiIdx = Cat(
+//    raIdx(raIdx.high downto 1),
+//    False,
+//  ).asUInt
+//  def ra64LoIdx = Cat(
+//    raIdx(raIdx.high downto 1),
+//    True,
+//  ).asUInt
+//  def rb64HiIdx = Cat(
+//    rbIdx(rbIdx.high downto 1),
+//    False,
+//  ).asUInt
+//  def rb64LoIdx = Cat(
+//    rbIdx(rbIdx.high downto 1),
+//    True,
+//  ).asUInt
+//
+//  //def doSet64Idxs(): Unit = {
+//  //  ra64HiIdx := Cat(
+//  //    raIdx(raIdx.high downto 1),
+//  //    False,
+//  //  ).asUInt
+//  //  ra64LoIdx := Cat(
+//  //    raIdx(raIdx.high downto 1),
+//  //    True,
+//  //  ).asUInt
+//  //  rb64HiIdx := Cat(
+//  //    rbIdx(rbIdx.high downto 1),
+//  //    False,
+//  //  ).asUInt
+//  //  rb64LoIdx := Cat(
+//  //    rbIdx(rbIdx.high downto 1),
+//  //    True,
+//  //  ).asUInt
+//  //}
+//  //def getNonFwdRegFunc(
+//  //  decIdx: UInt,
+//  //  isGpr: Boolean,
+//  //  //whichReg: Int,
+//  //  //isDecode: Boolean,
+//  //): UInt = {
+//  //  if (isGpr) (
+//  //    nonFwdGprVec(decIdx)
+//  //  ) else (
+//  //    //io.rSprVec(decIdx)
+//  //    nonFwdSprVec(decIdx)
+//  //  )
+//  //}
+//
+//  def doFwdAllRegs(
+//    execPayload: /*Payload[*/FlareCpuPipePayloadExec/*]*/,
+//    //someCtrlLink: CtrlLink,
+//    fwdRc: Boolean,
+//    extCond: Bool,
+//    //isDecode: Boolean,
+//    second: Option[(Bool, FlareCpuPipePayloadExec)]=None,
+//    otherInstrDecEtc: Option[FlareCpuInstrDecEtc]=None,
+//  )(
+//    getNonFwdRegFunc: (
+//      UInt,       // `decIdx`
+//      Boolean,    // `isGpr`
+//      //Int,        // `whichReg`
+//    ) => UInt,
+//    //getNonFwdRegFunc1: (
+//    //  UInt,     // `decIdx`
+//    //  Boolean,  // `isGpr`
+//    //  //Int,      // `whichReg`
+//    //) => UInt,
+//  )
+//  : Unit = {
+//    //--------
+//    def doFwdOneReg(
+//      decIdx: UInt,
+//      isGpr: Boolean,
+//      nonFwdRegArg: Option[UInt],
+//      //whichReg: Int,
+//      //someCtrlLink: CtrlLink,
+//    ) = {
+//      //def innerFunc(
+//      //  someExecPayload: FlareCpuPipePayloadExec,
+//      //  someNonFwdReg: UInt,
+//      //) = {
+//      //  def tempExOutp = /*someCtrlLink*/(execPayload).get(isGpr)
+//      //  def nonFwdReg = getNonFwdRegFunc(
+//      //    decIdx,
+//      //    isGpr,
+//      //    //whichReg,
+//      //  )
+//      //  //def tempRegWb = cExWb(psExOutp).get(isGpr)
+//      //  Mux[UInt](
+//      //    (
+//      //      decIdx === tempExOutp.regIdx
+//      //      && tempExOutp.wrReg.fire
+//      //      && extCond
+//      //    ),
+//      //    tempExOutp.wrReg.payload,
+//      //    someNonFwdReg,
+//      //  )
+//      //}
+//      val nonFwdReg = nonFwdRegArg match {
+//        case Some(myNonFwdReg) => {
+//          myNonFwdReg
+//        }
+//        case None => {
+//          getNonFwdRegFunc(
+//            decIdx,
+//            isGpr,
+//            //whichReg,
+//          )
+//        }
+//      }
+//      second match {
+//        case Some(mySecond) => {
+//          //val tempNonFwdReg = (
+//          //  innerFunc(
+//          //    someExecPayload=execPayload,
+//          //    someNonFwdReg=getNonFwdRegFunc(
+//          //      decIdx,
+//          //      isGpr,
+//          //      //whichReg,
+//          //    ),
+//          //  )
+//          //)
+//          //innerFunc(
+//          //  someExecPayload=myExecPayload1,
+//          //  someNonFwdReg=getNonFwdRegFunc(
+//          //    decIdx,
+//          //    isGpr,
+//          //    //whichReg,
+//          //  ),
+//          //)
+//          //Mux[UInt](
+//          //  decIdx === tempExOutp
+//          //)
+//          def tempExOutp = /*someCtrlLink*/(execPayload).get(isGpr)
+//
+//          //def tempRegWb = cExWb(psExOutp).get(isGpr)
+//          val condVec = Vec(Bool(), 2)
+//          condVec(0) := (
+//            decIdx === tempExOutp.regIdx
+//            && tempExOutp.wrReg.fire
+//            && extCond
+//          )
+//          condVec(1) := (
+//            decIdx === mySecond._2.get(isGpr).regIdx
+//            && mySecond._2.get(isGpr).wrReg.fire
+//            && mySecond._1
+//          )
+//          val fwdVec = Vec(UInt(params.mainWidth bits), 2)
+//          fwdVec(0) := tempExOutp.wrReg.payload
+//          fwdVec(1) := mySecond._2.get(isGpr).wrReg.payload
+//          val myFindFirst = condVec.sFindFirst(_ === True)
+//          Mux[UInt](
+//            myFindFirst._1,
+//            //Mux[UInt](
+//            //  myFindFirst._2 === 0,
+//            //  tempExOutp.wrReg.payload,
+//            //  mySecond._2.get(isGpr).wrReg.payload,
+//            //),
+//            fwdVec(myFindFirst._2),
+//            nonFwdReg,
+//          )
+//          //condVec(2) := True
+//          //Mux[UInt](
+//          //  (
+//          //  ),
+//          //  Mux[UInt](
+//          //    tempExOutp.wrReg.payload,
+//          //    nonFwdReg,
+//          //  ),
+//          //  nonFwdReg
+//          //)
+//        }
+//        case None => {
+//          //innerFunc(
+//          //  execPayload,
+//          //  someNonFwdReg=getNonFwdRegFunc(
+//          //    decIdx,
+//          //    isGpr,
+//          //    //whichReg,
+//          //  ),
+//          //)
+//          def tempExOutp = /*someCtrlLink*/(execPayload).get(isGpr)
+//          def nonFwdReg = getNonFwdRegFunc(
+//            decIdx,
+//            isGpr,
+//            //whichReg,
+//          )
+//          //def tempRegWb = cExWb(psExOutp).get(isGpr)
+//          Mux[UInt](
+//            (
+//              decIdx === tempExOutp.regIdx
+//              && tempExOutp.wrReg.fire
+//              && extCond
+//            ),
+//            tempExOutp.wrReg.payload,
+//            nonFwdReg,
+//          )
+//        }
+//      }
+//    }
+//    //--------
+//    //for (idx <- 0 until params.numGprsSprs) {
+//    //  fwdGprVec(idx) := doFwdOneReg(
+//    //    decIdx=idx,
+//    //    isGpr=true,
+//    //  )
+//    //  fwdSprVec(idx) := doFwdOneReg(
+//    //    decIdx=idx,
+//    //    isGpr=false,
+//    //  )
+//    //}
+//    if (!fwdRc) {
+//      ra := doFwdOneReg(
+//        decIdx=raIdx,
+//        isGpr=true,
+//        //whichReg=enumGprRa,
+//        nonFwdRegArg=otherInstrDecEtc match {
+//          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.ra)
+//          case None => None
+//        },
+//      )
+//      rb := doFwdOneReg(
+//        decIdx=rbIdx,
+//        isGpr=true,
+//        //whichReg=enumGprRb,
+//        nonFwdRegArg=otherInstrDecEtc match {
+//          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.rb)
+//          case None => None
+//        },
+//      )
+//      gprLr := doFwdOneReg(
+//        decIdx=FlareCpuInstrEncConst.gprLrIdx,
+//        isGpr=true,
+//        //whichReg=enumGprLr,
+//        nonFwdRegArg=otherInstrDecEtc match {
+//          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.gprLr)
+//          case None => None
+//        },
+//      )
+//      gprFp := doFwdOneReg(
+//        decIdx=FlareCpuInstrEncConst.gprFpIdx,
+//        isGpr=true,
+//        //whichReg=enumGprFp,
+//        nonFwdRegArg=otherInstrDecEtc match {
+//          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.gprFp)
+//          case None => None
+//        },
+//      )
+//      gprSp := doFwdOneReg(
+//        decIdx=FlareCpuInstrEncConst.gprSpIdx,
+//        isGpr=true,
+//        //whichReg=enumGprSp,
+//        nonFwdRegArg=otherInstrDecEtc match {
+//          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.gprSp)
+//          case None => None
+//        },
+//      )
+//      sa := doFwdOneReg(
+//        decIdx=raIdx,
+//        isGpr=false,
+//        //whichReg=enumSprSa,
+//        nonFwdRegArg=otherInstrDecEtc match {
+//          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.sa)
+//          case None => None
+//        },
+//      )
+//      sb := doFwdOneReg(
+//        decIdx=rbIdx,
+//        isGpr=false,
+//        //whichReg=enumSprSa,
+//        nonFwdRegArg=otherInstrDecEtc match {
+//          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.sb)
+//          case None => None
+//        },
+//      )
+//      sprFlags := doFwdOneReg(
+//        decIdx=FlareCpuInstrEncConst.sprFlagsIdx,
+//        isGpr=false,
+//        //whichReg=enumSprFlags,
+//        nonFwdRegArg=otherInstrDecEtc match {
+//          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.sprFlags)
+//          case None => None
+//        },
+//      )
+//      sprIds := doFwdOneReg(
+//        decIdx=FlareCpuInstrEncConst.sprIdsIdx,
+//        isGpr=false,
+//        //whichReg=enumSprIds,
+//        nonFwdRegArg=otherInstrDecEtc match {
+//          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.sprIds)
+//          case None => None
+//        },
+//      )
+//      sprIra := doFwdOneReg(
+//        decIdx=FlareCpuInstrEncConst.sprIraIdx,
+//        isGpr=false,
+//        //whichReg=enumSprIra,
+//        nonFwdRegArg=otherInstrDecEtc match {
+//          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.sprIra)
+//          case None => None
+//        },
+//      )
+//      sprIe := doFwdOneReg(
+//        decIdx=FlareCpuInstrEncConst.sprIeIdx,
+//        isGpr=false,
+//        //whichReg=enumSprIe,
+//        nonFwdRegArg=otherInstrDecEtc match {
+//          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.sprIe)
+//          case None => None
+//        },
+//      )
+//      sprIty := doFwdOneReg(
+//        decIdx=FlareCpuInstrEncConst.sprItyIdx,
+//        isGpr=false,
+//        //whichReg=enumSprIty,
+//        nonFwdRegArg=otherInstrDecEtc match {
+//          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.sprIty)
+//          case None => None
+//        },
+//      )
+//      sprSty := doFwdOneReg(
+//        decIdx=FlareCpuInstrEncConst.sprStyIdx,
+//        isGpr=false,
+//        //whichReg=enumSprSty,
+//        nonFwdRegArg=otherInstrDecEtc match {
+//          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.sprSty)
+//          case None => None
+//        },
+//      )
+//
+//      ra64Hi := doFwdOneReg(
+//        decIdx=ra64HiIdx,
+//        isGpr=true,
+//        //whichReg=enumGprRa64Hi
+//        nonFwdRegArg=otherInstrDecEtc match {
+//          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.ra64Hi)
+//          case None => None
+//        },
+//      )
+//      ra64Lo := doFwdOneReg(
+//        decIdx=ra64LoIdx,
+//        isGpr=true,
+//        //whichReg=enumGprRa64Lo,
+//        nonFwdRegArg=otherInstrDecEtc match {
+//          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.ra64Lo)
+//          case None => None
+//        },
+//      )
+//      rb64Hi := doFwdOneReg(
+//        decIdx=rb64HiIdx,
+//        isGpr=true,
+//        //whichReg=enumGprRb64Hi,
+//        nonFwdRegArg=otherInstrDecEtc match {
+//          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.rb64Hi)
+//          case None => None
+//        },
+//      )
+//      rb64Lo := doFwdOneReg(
+//        decIdx=rb64LoIdx,
+//        isGpr=true,
+//        //whichReg=enumGprRb64Lo,
+//        nonFwdRegArg=otherInstrDecEtc match {
+//          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.rb64Lo)
+//          case None => None
+//        },
+//      )
+//    } else { // if (fwdRc)
+//      rc := doFwdOneReg(
+//        decIdx=rcIdx,
+//        isGpr=true,
+//        //whichReg=enumGprRc,
+//        nonFwdRegArg=otherInstrDecEtc match {
+//          case Some(myOtherInstrDecEtc) => Some(myOtherInstrDecEtc.rc)
+//          case None => None
+//        },
+//      )
+//    }
+//    //--------
+//  }
+//  //--------
+//  val instrEnc = FlareCpuInstrEnc(params=params)
+//  //--------
+//}

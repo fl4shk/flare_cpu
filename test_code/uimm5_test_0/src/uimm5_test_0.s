@@ -10,5 +10,9 @@ _start:
 	lsl r0, #32
 	cpy r1, #31
 	cpy r1, #testificate
-	ldr r3, [r1, r2]
+	ldr r3, [r1, r2, #3]
+	str r8, [r2, #3]
 	ze r0, #testificate 
+	icflush
+	icreload [r6, r7, #-0x1]
+	cmpxchg.l [r3], r8, r4
