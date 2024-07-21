@@ -48,6 +48,11 @@ object FlareCpuInstrEncConst {
   // Instruction Group 5
   def g5GrpWidth = 3
   def g5Grp = U"3'd5"
+  def g5Sg0SubgrpWidth = 1
+  def g5Sg0Subgrp = U"1'b0"
+  def g5Sg0ReservedWidth = 4
+  def g5Sg1SubgrpWidth = 1
+  def g5Sg1Subgrp = U"1'b1"
   //--------
   // Instruction Group 6
   def g6GrpWidth = 3
@@ -144,7 +149,7 @@ case class FlareCpuInstrG1Enc(
 ) extends Bundle {
   val grp = UInt(FlareCpuInstrEncConst.g1GrpWidth bits)
   // immediate or signed immediate, depending on the opcode
-  val imm = UInt(params.nonG3ImmWidth bits) 
+  val imm = UInt(params.g1g7ImmWidth bits) 
   val op = FlareCpuInstrG1EncOp()
   val raIdx = UInt(params.numGprsSprsPow bits)
 }
@@ -245,12 +250,16 @@ object FlareCpuInstrG4EncOp extends SpinalEnum(
     ldsbRaRb,     // Opcode 0x13: ldsb rA, [rB]
     lduhRaRb,     // Opcode 0x14: lduh rA, [rB]
     ldshRaRb,     // Opcode 0x15: ldsh rA, [rB]
-    stbRaRb,      // Opcode 0x16: stb rA, [rB]
-    sthRaRb,      // Opcode 0x17: sth rA, [rB]
-    cpyRaSb,      // Opcode 0x18: cpy rA, sB
-    cpySaRb,      // Opcode 0x19: cpy sA, rB
-    cpySaSb,      // Opcode 0x1a: cpy sA, sB
-    indexRaRb       // Opcode 0x1b: index rA, rB
+    ldrRaRb,      // Opcode 0x16: ldr rA, [rB]
+    reserved17,   // Opcode 0x17: reserved
+    stbRaRb,      // Opcode 0x18: stb rA, [rB]
+    sthRaRb,      // Opcode 0x19: sth rA, [rB]
+    strRaRb,      // Opcode 0x1a: str rA, [rB]
+    reserved1b,   // Opcode 0x1b: reserved
+    cpyRaSb,      // Opcode 0x1c: cpy rA, sB
+    cpySaRb,      // Opcode 0x1d: cpy sA, rB
+    cpySaSb      // Opcode 0x1e: cpy sA, sB
+    //indexRaRb       // Opcode 0x1b: index rA, rB
     //--------
     = newElement();
 }
@@ -262,22 +271,39 @@ case class FlareCpuInstrG4Enc(
   val rbIdx = UInt(params.numGprsSprsPow bits)
   val raIdx = UInt(params.numGprsSprsPow bits)
 }
-case class FlareCpuInstrG5Enc(
+case class FlareCpuInstrG5Sg0Enc(
   params: FlareCpuParams,
 ) extends Bundle {
   val grp = UInt(FlareCpuInstrEncConst.g5GrpWidth bits)
-  val simm = SInt(params.nonG3ImmWidth bits)
+  val subgrp = UInt(FlareCpuInstrEncConst.g5Sg0SubgrpWidth bits)
+  def fullgrp = Cat(grp, subgrp)
+  val reserved = UInt(FlareCpuInstrEncConst.g5Sg0ReservedWidth bits)
   val rbIdx = UInt(params.numGprsSprsPow bits)
   val raIdx = UInt(params.numGprsSprsPow bits)
+  //val simm = SInt(params.g1g7ImmWidth bits)
+  //val rbIdx = UInt(params.numGprsSprsPow bits)
+  //val raIdx = UInt(params.numGprsSprsPow bits)
 }
-case class FlareCpuInstrG6Enc(
+case class FlareCpuInstrG5Sg1Enc(
   params: FlareCpuParams,
 ) extends Bundle {
-  val grp = UInt(FlareCpuInstrEncConst.g6GrpWidth bits)
-  val simm = SInt(params.nonG3ImmWidth bits)
-  val rbIdx = UInt(params.numGprsSprsPow bits)
+  val grp = UInt(FlareCpuInstrEncConst.g5GrpWidth bits)
+  val subgrp = UInt(FlareCpuInstrEncConst.g5Sg1SubgrpWidth bits)
+  def fullgrp = Cat(grp, subgrp)
+  val simm = UInt(params.g5ImmWidth bits)
   val raIdx = UInt(params.numGprsSprsPow bits)
+  //val simm = SInt(params.g1g7ImmWidth bits)
+  //val rbIdx = UInt(params.numGprsSprsPow bits)
+  //val raIdx = UInt(params.numGprsSprsPow bits)
 }
+//case class FlareCpuInstrG6Enc(
+//  params: FlareCpuParams,
+//) extends Bundle {
+//  val grp = UInt(FlareCpuInstrEncConst.g6GrpWidth bits)
+//  val simm = SInt(params.nonG3ImmWidth bits)
+//  val rbIdx = UInt(params.numGprsSprsPow bits)
+//  val raIdx = UInt(params.numGprsSprsPow bits)
+//}
 // this includes the `w` bit (since it's contiguous with the opcode field)
 object FlareCpuInstrG7Sg00FullOpEnc extends SpinalEnum(
   defaultEncoding=binarySequential
@@ -350,8 +376,9 @@ object FlareCpuInstrFullgrpDec extends SpinalEnum(
     g2,
     g3,
     g4,
-    g5,
-    g6,
+    g5Sg0,
+    g5Sg1,
+    //g6,
     g7Sg00,
     g7Sg010,
     g7Sg0110,
@@ -368,8 +395,9 @@ case class FlareCpuInstrEnc(
   val g2 = FlareCpuInstrG2Enc(params=params)
   val g3 = FlareCpuInstrG3Enc(params=params)
   val g4 = FlareCpuInstrG4Enc(params=params)
-  val g5 = FlareCpuInstrG5Enc(params=params)
-  val g6 = FlareCpuInstrG6Enc(params=params)
+  val g5Sg0 = FlareCpuInstrG5Sg0Enc(params=params)
+  val g5Sg1 = FlareCpuInstrG5Sg1Enc(params=params)
+  //val g6 = FlareCpuInstrG6Enc(params=params)
   val g7Sg00 = FlareCpuInstrG7Sg00Enc(params=params)
   val g7Sg010 = FlareCpuInstrG7Sg010Enc(params=params)
   val g7Sg0110 = FlareCpuInstrG7Sg0110Enc(params=params)
@@ -498,17 +526,20 @@ extends SpinalEnum(defaultEncoding=binarySequential) {
     ldsbRaRbLdst,
     lduhRaRbLdst,
     ldshRaRbLdst,
+    ldrRaRbLdst,
     stbRaRbLdst,
-    sthRaRbLdSt,
+    sthRaRbLdst,
+    strRaRbLdst,
     //--------
     cpyRaSb,
     cpySaRb,
     cpySaSb,
     //--------
     indexRaRb,
+    indexRaSimm,
     //--------
-    ldrRaRbSimmLdst,
-    strRaRbSimmLdst,
+    //ldrRaRbSimmLdst,
+    //strRaRbSimmLdst,
     //--------
     ldrSaRbLdst,
     ldrSaSbLdst,
@@ -554,7 +585,6 @@ case class FlareCpuInstrDecEtc(
   val rbIdx = /*Flow*/(UInt(params.numGprsSprsPow bits))
   val saIdx = /*Flow*/(UInt(params.numGprsSprsPow bits))
   val sbIdx = /*Flow*/(UInt(params.numGprsSprsPow bits))
-  def 
   //--------
 }
 //case class FlareCpuInstrDecEtc(

@@ -161,6 +161,9 @@ case class FlareCpuParams(
   //--------
   def regWordType() = UInt(mainWidth bits)
   def gprFileEvenWordCount = 8
+  def gprFileOddNonSpWordCount = 7
+  def gprFileSpWordCount = 1
+  def sprFileWordCount = numGprsSprs
   def regFileHazardCmpType() = Bool()
   def regFileNonSpModRdPortCnt = 2
   def gprFileSpModRdPortCnt = 1
@@ -194,10 +197,11 @@ case class FlareCpuParams(
   def instrMainWidth = 16
   def numGprsSprs = 16
   def numGprsSprsPow = log2Up(numGprsSprs)
-  def nonG3ImmWidth = 5
+  def g1g7ImmWidth = 5
   def g3ImmWidth = 9
+  def g5ImmWidth = 7
   def preWidth = 12
-  def preFullNonG3Width = preWidth + nonG3ImmWidth
+  def preFullNonG3Width = preWidth + g1g7ImmWidth
   def preFullG3Width = preWidth + g3ImmWidth
   def lpreWidth = 27
   def lpreFullWidth = mainWidth
@@ -239,6 +243,9 @@ case class FlareCpuParams(
   def icacheLineElemWidth = icacheParams.lineElemWidth
   def icacheLineMemWordType() = icacheParams.lineMemWordType()
   def icacheLineMemWordCount = icacheParams.lineMemWordCount
+  def icacheModRdPortCnt = 1
+  def icacheOptModHazardKind = PipeMemRmw.modHazardKindFwd
+  def icacheModStageCnt = 0
   //def icacheLineMemWordTypeWidth = instrMainWidth
   //def icacheLineMemWordCount = (
   //  (icacheParams.numLines * icacheParams.numBytesPerLine)
@@ -273,6 +280,9 @@ case class FlareCpuParams(
   def dcacheLineElemWidth = dcacheParams.lineElemWidth
   def dcacheLineMemWordType() = dcacheParams.lineMemWordType()
   def dcacheLineMemWordCount = dcacheParams.lineMemWordCount
+  def dcacheModRdPortCnt = 1
+  def dcacheOptModHazardKind = PipeMemRmw.modHazardKindFwd
+  def dcacheModStageCnt = 0
   //def dcacheLineMemWordTypeWidth = instrMainWidth
   //def dcacheLineMemWordCount = (
   //  (dcacheParams.numLines * dcacheParams.numBytesPerLine)
