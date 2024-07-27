@@ -10,7 +10,8 @@ val spinalVersion = (
   //"1.9.3"
   //"dev"
   //"1.10.0"
-  "1.10.1"
+  //"1.10.1"
+  "1.10.2"
 )
 val spinalCore = "com.github.spinalhdl" %% "spinalhdl-core" % spinalVersion
 val spinalLib = "com.github.spinalhdl" %% "spinalhdl-lib" % spinalVersion

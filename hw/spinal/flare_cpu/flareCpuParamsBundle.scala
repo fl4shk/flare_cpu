@@ -134,6 +134,7 @@ object FlareCpuParams {
   def enumRegFileGprOddNonSp = 1
   def enumRegFileGprSp = 2
   def enumRegFileSpr = 3
+  def enumRegFileLim = 4
 }
 
 case class FlareCpuParams(
