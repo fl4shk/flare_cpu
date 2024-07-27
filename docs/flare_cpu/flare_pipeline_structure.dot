@@ -82,8 +82,8 @@ graph {
     "fId.up"
   } [color=darkorange]
 
-  "fId: ForkLink" [color=purple]
-  "fId: ForkLink" -- {
+  "fId: StreamFork" [color=purple]
+  "fId: StreamFork" -- {
     "fId.up" [color=pink]
     "fId.downs" [color=pink]
   } [color=purple]
@@ -182,8 +182,8 @@ graph {
     "fEx.up"
   }
 
-  "fEx: ForkLink" [color=purple]
-  "fEx: ForkLink" -- {
+  "fEx: StreamFork" [color=purple]
+  "fEx: StreamFork" -- {
     "fEx.up" [color=pink]
     "fEx.downs" [color=pink]
   } [color=purple]
@@ -216,8 +216,8 @@ graph {
     "fMem.up"
   } [color=darkorange]
 
-  "fMem: ForkLink" [color=purple]
-  "fMem: ForkLink" -- {
+  "fMem: StreamFork" [color=purple]
+  "fMem: StreamFork" -- {
     "fMem.up" [color=pink]
     "fMem.downs" [color=pink]
   } [color=purple]
@@ -296,8 +296,8 @@ graph {
   "sMemRegFile.down" -- {
     "fWbRegFile.up"
   } [color=green]
-  "fWbRegFile: ForkLink" [color=purple]
-  "fWbRegFile: ForkLink" -- {
+  "fWbRegFile: StreamFork" [color=purple]
+  "fWbRegFile: StreamFork" -- {
     "fWbRegFile.up" [color=pink]
     "fWbRegFile.downs" [color=pink]
   } [color=purple]

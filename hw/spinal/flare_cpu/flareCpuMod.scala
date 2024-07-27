@@ -955,6 +955,22 @@ case class FlareCpu(
     con=(payload, node) => {
     }
   )
+  gprFileEven.io.modFront.driveFrom(fEx.downsGprFileEven)(
+    con=(node, payload) => {
+    }
+  )
+  gprFileOddNonSp.io.modFront.driveFrom(fEx.downsGprFileOddNonSp)(
+    con=(node, payload) => {
+    }
+  )
+  gprFileSp.io.modFront.driveFrom(fEx.downsGprFileSp)(
+    con=(node, payload) => {
+    }
+  )
+  sprFile.io.modFront.driveFrom(fEx.downsSprFile)(
+    con=(node, payload) => {
+    }
+  )
 
   //val cMemGprFileEven = CtrlLink(
   //  up=gprFileEven.io.modFront,
