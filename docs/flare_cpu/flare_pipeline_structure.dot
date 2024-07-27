@@ -114,41 +114,41 @@ graph {
   } [color=blue]
 
   "nIdRegFile" -- {
-    "regFile.io.front" [color=blue]
+    "regFileMulti.io.front" [color=blue]
   }
 
-  "regFile.io.front" -- {
-    "regFile.mod.front.cFront.up"
+  "regFileMulti.io.front" -- {
+    "regFileMulti.mod.front.cFront.up"
   } [color=blue]
 
-  "regFile.mod.front.cFront: CtrlLink" [color=red]
-  "regFile.mod.front.cFront: CtrlLink" -- {
-    "regFile.mod.front.cFront.up" [color=darkorange]
-    "regFile.mod.front.cFront.down" [color=darkorange]
+  "regFileMulti.mod.front.cFront: CtrlLink" [color=red]
+  "regFileMulti.mod.front.cFront: CtrlLink" -- {
+    "regFileMulti.mod.front.cFront.up" [color=darkorange]
+    "regFileMulti.mod.front.cFront.down" [color=darkorange]
   } [color=red]
 
-  "regFile.mod.front.cFront.down" -- {
-    "regFile.mod.front.sFront.up"
+  "regFileMulti.mod.front.cFront.down" -- {
+    "regFileMulti.mod.front.sFront.up"
   } [color=darkorange]
 
-  "regFile.mod.front.sFront: StageLink" [color=darkgreen]
-  "regFile.mod.front.sFront: StageLink" -- {
-    "regFile.mod.front.sFront.up" [color=green]
-    "regFile.mod.front.sFront.down" [color=green]
+  "regFileMulti.mod.front.sFront: StageLink" [color=darkgreen]
+  "regFileMulti.mod.front.sFront: StageLink" -- {
+    "regFileMulti.mod.front.sFront.up" [color=green]
+    "regFileMulti.mod.front.sFront.down" [color=green]
   } [color=darkgreen]
 
-  "regFile.mod.front.sFront.down" -- {
-    "regFile.mod.front.cMid0Front.up"
+  "regFileMulti.mod.front.sFront.down" -- {
+    "regFileMulti.mod.front.cMid0Front.up"
   } [color=green]
 
-  "regFile.mod.front.cMid0Front: CtrlLink" [color=red]
-  "regFile.mod.front.cMid0Front: CtrlLink" -- {
-    "regFile.mod.front.cMid0Front.up" [color=darkorange]
-    "regFile.mod.front.cMid0Front.down" [color=darkorange]
+  "regFileMulti.mod.front.cMid0Front: CtrlLink" [color=red]
+  "regFileMulti.mod.front.cMid0Front: CtrlLink" -- {
+    "regFileMulti.mod.front.cMid0Front.up" [color=darkorange]
+    "regFileMulti.mod.front.cMid0Front.down" [color=darkorange]
   } [color=red]
 
-  //"regFile.mod.front.cMid0Front.up" [color=darkorange]
-  "regFile.mod.front.cMid0Front.down" -- {
+  //"regFileMulti.mod.front.cMid0Front.up" [color=darkorange]
+  "regFileMulti.mod.front.cMid0Front.down" -- {
     "jEx.ups"
   } [color=cyan]
 
@@ -169,18 +169,19 @@ graph {
   } [color=red]
 
   "cEx.down" -- {
-    "sEx.up"
+    //"sEx.up"
+    "fEx.up"
   } [color=darkorange]
 
-  "sEx: StageLink" [color=darkgreen]
-  "sEx: StageLink" -- {
-    "sEx.up" [color=green]
-    "sEx.down" [color=green]
-  } [color=darkgreen]
+  //"sEx: StageLink" [color=darkgreen]
+  //"sEx: StageLink" -- {
+  //  "sEx.up" [color=green]
+  //  "sEx.down" [color=green]
+  //} [color=darkgreen]
 
-  "sEx.down" -- {
-    "fEx.up"
-  }
+  //"sEx.down" -- {
+  //  "fEx.up"
+  //}
 
   "fEx: StreamFork" [color=purple]
   "fEx: StreamFork" -- {
@@ -189,12 +190,23 @@ graph {
   } [color=purple]
 
   "fEx.downs" -- {
-    "regFile.io.modFront" [color=blue]
+    "regFileMulti.io.modFront" [color=blue]
   } [color=pink]
 
-  "regFile.io.modFront" -- {
-    "jMem.ups"
+  "regFileMulti.io.modFront" -- {
+    //"jMem.ups"
+    "sMemRegFileMulti.up"
   } [color=blue]
+
+  "sMemRegFileMulti: StageLink"[color=darkgreen]
+  "sMemRegFileMulti: StageLink" -- {
+    "sMemRegFileMulti.up" [color=green]
+    "sMemRegFileMulti.down" [color=green]
+  } [color=darkgreen]
+
+  "sMemRegFileMulti.down" -- {
+    "jMem.ups"
+  }
 
   "jMem: JoinLink" [color=darkcyan]
   "jMem: JoinLink" -- {
@@ -303,6 +315,6 @@ graph {
   } [color=purple]
 
   "fWbRegFile.downs" -- {
-    "regFile.io.modBack" [color=blue]
+    "regFileMulti.io.modBack" [color=blue]
   } [color=pink]
 }

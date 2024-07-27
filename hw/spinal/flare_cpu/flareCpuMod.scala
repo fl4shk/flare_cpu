@@ -904,13 +904,15 @@ case class FlareCpu(
     down=Node(),
   )
   linkArr += cEx
-  val sEx = StageLink(
-    up=cEx.down,
-    down=(
-      Node()
-    ),
-  )
-  linkArr += sEx
+
+  //val sEx = StageLink(
+  //  up=cEx.down,
+  //  down=(
+  //    Node()
+  //  ),
+  //)
+  //linkArr += sEx
+
   //val fEx = ForkLink(
   //  up=sEx.down,
   //  downs=(
@@ -951,7 +953,7 @@ case class FlareCpu(
       downs(idx) << myFork(idx)
     }
   }
-  sEx.down.driveTo(fEx.up)(
+  cEx.down.driveTo(fEx.up)(
     con=(payload, node) => {
     }
   )
@@ -971,6 +973,33 @@ case class FlareCpu(
     con=(node, payload) => {
     }
   )
+  val sMemGprFileEven = StageLink(
+    up=gprFileEven.io.modFront,
+    down=Node(),
+  )
+  linkArr += sMemGprFileEven
+  val sMemGprFileOddNonSp = StageLink(
+    up=gprFileOddNonSp.io.modFront,
+    down=Node(),
+  )
+  linkArr += sMemGprFileOddNonSp
+  val sMemGprFileSp = StageLink(
+    up=gprFileSp.io.modFront,
+    down=Node(),
+  )
+  linkArr += sMemGprFileSp
+  val sMemSprFile = StageLink(
+    up=sprFile.io.modFront,
+    down=Node(),
+  )
+  linkArr += sMemSprFile
+  //val sEx = StageLink(
+  //  up=cEx.down,
+  //  down=(
+  //    Node()
+  //  ),
+  //)
+  //linkArr += sEx
 
   //val cMemGprFileEven = CtrlLink(
   //  up=gprFileEven.io.modFront,
@@ -993,13 +1022,32 @@ case class FlareCpu(
   //)
   //linkArr += cMemSprFile
 
-  //val jMem = JoinLink(
-  //  ups=fEx.downs,
-  //  down=(
-  //    Node()
-  //  ),
-  //)
-  //linkArr += jMem
+  //val nMemGprFileEven = Node()
+  //val nMemGprFileOddNonSp = Node()
+  //val nMemGprFileSp = Node()
+  //val nMemSprFile = Node()
+
+  val jMem = JoinLink(
+    ups=(
+      //fEx.downs
+      List(
+        //dcache.io.front,
+        // can't put `dcache.io.front` here
+        //gprFileEven.io.modFront,
+        //gprFileOddNonSp.io.modFront,
+        //gprFileSp.io.modFront,
+        //sprFile.io.modFront,
+        sMemGprFileEven.down,
+        sMemGprFileOddNonSp.down,
+        sMemGprFileSp.down,
+        sMemSprFile.down,
+      )
+    ),
+    down=(
+      Node()
+    ),
+  )
+  linkArr += jMem
   //val cMem = CtrlLink(
   //  up=jMem.down,
   //  down=(
