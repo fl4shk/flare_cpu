@@ -1048,61 +1048,68 @@ case class FlareCpu(
     ),
   )
   linkArr += jMem
-  //val cMem = CtrlLink(
-  //  up=jMem.down,
-  //  down=(
-  //    Node()
-  //  ),
-  //)
-  //linkArr += cMem
+  val cMem = CtrlLink(
+    up=jMem.down,
+    down=(
+      Node()
+    ),
+  )
+  linkArr += cMem
 
-  //val nMemRegFile = Node()
-  //val fMem = ForkLink(
-  //  up=cMem.down,
-  //  downs=(
-  //    List(
-  //      dcache.io.front,  // `dcache` has a `StageLink` inside of it, so we
-  //                        // don't put another `StageLink` before `fMem`
-  //      nMemRegFile,
-  //    )
-  //  ),
-  //  synchronous=true,
-  //)
-  //linkArr += fMem
+  val nMemRegFile = Node()
+  val fMem = ForkLink(
+    up=cMem.down,
+    downs=(
+      List(
+        dcache.io.front,  // `dcache` has a `StageLink` inside of it, so we
+                          // don't put another `StageLink` before `fMem`
+        nMemRegFile,
+      )
+    ),
+    synchronous=true,
+  )
+  linkArr += fMem
 
-  //val sMemRegFile = StageLink(
-  //  up=nMemRegFile,
-  //  down=Node(),
-  //)
-  //linkArr += sMemRegFile
+  val sMemRegFile = StageLink(
+    up=nMemRegFile,
+    down=Node(),
+  )
+  linkArr += sMemRegFile
 
-  //// We can't put an `S2MLink` here because there's not one between 
-  //// `dcache`'s `cFront` and `cMid0Front`. I guess we don't have *any*
-  //// `S2MLink`s in this pipeline? No registered `ready` for me I guess....
-  //// Unfortunate, but there's not much else that can be done about it! At
-  //// least stalling is partially formally verified...
+  // We can't put an `S2MLink` here because there's not one between 
+  // `dcache`'s `cFront` and `cMid0Front`. I guess we don't have *any*
+  // `S2MLink`s in this pipeline? No registered `ready` for me I guess....
+  // Unfortunate, but there's not much else that can be done about it! At
+  // least stalling is partially formally verified...
 
-  //val fWbRegFile = ForkLink(
-  //  up=sMemRegFile.down,
-  //  downs=(
-  //    List(
-  //      gprFileEven.io.modBack,
-  //      gprFileOddNonSp.io.modBack,
-  //      gprFileSp.io.modBack,
-  //      sprFile.io.modBack,
-  //    ),
-  //  ),
-  //  synchronous=true,
-  //)
-  //val sWbDcache = StageLink(
-  //  up=dcache.mod.front.cMid0Front.down,
-  //  down=dcache.io.modFront,
-  //)
-  //linkArr += sWbDcache
-  //linkArr += DirectLink(
-  //  up=sWbDcache.up,
-  //  down=dcache.io.modBack,
-  //)
+  val fWbRegFile = ForkLink(
+    up=sMemRegFile.down,
+    downs=(
+      List(
+        gprFileEven.io.modBack,
+        gprFileOddNonSp.io.modBack,
+        gprFileSp.io.modBack,
+        sprFile.io.modBack,
+      ),
+    ),
+    synchronous=true,
+  )
+  val sWbDcache = StageLink(
+    up=dcache.mod.front.cMid0Front.down,
+    down=dcache.io.modFront,
+  )
+  linkArr += sWbDcache
+  linkArr += DirectLink(
+    up=sWbDcache.down,
+    down=dcache.io.modBack,
+  )
+
+  icache.io.back.ready := True
+  gprFileEven.io.back.ready := True
+  gprFileOddNonSp.io.back.ready := True
+  gprFileSp.io.back.ready := True
+  sprFile.io.back.ready := True
+  dcache.io.back.ready := True
   //--------
   // actual logic for each pipeline stage goes here
   val cIfArea = new cIf.Area {

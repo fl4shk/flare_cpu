@@ -308,8 +308,8 @@ graph {
   "sMemRegFile.down" -- {
     "fWbRegFile.up"
   } [color=green]
-  "fWbRegFile: StreamFork" [color=purple]
-  "fWbRegFile: StreamFork" -- {
+  "fWbRegFile: ForkLink" [color=purple]
+  "fWbRegFile: ForkLink" -- {
     "fWbRegFile.up" [color=pink]
     "fWbRegFile.downs" [color=pink]
   } [color=purple]
