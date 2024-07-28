@@ -338,7 +338,7 @@ case class FlareCpuParams(
   val busParams = BmbParameter(
     addressWidth=mainWidth,
     dataWidth=mainWidth,
-    sourceWidth=0,
+    sourceWidth=1,
     contextWidth=0,
     lengthWidth=(
       //dcacheLineMemWordCount
@@ -353,7 +353,9 @@ case class FlareCpuParams(
     accessLatencyMin=1,
     canRead=true,
     canWrite=true,
-    canExclusive=false,   // I don't know what this is for yet
+    canExclusive=false,
+      // Current Note: `canExclusive` is for atomics!
+      // OLD Note: I don't know what `canExclusive` is for yet
     maximumPendingTransaction=1,
   )
   //def dbusConfig = Axi4Config(

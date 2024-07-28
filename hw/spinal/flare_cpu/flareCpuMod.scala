@@ -72,6 +72,22 @@ case class FlareCpuPipeMemModType[
 case class FlareCpu(
   params: FlareCpuParams
 ) extends Component {
+  //--------
+  val io = FlareCpuIo(params=params)
+  val instrBmb = Bmb(p=params.busParams)
+  val dataBmb = Bmb(p=params.busParams)
+  val busArb = BmbArbiter(
+    inputsParameter=List(
+      params.busParams,
+      params.busParams,
+    ),
+    outputParameter=params.busParams,
+    lowerFirstPriority=false,
+  )
+  busArb.io.inputs(0) << instrBmb
+  busArb.io.inputs(1) << dataBmb
+  io.bus << busArb.io.output
+  //--------
   def enumRegFileGprEven = FlareCpuParams.enumRegFileGprEven
   def enumRegFileGprOddNonSp = FlareCpuParams.enumRegFileGprOddNonSp
   def enumRegFileGprSp = FlareCpuParams.enumRegFileGprSp
@@ -636,16 +652,21 @@ case class FlareCpu(
   //val nIf = Node()
   // the `IF` pipeline stage
   //val pIf = Payload(mkIcacheModType())
-  val pIdInpIcache, pIdOutpIcache = Payload(mkIcacheModType())
-  val pIdInpDcache, pIdOutpDcache = Payload(mkDcacheModType())
+  val pIfInpIcache, pIdOutpIcache = Payload(mkIcacheModType())
+  val pMemInpDcache, pMemOutpDcache = Payload(mkDcacheModType())
   val pIdInpGprFileEven, pIdOutpGprFileEven = (
     Payload(mkGprFileEvenModType())
   )
   val pIdInpGprFileOddNonSp, pIdOutpGprFileOddNonSp = (
     Payload(mkGprFileOddNonSpModType())
   )
-  val pIdInpGprFileSp, pIdOutpGprFileSp = Payload(mkGprFileSpModType())
-  val pIdInpSprFile, pIdOutpSprFile = Payload(mkSprFileModType())
+  val pIdInpGprFileSp, pIdOutpGprFileSp = (
+    Payload(mkGprFileSpModType())
+  )
+  val pIdInpSprFile, pIdOutpSprFile = (
+    Payload(mkSprFileModType())
+  )
+  //val pExInp
   //val pExInp, pExOutp = Payload(
 
   val cIf = CtrlLink(
@@ -668,10 +689,10 @@ case class FlareCpu(
   linkArr += cId
   //val nIdRegFileArr = Array.fill(enumRegFileLim)(Node())
   val nIdIcache = Node()
-  val nIdGprFileEven = Node()
-  val nIdGprFileOddNonSp = Node()
-  val nIdGprFileSp = Node()
-  val nIdSprFile = Node()
+  val nIdGprFileEvenInp, nIdGprFileEvenOutp  = Node()
+  val nIdGprFileOddNonSpInp, nIdGprFileOddNonSpOutp = Node()
+  val nIdGprFileSpInp, nIdGprFileSpOutp = Node()
+  val nIdSprFileInp, nIdSprFileOutp = Node()
   //nIdRegFileGprEven.setName("nIdRegFileGprEven")
   //nIdRegFileGprOddNonSp.setName("nIdRegFileGprOddNonSp")
   //nIdRegFileGprSp.setName("nIdRegFileGprSp")
@@ -713,20 +734,20 @@ case class FlareCpu(
       downsGprFileSp,
       downsSprFile,
     )
-    val myFork = StreamFork(
+    val stmFork = StreamFork(
       //dataType=mkRegFileForkJoinModType(),
       input=up,
       portCount=downs.size,
       synchronous=true,
     )
     for (idx <- 0 until downs.size) {
-      downs(idx) << myFork(idx)
+      downs(idx) << stmFork(idx)
     }
   }
   cId.down.driveTo(fId.up)(
     con=(payload, node) => {
       //payload := node
-      payload := node(pIdInpIcache)
+      payload := node(pIdOutpIcache)
     }
   )
   nIdIcache.driveFrom(fId.downsIcache)(
@@ -768,7 +789,7 @@ case class FlareCpu(
     assert(whichRegFile < enumRegFileLim)
     //--------
     if (whichRegFile == enumRegFileGprEven) {
-      node(pIdInpPayload).myExt.memAddr(0) := 3
+      //node(pIdInpPayload).myExt.memAddr(0) := 3
     } else if (whichRegFile == enumRegFileGprOddNonSp) {
     } else if (whichRegFile == enumRegFileGprSp) {
     } else { // if (whichRegFile == enumRegFileSpr)
@@ -777,7 +798,7 @@ case class FlareCpu(
   }
   // I think it's okay to not give names to these `DirectLink`s as we do
   // have the nodes.
-  nIdGprFileEven.driveFrom(fId.downsGprFileEven)(
+  nIdGprFileEvenInp.driveFrom(fId.downsGprFileEven)(
     con=(node, payload) => {
       //node(pIdInpGprFileEven).myExt.memAddr(0) := 3
       doIdSplit(
@@ -788,7 +809,7 @@ case class FlareCpu(
       )
     }
   )
-  nIdGprFileOddNonSp.driveFrom(fId.downsGprFileOddNonSp)(
+  nIdGprFileOddNonSpInp.driveFrom(fId.downsGprFileOddNonSp)(
     con=(node, payload) => {
       //node(pIdInpGprFileOddNonSp) := 
       doIdSplit(
@@ -799,7 +820,7 @@ case class FlareCpu(
       )
     }
   )
-  nIdGprFileSp.driveFrom(fId.downsGprFileSp)(
+  nIdGprFileSpInp.driveFrom(fId.downsGprFileSp)(
     con=(node, payload) => {
       //node(pIdInpGprFileSp) := 
       doIdSplit(
@@ -810,7 +831,7 @@ case class FlareCpu(
       )
     }
   )
-  nIdSprFile.driveFrom(fId.downsSprFile)(
+  nIdSprFileInp.driveFrom(fId.downsSprFile)(
     con=(node, payload) => {
       //node(pIdInpSprFile) := 
       doIdSplit(
@@ -822,25 +843,68 @@ case class FlareCpu(
     }
   )
   val dIdGprFileEven = DirectLink(
-    up=nIdGprFileEven,
-    down=gprFileEven.io.front,
+    up=nIdGprFileEvenInp,
+    down=(
+      nIdGprFileEvenOutp
+      //gprFileEven.io.front
+    ),
   )
   linkArr += dIdGprFileEven
+  linkArr += DirectLink(
+    up=nIdGprFileEvenOutp,
+    down=gprFileEven.io.front,
+  )
+  //val dIdGprFileOddNonSp = DirectLink(
+  //  up=nIdGprFileOddNonSp,
+  //  down=gprFileOddNonSp.io.front,
+  //)
+  //linkArr += dIdGprFileOddNonSp
+  //val dIdGprFileSp = DirectLink(
+  //  up=nIdGprFileSp,
+  //  down=gprFileSp.io.front,
+  //)
+  //linkArr += dIdGprFileSp
+  //val dIdSprFile = DirectLink(
+  //  up=nIdSprFile,
+  //  down=sprFile.io.front,
+  //)
+  //linkArr += dIdSprFile
   val dIdGprFileOddNonSp = DirectLink(
-    up=nIdGprFileOddNonSp,
-    down=gprFileOddNonSp.io.front,
+    up=nIdGprFileOddNonSpInp,
+    down=(
+      nIdGprFileOddNonSpOutp
+      //gprFileOddNonSp.io.front
+    ),
   )
   linkArr += dIdGprFileOddNonSp
+  linkArr += DirectLink(
+    up=nIdGprFileOddNonSpOutp,
+    down=gprFileOddNonSp.io.front,
+  )
   val dIdGprFileSp = DirectLink(
-    up=nIdGprFileSp,
-    down=gprFileSp.io.front,
+    up=nIdGprFileSpInp,
+    down=(
+      nIdGprFileSpOutp
+      //gprFileSp.io.front
+    ),
   )
   linkArr += dIdGprFileSp
+  linkArr += DirectLink(
+    up=nIdGprFileSpOutp,
+    down=gprFileSp.io.front,
+  )
   val dIdSprFile = DirectLink(
-    up=nIdSprFile,
-    down=sprFile.io.front,
+    up=nIdSprFileInp,
+    down=(
+      nIdSprFileOutp
+      //sprFile.io.front
+    ),
   )
   linkArr += dIdSprFile
+  linkArr += DirectLink(
+    up=nIdSprFileOutp,
+    down=sprFile.io.front,
+  )
 
   //val sExGprFileEven = StageLink(
   //  up=gprFileEven.mod.front.cMid0Front.down,
@@ -943,18 +1007,19 @@ case class FlareCpu(
       downsGprFileSp,
       downsSprFile,
     )
-    val myFork = StreamFork(
+    val stmFork = StreamFork(
       //dataType=mkRegFileForkJoinModType(),
       input=up,
       portCount=downs.size,
       synchronous=true,
     )
     for (idx <- 0 until downs.size) {
-      downs(idx) << myFork(idx)
+      downs(idx) << stmFork(idx)
     }
   }
   cEx.down.driveTo(fEx.up)(
     con=(payload, node) => {
+      //payload := node()
     }
   )
   gprFileEven.io.modFront.driveFrom(fEx.downsGprFileEven)(
@@ -1114,90 +1179,125 @@ case class FlareCpu(
   // actual logic for each pipeline stage goes here
   val cIfArea = new cIf.Area {
     // the `icache` front/`IF` pipeline stage goes here
-    when (up.isValid) {
+    when (up.isFiring) {
     }
   }
 
   val cIdArea = new cId.Area {
-    // most of `ID` pipeline stage goes here.
-    when (up.isValid) {
+    // Most of `ID` pipeline stage goes here.
+    when (up.isFiring) {
     }
   }
   val cExArea = new cEx.Area {
     // the `EX` pipeline stage
-    when (up.isValid) {
+    when (up.isFiring) {
     }
   }
-  //val cMemArea = new cMem.Area {
-  //  // the `MEM` pipeline stages
-  //  when (up.isValid) {
-  //  }
-  //}
+  val cMemArea = new cMem.Area {
+    // The `MEM` pipeline stages
+    when (up.isFiring) {
+    }
+  }
 
-  //when (nIdGprFileEven.isFiring) {
-  //  //--------
-  //  def inpPayload = nIdGprFileEven(pIdOutpGprFileEven)
-  //  def inpModExt = inpPayload.modExt
-  //  def inpExt = inpPayload.myExt
-  //  //--------
-  //  def outpPayload = nIdGprFileEven(gprFileEven.io.frontPayload)
-  //  def outpExt = outpPayload.myExt
-  //  def outpModExt = outpPayload.modExt
-  //  //--------
-  //  outpPayload := inpPayload
-  //  outpExt.memAddr.allowOverride
-  //  outpExt.memAddr(0) := inpModExt.instrDecEtc.gprEvenRaIdx >> 1
-  //  outpExt.memAddr(1) := inpModExt.instrDecEtc.gprEvenRbIdx >> 1
-  //}
-  //when (nIdGprFileOddNonSp.isFiring) {
-  //  //--------
-  //  def inpPayload = nIdGprFileOddNonSp(pIdOutpGprFileOddNonSp)
-  //  def inpModExt = inpPayload.modExt
-  //  def inpExt = inpPayload.myExt
-  //  //--------
-  //  def outpPayload = nIdGprFileOddNonSp(gprFileOddNonSp.io.frontPayload)
-  //  def outpExt = outpPayload.myExt
-  //  def outpModExt = outpPayload.modExt
-  //  //--------
-  //  outpPayload := inpPayload
-  //  outpExt.memAddr.allowOverride
-  //  outpExt.memAddr(0) := inpModExt.instrDecEtc.gprOddNonSpRaIdx >> 1
-  //  outpExt.memAddr(1) := inpModExt.instrDecEtc.gprOddNonSpRbIdx >> 1
-  //}
-  //when (nIdGprFileSp.isFiring) {
-  //  //--------
-  //  def inpPayload = nIdGprFileSp(pIdOutpGprFileSp)
-  //  def inpModExt = inpPayload.modExt
-  //  def inpExt = inpPayload.myExt
-  //  //--------
-  //  def outpPayload = nIdGprFileSp(gprFileSp.io.frontPayload)
-  //  def outpExt = outpPayload.myExt
-  //  def outpModExt = outpPayload.modExt
-  //  //--------
-  //  outpPayload := inpPayload
-  //  outpExt.memAddr.allowOverride
-  //  outpExt.memAddr(0) := 0
-  //  //outpExt.memAddr(1) := inpModExt.instrDecEtc.gprSpRbIdx
-  //}
-  //when (nIdSprFile.isFiring) {
-  //  //--------
-  //  def inpPayload = nIdSprFile(pIdOutpSprFile)
-  //  def inpModExt = inpPayload.modExt
-  //  def inpExt = inpPayload.myExt
-  //  //--------
-  //  def outpPayload = nIdSprFile(sprFile.io.frontPayload)
-  //  def outpModExt = outpPayload.modExt
-  //  def outpExt = outpPayload.myExt
-  //  //--------
-  //  outpPayload := inpPayload
-  //  //outpPayload.myExt := inpPayload.myExt
-  //  //println(s"${outpExt.rdMemWord.size} ${inpExt.rdMemWord.size}")
-  //  //outpExt.rdMemWord := inpExt.rdMemWord
-  //  outpExt.memAddr.allowOverride
-  //  outpExt.memAddr(0) := inpModExt.instrDecEtc.sprSaIdx
-  //  outpExt.memAddr(1) := inpModExt.instrDecEtc.sprSbIdx
-  //  //outpExt.memAddr(1) := inpModExt.instrDecEtc.gprSpRbIdx
-  //}
+  val nIdGprFileEvenArea = new Area {
+    //--------
+    def inpPayload = nIdGprFileEvenOutp(pIdOutpGprFileEven)
+    def inpModExt = inpPayload.modExt
+    def inpExt = inpPayload.myExt
+    //--------
+    def outpPayload = nIdGprFileEvenOutp(gprFileEven.io.frontPayload)
+    //def outpExt = outpPayload.myExt
+    //def outpModExt = outpPayload.modExt
+    //--------
+    val tempOutpPayload = cloneOf(inpPayload)
+    outpPayload := tempOutpPayload
+    tempOutpPayload := RegNext(tempOutpPayload)
+    when (nIdGprFileEvenOutp.isFiring) {
+      tempOutpPayload := inpPayload
+      tempOutpPayload.myExt.memAddr.allowOverride
+      tempOutpPayload.myExt.memAddr(0) := (
+        inpModExt.instrDecEtc.gprEvenRaIdx >> 1
+      )
+      tempOutpPayload.myExt.memAddr(1) := (
+        inpModExt.instrDecEtc.gprEvenRbIdx >> 1
+      )
+    }
+  }
+  val nIdGprFileOddNonSpArea = new Area {
+    //--------
+    def inpPayload = nIdGprFileOddNonSpOutp(pIdOutpGprFileOddNonSp)
+    def inpModExt = inpPayload.modExt
+    def inpExt = inpPayload.myExt
+    //--------
+    def outpPayload = (
+      nIdGprFileOddNonSpOutp(gprFileOddNonSp.io.frontPayload)
+    )
+    //def outpExt = outpPayload.myExt
+    //def outpModExt = outpPayload.modExt
+    //--------
+    //outpPayload := RegNext(outpPayload)
+    val tempOutpPayload = cloneOf(inpPayload)
+    outpPayload := tempOutpPayload
+    tempOutpPayload := RegNext(tempOutpPayload)
+    when (nIdGprFileOddNonSpOutp.isFiring) {
+      //--------
+      tempOutpPayload := inpPayload
+      tempOutpPayload.myExt.memAddr.allowOverride
+      tempOutpPayload.myExt.memAddr(0) := (
+        inpModExt.instrDecEtc.gprOddNonSpRaIdx >> 1
+      )
+      tempOutpPayload.myExt.memAddr(1) := (
+        inpModExt.instrDecEtc.gprOddNonSpRbIdx >> 1
+      )
+    }
+  }
+  val nIdGprFileSpArea = new Area {
+    //--------
+    def inpPayload = nIdGprFileSpOutp(pIdOutpGprFileSp)
+    def inpModExt = inpPayload.modExt
+    def inpExt = inpPayload.myExt
+    //--------
+    def outpPayload = nIdGprFileSpOutp(gprFileSp.io.frontPayload)
+    //def outpExt = outpPayload.myExt
+    //def outpModExt = outpPayload.modExt
+    //--------
+    val tempOutpPayload = cloneOf(inpPayload)
+    outpPayload := tempOutpPayload
+    tempOutpPayload := RegNext(tempOutpPayload)
+    //--------
+    when (nIdGprFileSpOutp.isFiring) {
+      tempOutpPayload := inpPayload
+      tempOutpPayload.myExt.memAddr.allowOverride
+      tempOutpPayload.myExt.memAddr(0) := 0
+      //outpExt.memAddr(1) := inpModExt.instrDecEtc.gprSpRbIdx
+    }
+  }
+  val nIdSprFileArea = new Area {
+    //--------
+    def inpPayload = nIdSprFileOutp(pIdOutpSprFile)
+    def inpModExt = inpPayload.modExt
+    def inpExt = inpPayload.myExt
+    //--------
+    def outpPayload = nIdSprFileOutp(sprFile.io.frontPayload)
+    //def outpExt = outpPayload.myExt
+    //def outpModExt = outpPayload.modExt
+    //--------
+    val tempOutpPayload = cloneOf(inpPayload)
+    outpPayload := tempOutpPayload
+    tempOutpPayload := RegNext(tempOutpPayload)
+    //--------
+    when (nIdSprFileOutp.isFiring) {
+      //--------
+      tempOutpPayload := inpPayload
+      //outpPayload.myExt := inpPayload.myExt
+      //println(s"${outpExt.rdMemWord.size} ${inpExt.rdMemWord.size}")
+      //outpExt.rdMemWord := inpExt.rdMemWord
+      tempOutpPayload.myExt.memAddr.allowOverride
+      tempOutpPayload.myExt.memAddr(0) := inpModExt.instrDecEtc.sprSaIdx
+      tempOutpPayload.myExt.memAddr(1) := inpModExt.instrDecEtc.sprSbIdx
+      //outpExt.memAddr(1) := inpModExt.instrDecEtc.gprSpRbIdx
+    }
+  }
 
   Builder(linkArr.toSeq)
 }
