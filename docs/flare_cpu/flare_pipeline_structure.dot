@@ -1,320 +1,323 @@
 graph {
-  //"cIf.up.Node()" -- {
-  // "cIf.up" 
+  ////"cIf.up.Node()" -- {
+  //// "cIf.up" 
+  ////} [color=red]
+  //"cIf: CtrlLink" -- {
+  //  //rank=same;
+  //  //rank=;
+  //  //"cIf.up" -- subgraph {
+  //  //  rank=2;
+  //  //  "cIf.up.Node()";
+  //  //}
+  //  //"cIf.down" -- subgraph {
+  //  //  rank=2;
+  //  //  "icache.io.front";
+  //  //}
+  //  //"cIf.down";
+  //  "cIf.up"
+  //  "cIf.down"
   //} [color=red]
-  "cIf: CtrlLink" -- {
-    //rank=same;
-    //rank=;
-    //"cIf.up" -- subgraph {
-    //  rank=2;
-    //  "cIf.up.Node()";
-    //}
-    //"cIf.down" -- subgraph {
-    //  rank=2;
-    //  "icache.io.front";
-    //}
-    //"cIf.down";
-    "cIf.up"
-    "cIf.down"
-  } [color=red]
-  "cIf: CtrlLink" [color=red]
-  //"cIf.up" -- {
-  //  "cIf.up.Node()"
+  //"cIf: CtrlLink" [color=red]
+  ////"cIf.up" -- {
+  ////  "cIf.up.Node()"
+  ////} [color=darkorange]
+  //"cIf.up" [color=darkorange]
+  //"cIf.down" -- {
+  //  "icache.io.front"
   //} [color=darkorange]
-  "cIf.up" [color=darkorange]
-  "cIf.down" -- {
-    "icache.io.front"
-  } [color=darkorange]
-  "cIf.down" [color=darkorange]
+  //"cIf.down" [color=darkorange]
 
-  "icache.io.front" -- {
-    //rank=same;
-    "icache.mod.front.cFront.up"
-    //-- {
-    //  "icache.mod.front.cFront.up"
-    //  "icache.mod.front.cFront.down"
-    //}
-  } [color=blue]
-  "icache.io.front" [color=blue]
-  //"icache.mod.front.cFront.up" [color=darkorange]
-  "icache.mod.front.cFront: CtrlLink" -- {
-    "icache.mod.front.cFront.up" [color=darkorange]
-    "icache.mod.front.cFront.down" [color=darkorange]
-  } [color=red]
-  "icache.mod.front.cFront: CtrlLink" [color=red]
+  //"icache.io.front" -- {
+  //  //rank=same;
+  //  "icache.mod.front.cFront.up"
+  //  //-- {
+  //  //  "icache.mod.front.cFront.up"
+  //  //  "icache.mod.front.cFront.down"
+  //  //}
+  //} [color=blue]
+  //"icache.io.front" [color=blue]
+  ////"icache.mod.front.cFront.up" [color=darkorange]
+  //"icache.mod.front.cFront: CtrlLink" -- {
+  //  "icache.mod.front.cFront.up" [color=darkorange]
+  //  "icache.mod.front.cFront.down" [color=darkorange]
+  //} [color=red]
+  //"icache.mod.front.cFront: CtrlLink" [color=red]
 
-  //"icache.mod.front.cFront.up" -- {
-  //} [color=orange]
-  "icache.mod.front.cFront.down" -- {
-    //"icache.mod.front.cFront.down.Node()"
-    "icache.mod.front.sFront.up"
-  } [color=darkorange]
-  "icache.mod.front.cFront.down" [color=darkorange]
+  ////"icache.mod.front.cFront.up" -- {
+  ////} [color=orange]
+  //"icache.mod.front.cFront.down" -- {
+  //  //"icache.mod.front.cFront.down.Node()"
+  //  "icache.mod.front.sFront.up"
+  //} [color=darkorange]
+  //"icache.mod.front.cFront.down" [color=darkorange]
 
-  "icache.mod.front.sFront: StageLink" [color=darkgreen]
-  "icache.mod.front.sFront: StageLink" -- {
-    "icache.mod.front.sFront.up" [color=green]
-    "icache.mod.front.sFront.down" [color=green]
-  } [color=darkgreen]
-
-  //"icache.mod.front.sFront.up" -- {
-  //  
-  //} [color=green]
-  "icache.mod.front.sFront.down" -- {
-    "icache.mod.front.cMid0Front.up" //[color=red]
-  } [color=green]
-  "icache.mod.front.cMid0Front: CtrlLink" [color=red]
-  "icache.mod.front.cMid0Front: CtrlLink" -- {
-    "icache.mod.front.cMid0Front.up" [color=darkorange]
-    "icache.mod.front.cMid0Front.down" [color=darkorange]
-  } [color=red]
-  "icache.mod.front.cMid0Front.down" -- {
-    "cId.up"
-  } [color=darkorange]
-
-  "cId: CtrlLink" -- {
-    "cId.up" [color=darkorange]
-    "cId.down" [color=darkorange]
-  } [color=red]
-  "cId: CtrlLink" [color=red]
-
-  "cId.down" -- {
-    "fId.up"
-  } [color=darkorange]
-
-  "fId: StreamFork" [color=purple]
-  "fId: StreamFork" -- {
-    "fId.up" [color=pink]
-    "fId.downs" [color=pink]
-  } [color=purple]
-  "fId.downs" -- {
-    "nIdIcache"
-    "nIdRegFile"
-    //nIdGprFileEven
-    //nIdGprFileOddNonSp
-    //nIdGprFileSp
-    //nIdSprFile
-  } [color=pink]
-
-  "nIdIcache" -- {
-    "sIdIcache.up"
-  } //[color=darkgreen]
-
-  "sIdIcache: StageLink" [color=darkgreen]
-  "sIdIcache: StageLink" -- {
-    "sIdIcache.up" [color=green]
-    "sIdIcache.down" [color=green]
-  } [color=darkgreen]
-
-  "sIdIcache.down" -- {
-    "icache.io.modFront" [color=blue]
-  } [color=green]
-  "icache.io.modFront" -- {
-    "icache.io.modBack" [color=blue]
-  } [color=blue]
-
-  "nIdRegFile" -- {
-    "regFileMulti.io.front" [color=blue]
-  }
-
-  "regFileMulti.io.front" -- {
-    "regFileMulti.mod.front.cFront.up"
-  } [color=blue]
-
-  "regFileMulti.mod.front.cFront: CtrlLink" [color=red]
-  "regFileMulti.mod.front.cFront: CtrlLink" -- {
-    "regFileMulti.mod.front.cFront.up" [color=darkorange]
-    "regFileMulti.mod.front.cFront.down" [color=darkorange]
-  } [color=red]
-
-  "regFileMulti.mod.front.cFront.down" -- {
-    "regFileMulti.mod.front.sFront.up"
-  } [color=darkorange]
-
-  "regFileMulti.mod.front.sFront: StageLink" [color=darkgreen]
-  "regFileMulti.mod.front.sFront: StageLink" -- {
-    "regFileMulti.mod.front.sFront.up" [color=green]
-    "regFileMulti.mod.front.sFront.down" [color=green]
-  } [color=darkgreen]
-
-  "regFileMulti.mod.front.sFront.down" -- {
-    "regFileMulti.mod.front.cMid0Front.up"
-  } [color=green]
-
-  "regFileMulti.mod.front.cMid0Front: CtrlLink" [color=red]
-  "regFileMulti.mod.front.cMid0Front: CtrlLink" -- {
-    "regFileMulti.mod.front.cMid0Front.up" [color=darkorange]
-    "regFileMulti.mod.front.cMid0Front.down" [color=darkorange]
-  } [color=red]
-
-  //"regFileMulti.mod.front.cMid0Front.up" [color=darkorange]
-  "regFileMulti.mod.front.cMid0Front.down" -- {
-    "jEx.ups"
-  } [color=cyan]
-
-  "jEx: JoinLink" [color=darkcyan]
-  "jEx: JoinLink" -- {
-    "jEx.ups" [color=cyan]
-    "jEx.down" [color=cyan]
-  } [color=darkcyan]
-
-  "jEx.down" -- {
-    "cEx.up"
-  } [color=cyan]
-
-  "cEx: CtrlLink" [color=red]
-  "cEx: CtrlLink" -- {
-    "cEx.up" [color=darkorange]
-    "cEx.down" [color=darkorange]
-  } [color=red]
-
-  "cEx.down" -- {
-    //"sEx.up"
-    "fEx.up"
-  } [color=darkorange]
-
-  //"sEx: StageLink" [color=darkgreen]
-  //"sEx: StageLink" -- {
-  //  "sEx.up" [color=green]
-  //  "sEx.down" [color=green]
+  //"icache.mod.front.sFront: StageLink" [color=darkgreen]
+  //"icache.mod.front.sFront: StageLink" -- {
+  //  "icache.mod.front.sFront.up" [color=green]
+  //  "icache.mod.front.sFront.down" [color=green]
   //} [color=darkgreen]
 
-  //"sEx.down" -- {
+  ////"icache.mod.front.sFront.up" -- {
+  ////  
+  ////} [color=green]
+  //"icache.mod.front.sFront.down" -- {
+  //  "icache.mod.front.cMid0Front.up" //[color=red]
+  //} [color=green]
+  //"icache.mod.front.cMid0Front: CtrlLink" [color=red]
+  //"icache.mod.front.cMid0Front: CtrlLink" -- {
+  //  "icache.mod.front.cMid0Front.up" [color=darkorange]
+  //  "icache.mod.front.cMid0Front.down" [color=darkorange]
+  //} [color=red]
+  //"icache.mod.front.cMid0Front.down" -- {
+  //  "cId.up"
+  //} [color=darkorange]
+
+  //"cId: CtrlLink" -- {
+  //  "cId.up" [color=darkorange]
+  //  "cId.down" [color=darkorange]
+  //} [color=red]
+  //"cId: CtrlLink" [color=red]
+
+  //"cId.down" -- {
+  //  "fId.up"
+  //} [color=darkorange]
+
+  //"fId: StreamFork" [color=purple]
+  //"fId: StreamFork" -- {
+  //  "fId.up" [color=pink]
+  //  "fId.downs" [color=pink]
+  //} [color=purple]
+  //"fId.downs" -- {
+  //  "nIdIcache"
+  //  "nIdRegFileMultiInp"
+  //  //nIdGprFileEven
+  //  //nIdGprFileOddNonSp
+  //  //nIdGprFileSp
+  //  //nIdSprFile
+  //} [color=pink]
+
+  //"nIdIcache" -- {
+  //  "sIdIcache.up"
+  //} //[color=darkgreen]
+
+  //"sIdIcache: StageLink" [color=darkgreen]
+  //"sIdIcache: StageLink" -- {
+  //  "sIdIcache.up" [color=green]
+  //  "sIdIcache.down" [color=green]
+  //} [color=darkgreen]
+
+  //"sIdIcache.down" -- {
+  //  "icache.io.modFront" [color=blue]
+  //} [color=green]
+  //"icache.io.modFront" -- {
+  //  "icache.io.modBack" [color=blue]
+  //} [color=blue]
+
+  //"nIdRegFileMultiInp" -- {
+  //  "nIdRegFileMultiOutp"
+  //}
+  //"nIdRegFileMultiOutp" -- {
+  //  "regFileMulti.io.front" [color=blue]
+  //}
+
+  //"regFileMulti.io.front" -- {
+  //  "regFileMulti.mod.front.cFront.up"
+  //} [color=blue]
+
+  //"regFileMulti.mod.front.cFront: CtrlLink" [color=red]
+  //"regFileMulti.mod.front.cFront: CtrlLink" -- {
+  //  "regFileMulti.mod.front.cFront.up" [color=darkorange]
+  //  "regFileMulti.mod.front.cFront.down" [color=darkorange]
+  //} [color=red]
+
+  //"regFileMulti.mod.front.cFront.down" -- {
+  //  "regFileMulti.mod.front.sFront.up"
+  //} [color=darkorange]
+
+  //"regFileMulti.mod.front.sFront: StageLink" [color=darkgreen]
+  //"regFileMulti.mod.front.sFront: StageLink" -- {
+  //  "regFileMulti.mod.front.sFront.up" [color=green]
+  //  "regFileMulti.mod.front.sFront.down" [color=green]
+  //} [color=darkgreen]
+
+  //"regFileMulti.mod.front.sFront.down" -- {
+  //  "regFileMulti.mod.front.cMid0Front.up"
+  //} [color=green]
+
+  //"regFileMulti.mod.front.cMid0Front: CtrlLink" [color=red]
+  //"regFileMulti.mod.front.cMid0Front: CtrlLink" -- {
+  //  "regFileMulti.mod.front.cMid0Front.up" [color=darkorange]
+  //  "regFileMulti.mod.front.cMid0Front.down" [color=darkorange]
+  //} [color=red]
+
+  ////"regFileMulti.mod.front.cMid0Front.up" [color=darkorange]
+  //"regFileMulti.mod.front.cMid0Front.down" -- {
+  //  "jEx.ups"
+  //} [color=cyan]
+
+  //"jEx: JoinLink" [color=darkcyan]
+  //"jEx: JoinLink" -- {
+  //  "jEx.ups" [color=cyan]
+  //  "jEx.down" [color=cyan]
+  //} [color=darkcyan]
+
+  //"jEx.down" -- {
+  //  "cEx.up"
+  //} [color=cyan]
+
+  //"cEx: CtrlLink" [color=red]
+  //"cEx: CtrlLink" -- {
+  //  "cEx.up" [color=darkorange]
+  //  "cEx.down" [color=darkorange]
+  //} [color=red]
+
+  //"cEx.down" -- {
+  //  //"sEx.up"
   //  "fEx.up"
+  //} [color=darkorange]
+
+  ////"sEx: StageLink" [color=darkgreen]
+  ////"sEx: StageLink" -- {
+  ////  "sEx.up" [color=green]
+  ////  "sEx.down" [color=green]
+  ////} [color=darkgreen]
+
+  ////"sEx.down" -- {
+  ////  "fEx.up"
+  ////}
+
+  //"fEx: StreamFork" [color=purple]
+  //"fEx: StreamFork" -- {
+  //  "fEx.up" [color=pink]
+  //  "fEx.downs" [color=pink]
+  //} [color=purple]
+
+  //"fEx.downs" -- {
+  //  "regFileMulti.io.modFront" [color=blue]
+  //} [color=pink]
+
+  //"regFileMulti.io.modFront" -- {
+  //  //"jMem.ups"
+  //  "sMemRegFileMulti.up"
+  //} [color=blue]
+
+  //"sMemRegFileMulti: StageLink"[color=darkgreen]
+  //"sMemRegFileMulti: StageLink" -- {
+  //  "sMemRegFileMulti.up" [color=green]
+  //  "sMemRegFileMulti.down" [color=green]
+  //} [color=darkgreen]
+
+  //"sMemRegFileMulti.down" -- {
+  //  "jMem.ups"
   //}
 
-  "fEx: StreamFork" [color=purple]
-  "fEx: StreamFork" -- {
-    "fEx.up" [color=pink]
-    "fEx.downs" [color=pink]
-  } [color=purple]
+  //"jMem: JoinLink" [color=darkcyan]
+  //"jMem: JoinLink" -- {
+  //  "jMem.ups" [color=cyan]
+  //  "jMem.down" [color=cyan]
+  //} [color=darkcyan]
 
-  "fEx.downs" -- {
-    "regFileMulti.io.modFront" [color=blue]
-  } [color=pink]
+  //"jMem.down" -- {
+  //  "cMem.up"
+  //} [color=cyan]
 
-  "regFileMulti.io.modFront" -- {
-    //"jMem.ups"
-    "sMemRegFileMulti.up"
-  } [color=blue]
+  //"cMem: CtrlLink" [color=red]
+  //"cMem: CtrlLink" -- {
+  //  "cMem.up" [color=darkorange]
+  //  "cMem.down" [color=darkorange]
+  //} [color=red]
 
-  "sMemRegFileMulti: StageLink"[color=darkgreen]
-  "sMemRegFileMulti: StageLink" -- {
-    "sMemRegFileMulti.up" [color=green]
-    "sMemRegFileMulti.down" [color=green]
-  } [color=darkgreen]
+  //"cMem.down" -- {
+  //  "fMem.up"
+  //} [color=darkorange]
 
-  "sMemRegFileMulti.down" -- {
-    "jMem.ups"
-  }
+  //"fMem: StreamFork" [color=purple]
+  //"fMem: StreamFork" -- {
+  //  "fMem.up" [color=pink]
+  //  "fMem.downs" [color=pink]
+  //} [color=purple]
 
-  "jMem: JoinLink" [color=darkcyan]
-  "jMem: JoinLink" -- {
-    "jMem.ups" [color=cyan]
-    "jMem.down" [color=cyan]
-  } [color=darkcyan]
+  //"fMem.downs" -- {
+  //  "dcache.io.front" [color=blue]
+  //  "nMemRegFile"
+  //} [color=pink]
 
-  "jMem.down" -- {
-    "cMem.up"
-  } [color=cyan]
+  //"dcache.io.front" -- {
+  //  "dcache.mod.front.cFront.up"
+  //} [color=blue]
 
-  "cMem: CtrlLink" [color=red]
-  "cMem: CtrlLink" -- {
-    "cMem.up" [color=darkorange]
-    "cMem.down" [color=darkorange]
-  } [color=red]
+  //"dcache.mod.front.cFront: CtrlLink" [color=red]
+  //"dcache.mod.front.cFront: CtrlLink" -- {
+  //  "dcache.mod.front.cFront.up" [color=darkorange]
+  //  "dcache.mod.front.cFront.down" [color=darkorange]
+  //} [color=red]
+  //"dcache.mod.front.cFront.down" -- {
+  //  "dcache.mod.front.sFront.up"
+  //} [color=darkorange]
 
-  "cMem.down" -- {
-    "fMem.up"
-  } [color=darkorange]
+  //"dcache.mod.front.sFront: StageLink" [color=darkgreen]
+  //"dcache.mod.front.sFront: StageLink" -- {
+  //  "dcache.mod.front.sFront.up" [color=green]
+  //  "dcache.mod.front.sFront.down" [color=green]
+  //} [color=darkgreen]
+  //"dcache.mod.front.sFront.down" -- {
+  //  "dcache.mod.front.cMid0Front.up"
+  //} [color=green]
 
-  "fMem: StreamFork" [color=purple]
-  "fMem: StreamFork" -- {
-    "fMem.up" [color=pink]
-    "fMem.downs" [color=pink]
-  } [color=purple]
-
-  "fMem.downs" -- {
-    "dcache.io.front" [color=blue]
-    "nMemRegFile"
-  } [color=pink]
-
-  "dcache.io.front" -- {
-    "dcache.mod.front.cFront.up"
-  } [color=blue]
-
-  "dcache.mod.front.cFront: CtrlLink" [color=red]
-  "dcache.mod.front.cFront: CtrlLink" -- {
-    "dcache.mod.front.cFront.up" [color=darkorange]
-    "dcache.mod.front.cFront.down" [color=darkorange]
-  } [color=red]
-  "dcache.mod.front.cFront.down" -- {
-    "dcache.mod.front.sFront.up"
-  } [color=darkorange]
-
-  "dcache.mod.front.sFront: StageLink" [color=darkgreen]
-  "dcache.mod.front.sFront: StageLink" -- {
-    "dcache.mod.front.sFront.up" [color=green]
-    "dcache.mod.front.sFront.down" [color=green]
-  } [color=darkgreen]
-  "dcache.mod.front.sFront.down" -- {
-    "dcache.mod.front.cMid0Front.up"
-  } [color=green]
-
-  "dcache.mod.front.cMid0Front: CtrlLink" [color=red]
-  "dcache.mod.front.cMid0Front: CtrlLink" -- {
-    "dcache.mod.front.cMid0Front.up" [color=darkorange]
-    "dcache.mod.front.cMid0Front.down" [color=darkorange]
-  } [color=red]
-
-  //"dcache.mod.front.cMid0Front.down" -- {
-  //  "dcache.mod.front.sMid0Front.up" 
-  //}
-
-  //"dcache.mod.front.cMid0Front: CtrlLink" [color=darkgreen]
+  //"dcache.mod.front.cMid0Front: CtrlLink" [color=red]
   //"dcache.mod.front.cMid0Front: CtrlLink" -- {
   //  "dcache.mod.front.cMid0Front.up" [color=darkorange]
   //  "dcache.mod.front.cMid0Front.down" [color=darkorange]
+  //} [color=red]
+
+  ////"dcache.mod.front.cMid0Front.down" -- {
+  ////  "dcache.mod.front.sMid0Front.up" 
+  ////}
+
+  ////"dcache.mod.front.cMid0Front: CtrlLink" [color=darkgreen]
+  ////"dcache.mod.front.cMid0Front: CtrlLink" -- {
+  ////  "dcache.mod.front.cMid0Front.up" [color=darkorange]
+  ////  "dcache.mod.front.cMid0Front.down" [color=darkorange]
+  ////} [color=darkgreen]
+
+  //"dcache.mod.front.cMid0Front.down" -- {
+  //  "sWbDcache.up"
+  //} [color=darkorange]
+
+  //"sWbDcache: StageLink" [color=darkgreen]
+  //"sWbDcache: StageLink" -- {
+  //  "sWbDcache.up" [color=green]
+  //  "sWbDcache.down" [color=green]
   //} [color=darkgreen]
 
-  "dcache.mod.front.cMid0Front.down" -- {
-    "sWbDcache.up"
-  } [color=darkorange]
+  //"sWbDcache.down" -- {
+  //  "dcache.io.modFront" [color=blue]
+  //} [color=green]
 
-  "sWbDcache: StageLink" [color=darkgreen]
-  "sWbDcache: StageLink" -- {
-    "sWbDcache.up" [color=green]
-    "sWbDcache.down" [color=green]
-  } [color=darkgreen]
-
-  "sWbDcache.down" -- {
-    "dcache.io.modFront" [color=blue]
-  } [color=green]
-
-  "dcache.io.modFront" -- {
-    "dcache.io.modBack" [color=blue]
-  } [color=blue]
+  //"dcache.io.modFront" -- {
+  //  "dcache.io.modBack" [color=blue]
+  //} [color=blue]
 
 
-  "nMemRegFile" -- {
-    "sMemRegFile.up"
-  }
+  //"nMemRegFile" -- {
+  //  "sMemRegFile.up"
+  //}
 
-  "sMemRegFile: StageLink" [color=darkgreen]
-  "sMemRegFile: StageLink" -- {
-    "sMemRegFile.up" [color=green]
-    "sMemRegFile.down" [color=green]
-  } [color=darkgreen]
-  "sMemRegFile.down" -- {
-    "fWbRegFile.up"
-  } [color=green]
-  "fWbRegFile: ForkLink" [color=purple]
-  "fWbRegFile: ForkLink" -- {
-    "fWbRegFile.up" [color=pink]
-    "fWbRegFile.downs" [color=pink]
-  } [color=purple]
+  //"sMemRegFile: StageLink" [color=darkgreen]
+  //"sMemRegFile: StageLink" -- {
+  //  "sMemRegFile.up" [color=green]
+  //  "sMemRegFile.down" [color=green]
+  //} [color=darkgreen]
+  //"sMemRegFile.down" -- {
+  //  "fWbRegFile.up"
+  //} [color=green]
+  //"fWbRegFile: ForkLink" [color=purple]
+  //"fWbRegFile: ForkLink" -- {
+  //  "fWbRegFile.up" [color=pink]
+  //  "fWbRegFile.downs" [color=pink]
+  //} [color=purple]
 
-  "fWbRegFile.downs" -- {
-    "regFileMulti.io.modBack" [color=blue]
-  } [color=pink]
+  //"fWbRegFile.downs" -- {
+  //  "regFileMulti.io.modBack" [color=blue]
+  //} [color=pink]
 }

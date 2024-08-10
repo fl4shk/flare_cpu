@@ -166,8 +166,9 @@ case class FlareCpuParams(
   def gprFileSpWordCount = 1
   def sprFileWordCount = numGprsSprs
   def regFileHazardCmpType() = Bool()
-  def regFileNonSpModRdPortCnt = 2
-  def gprFileSpModRdPortCnt = 1
+  //def regFileNonSpModRdPortCnt = 2
+  //def gprFileSpModRdPortCnt = 1
+  def regFileModRdPortCnt = 2
   def regFileModStageCnt = 1      // `MEM` is the only "modStage"
   def regFileOptModHazardKind = (
     PipeMemRmw.modHazardKindFwd

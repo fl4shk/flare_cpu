@@ -5,6 +5,7 @@ import spinal.lib._
 import spinal.lib.misc.pipeline._
 //import spinal.lib.bus.amba4.axi._
 import spinal.lib.bus.bmb._
+import spinal.lib.bus.simple._
 //import spinal.lib.bus.avalon._
 //import spinal.lib.bus.tilelink
 //import spinal.core.fiber.Fiber
@@ -17,11 +18,71 @@ import libcheesevoyage.general._
 import libcheesevoyage.general.PipeMemRmw
 import libcheesevoyage.math.LongDivMultiCycle
 
+object FlareCpuInnerBusAccSz
+extends SpinalEnum(defaultEncoding=binarySequential) {
+  val
+    SZ_8,
+    SZ_16,
+    SZ_32
+    = newElement();
+}
+// the `Bundle` to connect the main CPU core to icache/dcache (eventually
+// also the TLB), though there is one of these for each of the
+// icache/dcache/etc.
+case class FlareCpuInnerBus(
+  params: FlareCpuParams,
+  isIcache: Boolean
+) extends Bundle with IMasterSlave {
+
+  val valid = in(Bool())
+  val ready = out(Bool())
+
+  val addr = in(UInt(params.mainWidth bits))
+
+  // device/peripheral data (typically from cache!)
+  val devData = out(
+    UInt(
+      (if (isIcache) (params.instrMainWidth) else (params.mainWidth))
+      bits
+    )
+  )
+  val accSz = (!isIcache) generate (
+    in(FlareCpuInnerBusAccSz())
+  )
+  val hostData = (!isIcache) generate (
+    in(UInt(params.mainWidth bits))
+  )
+  val lock = (!isIcache) generate (
+    in(Bool())
+  )
+
+  def asMaster(): Unit = {
+    out(valid)
+    in(ready)
+    out(addr)
+    in(devData)
+    if (!isIcache) {
+      out(accSz)
+      out(hostData)
+      out(lock)
+    }
+  }
+}
 case class FlareCpuIo(
   params: FlareCpuParams,
 ) extends Bundle {
   //--------
-  val bus = master(Bmb(p=params.busParams))
+  //val bus = master(Bmb(p=params.busParams))
+  //val ibus = AsyncMemoryBus(config=AsyncMemoryBusConfig(
+  //))
+  val ibus = master(FlareCpuInnerBus(
+    params=params,
+    isIcache=true,
+  ))
+  val dbus = master(FlareCpuInnerBus(
+    params=params,
+    isIcache=false,
+  ))
   val irq = in(Bool())
   //--------
 }
@@ -68,25 +129,54 @@ case class FlareCpuPipeMemModType[
   }
   //--------
 }
+case class FlareCpuIcacheWordType(
+  params: FlareCpuParams
+) extends Bundle {
+  val baseAddr = UInt(params.icacheLineBaseAddrWidth bits)
+  val data = params.icacheLineMemWordType()
+}
+case class FlareCpuIcachePipePayload(
+  params: FlareCpuParams
+) extends Bundle {
+  val hit = Bool()
+  val valid = Bool()
+  val word = FlareCpuIcacheWordType(params=params)
+}
+case class FlareCpuDcacheWordType(
+  params: FlareCpuParams
+) extends Bundle {
+  val baseAddr = UInt(params.dcacheLineBaseAddrWidth bits)
+  val data = params.dcacheLineMemWordType()
+}
+case class FlareCpuDcachePipePayload(
+  params: FlareCpuParams
+) extends Bundle {
+  val hit = Bool()
+
+  val word = FlareCpuDcacheWordType(params=params)
+
+  val valid = Bool()
+  val dirty = Bool()
+}
 
 case class FlareCpu(
   params: FlareCpuParams
 ) extends Component {
   //--------
   val io = FlareCpuIo(params=params)
-  val instrBmb = Bmb(p=params.busParams)
-  val dataBmb = Bmb(p=params.busParams)
-  val busArb = BmbArbiter(
-    inputsParameter=List(
-      params.busParams,
-      params.busParams,
-    ),
-    outputParameter=params.busParams,
-    lowerFirstPriority=false,
-  )
-  busArb.io.inputs(0) << instrBmb
-  busArb.io.inputs(1) << dataBmb
-  io.bus << busArb.io.output
+  //val instrBmb = Bmb(p=params.busParams)
+  //val dataBmb = Bmb(p=params.busParams)
+  //val busArb = BmbArbiter(
+  //  inputsParameter=List(
+  //    params.busParams,
+  //    params.busParams,
+  //  ),
+  //  outputParameter=params.busParams,
+  //  lowerFirstPriority=false,
+  //)
+  //busArb.io.inputs(0) << instrBmb
+  //busArb.io.inputs(1) << dataBmb
+  //io.bus << busArb.io.output
   //--------
   def enumRegFileGprEven = FlareCpuParams.enumRegFileGprEven
   def enumRegFileGprOddNonSp = FlareCpuParams.enumRegFileGprOddNonSp
@@ -103,1203 +193,821 @@ case class FlareCpu(
   def enumPipeMemLim = 6
 
   val linkArr = PipeHelper.mkLinkArr()
-  def mkRegFilePipeMemDoModInModFrontFunc(
-    regFileKind: Int
-  ): (
-    Bool, // nextPrevTxnWasHazard
-    Bool, // rPrevTxnWasHazard,
-    FlareCpuPipeMemModType[ // outp
-      UInt,
-      Bool,
-      PipeMemModExtType,
-    ],
-    FlareCpuPipeMemModType[ // inp
-      UInt,
-      Bool,
-      PipeMemModExtType,
-    ],
-    CtrlLink,   // mod.front.cMid0Front
-    Node,       // io.modFront
-    FlareCpuPipeMemModType[ // io.tempModFrontPayload
-      UInt,
-      Bool,
-      PipeMemModExtType,
-    ],
-    UInt,                 // myModMemWord
-  ) => Unit = {
-    val retFunc = (
-      nextPrevTxnWasHazard: Bool,
-      rPrevTxnWasHazard: Bool,
-      outp: FlareCpuPipeMemModType[
-        UInt,
-        Bool,
-        PipeMemModExtType,
-      ],
-      inp: FlareCpuPipeMemModType[
-        UInt,
-        Bool,
-        PipeMemModExtType,
-      ],
-      cMid0Front: CtrlLink,
-      modFront: Node,
-      tempModFrontPayload: FlareCpuPipeMemModType[
-        UInt,
-        Bool,
-        PipeMemModExtType,
-      ],
-      myModMemWord: UInt,
-    ) => {
-      //nextPrevTxnWasHazard := False
+  //def mkRegFilePipeMemDoModInModFrontFunc(
+  //  regFileKind: Int
+  //): (
+  //  Bool, // nextPrevTxnWasHazard
+  //  Bool, // rPrevTxnWasHazard,
+  //  FlareCpuPipeMemModType[ // outp
+  //    UInt,
+  //    Bool,
+  //    PipeMemModExtType,
+  //  ],
+  //  FlareCpuPipeMemModType[ // inp
+  //    UInt,
+  //    Bool,
+  //    PipeMemModExtType,
+  //  ],
+  //  CtrlLink,   // mod.front.cMid0Front
+  //  Node,       // io.modFront
+  //  FlareCpuPipeMemModType[ // io.tempModFrontPayload
+  //    UInt,
+  //    Bool,
+  //    PipeMemModExtType,
+  //  ],
+  //  UInt,                 // myModMemWord
+  //) => Unit = {
+  //  val retFunc = (
+  //    nextPrevTxnWasHazard: Bool,
+  //    rPrevTxnWasHazard: Bool,
+  //    outp: FlareCpuPipeMemModType[
+  //      UInt,
+  //      Bool,
+  //      PipeMemModExtType,
+  //    ],
+  //    inp: FlareCpuPipeMemModType[
+  //      UInt,
+  //      Bool,
+  //      PipeMemModExtType,
+  //    ],
+  //    cMid0Front: CtrlLink,
+  //    modFront: Node,
+  //    tempModFrontPayload: FlareCpuPipeMemModType[
+  //      UInt,
+  //      Bool,
+  //      PipeMemModExtType,
+  //    ],
+  //    myModMemWord: UInt,
+  //  ) => {
+  //    //nextPrevTxnWasHazard := False
 
-      outp := inp
-      outp.allowOverride
+  //    outp := inp
+  //    outp.allowOverride
 
-      def instrDecEtc = inp.modExt.instrDecEtc
+  //    def instrDecEtc = inp.modExt.instrDecEtc
 
-      if (regFileKind == enumRegFileGprEven) {
-        outp.myExt.modMemWordValid := (
-          //!instrDecEtc.raIdx.fire
-          //|| instrDecEtc.raIdx.payload(0)
-          instrDecEtc.regFileGprEvenModMemWordValid
-        )
-      } else if (regFileKind == enumRegFileGprOddNonSp) {
-        outp.myExt.modMemWordValid := (
-          //!instrDecEtc.raIdx.fire
-          //|| !instrDecEtc.raIdx.payload(0)
-          instrDecEtc.regFileGprOddNonSpModMemWordValid
-        )
-      } else if (regFileKind == enumRegFileGprSp) {
-        outp.myExt.modMemWordValid := (
-          //!instrDecEtc.raIdx.fire
-          //|| (
-          //  instrDecEtc.raIdx.payload
-          //  === FlareCpuInstrEncConst.gprSpIdx
-          //)
-          instrDecEtc.regFileGprSpModMemWordValid
-        )
-      } else { // if (regFileKind == enumRegFileSpr)
-        outp.myExt.modMemWordValid := (
-          //!instrDecEtc.raIdx.fire
-          instrDecEtc.regFileSprModMemWordValid
-        )
-      }
-      val fakeRet = Bool()
-      fakeRet := True // needed for the `Unit` Scala type to be inferred as
-                      // the return value of this function
-    }
-    retFunc
-  }
+  //    if (regFileKind == enumRegFileGprEven) {
+  //      outp.myExt.modMemWordValid := (
+  //        //!instrDecEtc.raIdx.fire
+  //        //|| instrDecEtc.raIdx.payload(0)
+  //        instrDecEtc.regFileGprEvenModMemWordValid
+  //      )
+  //    } else if (regFileKind == enumRegFileGprOddNonSp) {
+  //      outp.myExt.modMemWordValid := (
+  //        //!instrDecEtc.raIdx.fire
+  //        //|| !instrDecEtc.raIdx.payload(0)
+  //        instrDecEtc.regFileGprOddNonSpModMemWordValid
+  //      )
+  //    } else if (regFileKind == enumRegFileGprSp) {
+  //      outp.myExt.modMemWordValid := (
+  //        //!instrDecEtc.raIdx.fire
+  //        //|| (
+  //        //  instrDecEtc.raIdx.payload
+  //        //  === FlareCpuInstrEncConst.gprSpIdx
+  //        //)
+  //        instrDecEtc.regFileGprSpModMemWordValid
+  //      )
+  //    } else { // if (regFileKind == enumRegFileSpr)
+  //      outp.myExt.modMemWordValid := (
+  //        //!instrDecEtc.raIdx.fire
+  //        instrDecEtc.regFileSprModMemWordValid
+  //      )
+  //    }
+  //    val fakeRet = Bool()
+  //    fakeRet := True // needed for the `Unit` Scala type to be inferred as
+  //                    // the return value of this function
+  //  }
+  //  retFunc
+  //}
 
-  case class IcacheWordType(
-  ) extends Bundle {
-    val baseAddr = UInt(params.icacheLineBaseAddrWidth bits)
-    val data = params.icacheLineMemWordType()
-  }
-  case class IcachePipePayload(
-  ) extends Bundle {
-    val hit = Bool()
-    val valid = Bool()
-    val word = IcacheWordType()
-  }
-  case class DcacheWordType(
-  ) extends Bundle {
-    val baseAddr = UInt(params.dcacheLineBaseAddrWidth bits)
-    val data = params.dcacheLineMemWordType()
-  }
-  case class DcachePipePayload(
-  ) extends Bundle {
-    val hit = Bool()
-
-    val word = DcacheWordType()
-
-    val valid = Bool()
-    val dirty = Bool()
-  }
   case class PipeMemModExtType(
   ) extends Bundle {
     // this `Bundle` is the non-`PipeMemRmw` main pipeline payload type
 
     val instrEnc = FlareCpuInstrEnc(params=params)
     val instrDecEtc = FlareCpuInstrDecEtc(params=params)
-    val icache = IcachePipePayload()
-    val dcache = DcachePipePayload()
+    //val icache = FlareCpuIcachePipePayload(params=params)
+    //val dcache = FlareCpuDcachePipePayload(params=params)
   }
   // `exSetPc` is to be driven by the `EX` pipeline stage
   val exSetPc = Flow(UInt(params.mainWidth bits))
-  def mkIcacheModType() = (
-    FlareCpuPipeMemModType(
-      params=params,
-      wordType=IcacheWordType(),
-      wordCount=params.icacheLineMemWordCount,
-      hazardCmpType=Bool(),
-      modRdPortCnt=params.icacheModRdPortCnt,
-      modStageCnt=params.icacheModStageCnt,
-      optModHazardKind=params.icacheOptModHazardKind,
-      modExtType=PipeMemModExtType(),
-    )
+  exSetPc.allowOverride
+  exSetPc := (
+    RegNext(exSetPc)
+    init(exSetPc.getZero)
   )
-  val icache = PipeMemRmw[
-    IcacheWordType,
-    Bool,
-    FlareCpuPipeMemModType[
-      IcacheWordType,
-      Bool,
-      PipeMemModExtType,
-    ],
-    PipeMemRmwDualRdTypeDisabled[IcacheWordType, Bool],
-  ](
-    wordType=IcacheWordType(),
-    wordCount=params.icacheLineMemWordCount,
-    hazardCmpType=Bool(),
-    modType=mkIcacheModType(),
-    modRdPortCnt=params.icacheModRdPortCnt,
-    modStageCnt=params.icacheModStageCnt,
-    pipeName="FlareCpu_icache",
-    linkArr=Some(linkArr),
-    memArrIdx=enumPipeMemIcache,
-    memArrSize=enumPipeMemLim,
-    optDualRd=false,
-    optReorder=false,
-    initBigInt=Some({
-      val tempArr = new ArrayBuffer[BigInt]()
-      for (idx <- 0 until params.icacheLineMemWordCount) {
-        tempArr += BigInt(0)
-      }
-      tempArr.toSeq
-    }),
-    optModHazardKind=params.icacheOptModHazardKind,
-    optEnableClear=false,
-    memRamStyle="block",
-    vivadoDebug=false,
-    optIncludeModFrontStageLink=false,
-  )(
-    //doModInFrontFunc=Some(
-    //  (
-    //    outp: FlareCpuPipeMemModType[
-    //      IcacheWordType,
-    //      Bool,
-    //      PipeMemModExtType,
-    //    ],
-    //    inp: FlareCpuPipeMemModType[
-    //      IcacheWordType,
-    //      Bool,
-    //      PipeMemModExtType,
-    //    ],
-    //    cFront,
-    //  ) => {
-    //    when (cFront.up.isFiring) {
-    //    }
-    //  }
-    //)
-    //doModInModFrontFunc=Some(
-    //  (
-    //    nextPrevTxnWasHazard: Bool,
-    //    rPrevTxnWasHazard: Bool,
-    //    outp: FlareCpuPipeMemModType[
-    //      IcacheWordType,
-    //      Bool,
-    //      PipeMemModExtType,
-    //    ],
-    //    inp: FlareCpuPipeMemModType[
-    //      IcacheWordType,
-    //      Bool,
-    //      PipeMemModExtType,
-    //    ],
-    //    cMid0Front: CtrlLink,
-    //    modFront: Node,
-    //    tempModFrontPayload: FlareCpuPipeMemModType[
-    //      IcacheWordType,
-    //      Bool,
-    //      PipeMemModExtType,
-    //    ],
-    //    myModMemWord: IcacheWordType,
-    //  ) => {
-    //  }
-    //)
-  )
-  def mkDcacheModType() = (
-    FlareCpuPipeMemModType(
-      params=params,
-      wordType=DcacheWordType(),
-      wordCount=params.dcacheLineMemWordCount,
-      hazardCmpType=Bool(),
-      modRdPortCnt=params.dcacheModRdPortCnt,
-      modStageCnt=params.dcacheModStageCnt,
-      optModHazardKind=params.dcacheOptModHazardKind,
-      modExtType=PipeMemModExtType(),
-    )
-  )
-  val dcache = PipeMemRmw[
-    DcacheWordType,
-    Bool,
-    FlareCpuPipeMemModType[
-      DcacheWordType,
-      Bool,
-      PipeMemModExtType,
-    ],
-    PipeMemRmwDualRdTypeDisabled[DcacheWordType, Bool],
-  ](
-    wordType=DcacheWordType(),
-    wordCount=params.dcacheLineMemWordCount,
-    hazardCmpType=Bool(),
-    modType=mkDcacheModType(),
-    modRdPortCnt=params.dcacheModRdPortCnt,
-    modStageCnt=params.dcacheModStageCnt,
-    pipeName="FlareCpu_dcache",
-    linkArr=Some(linkArr),
-    memArrIdx=enumPipeMemDcache,
-    memArrSize=enumPipeMemLim,
-    optDualRd=false,
-    optReorder=false,
-    initBigInt=Some({
-      val tempArr = new ArrayBuffer[BigInt]()
-      for (idx <- 0 until params.dcacheLineMemWordCount) {
-        tempArr += BigInt(0)
-      }
-      tempArr.toSeq
-    }),
-    optModHazardKind=params.dcacheOptModHazardKind,
-    optEnableClear=false,
-    memRamStyle="block",
-    vivadoDebug=false,
-    optIncludeModFrontStageLink=false,
-  )(
-    //doModInFrontFunc=Some(
-    //  (
-    //    outp: FlareCpuPipeMemModType[
-    //      DcacheWordType,
-    //      Bool,
-    //      PipeMemModExtType,
-    //    ],
-    //    inp: FlareCpuPipeMemModType[
-    //      DcacheWordType,
-    //      Bool,
-    //      PipeMemModExtType,
-    //    ],
-    //    cFront,
-    //  ) => {
-    //    when (cFront.up.isFiring) {
-    //    }
-    //  }
-    //)
-    //doModInModFrontFunc=Some(
-    //  (
-    //    nextPrevTxnWasHazard: Bool,
-    //    rPrevTxnWasHazard: Bool,
-    //    outp: FlareCpuPipeMemModType[
-    //      DcacheWordType,
-    //      Bool,
-    //      PipeMemModExtType,
-    //    ],
-    //    inp: FlareCpuPipeMemModType[
-    //      DcacheWordType,
-    //      Bool,
-    //      PipeMemModExtType,
-    //    ],
-    //    cMid0Front: CtrlLink,
-    //    modFront: Node,
-    //    tempModFrontPayload: FlareCpuPipeMemModType[
-    //      DcacheWordType,
-    //      Bool,
-    //      PipeMemModExtType,
-    //    ],
-    //    myModMemWord: DcacheWordType,
-    //  ) => {
-    //  }
-    //)
-  )
+
+  //def mkIcacheModType() = (
+  //  FlareCpuPipeMemModType(
+  //    params=params,
+  //    wordType=IcacheWordType(),
+  //    wordCount=params.icacheLineMemWordCount,
+  //    hazardCmpType=Bool(),
+  //    modRdPortCnt=params.icacheModRdPortCnt,
+  //    modStageCnt=params.icacheModStageCnt,
+  //    optModHazardKind=params.icacheOptModHazardKind,
+  //    modExtType=PipeMemModExtType(),
+  //  )
+  //)
+  //val icache = PipeMemRmw[
+  //  IcacheWordType,
+  //  Bool,
+  //  FlareCpuPipeMemModType[
+  //    IcacheWordType,
+  //    Bool,
+  //    PipeMemModExtType,
+  //  ],
+  //  PipeMemRmwDualRdTypeDisabled[IcacheWordType, Bool],
+  //](
+  //  wordType=IcacheWordType(),
+  //  wordCount=params.icacheLineMemWordCount,
+  //  hazardCmpType=Bool(),
+  //  modType=mkIcacheModType(),
+  //  modRdPortCnt=params.icacheModRdPortCnt,
+  //  modStageCnt=params.icacheModStageCnt,
+  //  pipeName="FlareCpu_icache",
+  //  linkArr=Some(linkArr),
+  //  memArrIdx=enumPipeMemIcache,
+  //  memArrSize=enumPipeMemLim,
+  //  optDualRd=false,
+  //  optReorder=false,
+  //  initBigInt=Some({
+  //    val tempArr = new ArrayBuffer[BigInt]()
+  //    for (idx <- 0 until params.icacheLineMemWordCount) {
+  //      tempArr += BigInt(0)
+  //    }
+  //    tempArr.toSeq
+  //  }),
+  //  optModHazardKind=params.icacheOptModHazardKind,
+  //  optEnableClear=false,
+  //  memRamStyle="block",
+  //  vivadoDebug=false,
+  //  optIncludeModFrontStageLink=false,
+  //)(
+  //  //doModInFrontFunc=Some(
+  //  //  (
+  //  //    outp: FlareCpuPipeMemModType[
+  //  //      IcacheWordType,
+  //  //      Bool,
+  //  //      PipeMemModExtType,
+  //  //    ],
+  //  //    inp: FlareCpuPipeMemModType[
+  //  //      IcacheWordType,
+  //  //      Bool,
+  //  //      PipeMemModExtType,
+  //  //    ],
+  //  //    cFront,
+  //  //  ) => {
+  //  //    when (cFront.up.isFiring) {
+  //  //    }
+  //  //  }
+  //  //)
+  //  //doModInModFrontFunc=Some(
+  //  //  (
+  //  //    nextPrevTxnWasHazard: Bool,
+  //  //    rPrevTxnWasHazard: Bool,
+  //  //    outp: FlareCpuPipeMemModType[
+  //  //      IcacheWordType,
+  //  //      Bool,
+  //  //      PipeMemModExtType,
+  //  //    ],
+  //  //    inp: FlareCpuPipeMemModType[
+  //  //      IcacheWordType,
+  //  //      Bool,
+  //  //      PipeMemModExtType,
+  //  //    ],
+  //  //    cMid0Front: CtrlLink,
+  //  //    modFront: Node,
+  //  //    tempModFrontPayload: FlareCpuPipeMemModType[
+  //  //      IcacheWordType,
+  //  //      Bool,
+  //  //      PipeMemModExtType,
+  //  //    ],
+  //  //    myModMemWord: IcacheWordType,
+  //  //  ) => {
+  //  //  }
+  //  //)
+  //)
+  //def mkDcacheModType() = (
+  //  FlareCpuPipeMemModType(
+  //    params=params,
+  //    wordType=DcacheWordType(),
+  //    wordCount=params.dcacheLineMemWordCount,
+  //    hazardCmpType=Bool(),
+  //    modRdPortCnt=params.dcacheModRdPortCnt,
+  //    modStageCnt=params.dcacheModStageCnt,
+  //    optModHazardKind=params.dcacheOptModHazardKind,
+  //    modExtType=PipeMemModExtType(),
+  //  )
+  //)
+  //val dcache = PipeMemRmw[
+  //  DcacheWordType,
+  //  Bool,
+  //  FlareCpuPipeMemModType[
+  //    DcacheWordType,
+  //    Bool,
+  //    PipeMemModExtType,
+  //  ],
+  //  PipeMemRmwDualRdTypeDisabled[DcacheWordType, Bool],
+  //](
+  //  wordType=DcacheWordType(),
+  //  wordCount=params.dcacheLineMemWordCount,
+  //  hazardCmpType=Bool(),
+  //  modType=mkDcacheModType(),
+  //  modRdPortCnt=params.dcacheModRdPortCnt,
+  //  modStageCnt=params.dcacheModStageCnt,
+  //  pipeName="FlareCpu_dcache",
+  //  linkArr=Some(linkArr),
+  //  memArrIdx=enumPipeMemDcache,
+  //  memArrSize=enumPipeMemLim,
+  //  optDualRd=false,
+  //  optReorder=false,
+  //  initBigInt=Some({
+  //    val tempArr = new ArrayBuffer[BigInt]()
+  //    for (idx <- 0 until params.dcacheLineMemWordCount) {
+  //      tempArr += BigInt(0)
+  //    }
+  //    tempArr.toSeq
+  //  }),
+  //  optModHazardKind=params.dcacheOptModHazardKind,
+  //  optEnableClear=false,
+  //  memRamStyle="block",
+  //  vivadoDebug=false,
+  //  optIncludeModFrontStageLink=false,
+  //)(
+  //  //doModInFrontFunc=Some(
+  //  //  (
+  //  //    outp: FlareCpuPipeMemModType[
+  //  //      DcacheWordType,
+  //  //      Bool,
+  //  //      PipeMemModExtType,
+  //  //    ],
+  //  //    inp: FlareCpuPipeMemModType[
+  //  //      DcacheWordType,
+  //  //      Bool,
+  //  //      PipeMemModExtType,
+  //  //    ],
+  //  //    cFront,
+  //  //  ) => {
+  //  //    when (cFront.up.isFiring) {
+  //  //    }
+  //  //  }
+  //  //)
+  //  //doModInModFrontFunc=Some(
+  //  //  (
+  //  //    nextPrevTxnWasHazard: Bool,
+  //  //    rPrevTxnWasHazard: Bool,
+  //  //    outp: FlareCpuPipeMemModType[
+  //  //      DcacheWordType,
+  //  //      Bool,
+  //  //      PipeMemModExtType,
+  //  //    ],
+  //  //    inp: FlareCpuPipeMemModType[
+  //  //      DcacheWordType,
+  //  //      Bool,
+  //  //      PipeMemModExtType,
+  //  //    ],
+  //  //    cMid0Front: CtrlLink,
+  //  //    modFront: Node,
+  //  //    tempModFrontPayload: FlareCpuPipeMemModType[
+  //  //      DcacheWordType,
+  //  //      Bool,
+  //  //      PipeMemModExtType,
+  //  //    ],
+  //  //    myModMemWord: DcacheWordType,
+  //  //  ) => {
+  //  //  }
+  //  //)
+  //)
   //case class IdForkType() {
   //  val regFile = 
   //}
-  def mkRegFileForkJoinModType() = (
+  def mkRegFileModType() = (
     FlareCpuPipeMemModType(
       params=params,
       wordType=params.regWordType(),
       wordCount=params.numGprsSprs,
       hazardCmpType=params.regFileHazardCmpType(),
-      modRdPortCnt=params.regFileNonSpModRdPortCnt,
+      modRdPortCnt=params.regFileModRdPortCnt,
       modStageCnt=params.regFileModStageCnt,
       optModHazardKind=params.regFileOptModHazardKind,
       modExtType=PipeMemModExtType(),
     )
   )
-  def mkGprFileEvenModType() = (
-    FlareCpuPipeMemModType(
-      params=params,
-      wordType=params.regWordType(),
-      wordCount=params.gprFileEvenWordCount,
-      hazardCmpType=params.regFileHazardCmpType(),
-      modRdPortCnt=params.regFileNonSpModRdPortCnt,
-      modStageCnt=params.regFileModStageCnt,
-      optModHazardKind=params.regFileOptModHazardKind,
-      modExtType=PipeMemModExtType(),
-    )
-  )
-  val gprFileEven = PipeMemRmw[
-    UInt,
-    Bool,
-    FlareCpuPipeMemModType[
-      UInt,
-      Bool,
-      PipeMemModExtType,
-    ],
-    PipeMemRmwDualRdTypeDisabled[UInt, Bool],
-  ](
-    // `r0`, `r2`, `r4`, `r6`, `r8`, `r10`, `r12`, `fp`
-    wordType=params.regWordType(),
-    wordCount=params.gprFileEvenWordCount,
-    hazardCmpType=params.regFileHazardCmpType(),
-    modType=mkGprFileEvenModType(),
-    modRdPortCnt=params.regFileNonSpModRdPortCnt,
-    modStageCnt=params.regFileModStageCnt,
-    pipeName="FlareCpu_gprFileEven",
-    linkArr=Some(linkArr),
-    memArrIdx=enumPipeMemGprFileEven,
-    memArrSize=enumPipeMemLim,
-    optDualRd=false,
-    optReorder=false,
-    initBigInt=Some({
-      val tempArr = new ArrayBuffer[BigInt]()
-      for (idx <- 0 until params.gprFileEvenWordCount) {
-        tempArr += BigInt(0)
-      }
-      tempArr.toSeq
-    }),
-    optModHazardKind=params.regFileOptModHazardKind,
-    optEnableClear=false,
-    memRamStyle="auto",
-    vivadoDebug=false,
-    optIncludeModFrontStageLink=false,
-  )(
-    //--------
-    doModInModFrontFunc=Some(
-      mkRegFilePipeMemDoModInModFrontFunc(
-        regFileKind=enumRegFileGprEven
-      )
-    ),
-    //--------
-  )
-  def mkGprFileOddNonSpModType() = (
-    FlareCpuPipeMemModType(
-      params=params,
-      wordType=params.regWordType(),
-      wordCount=params.gprFileOddNonSpWordCount,
-      hazardCmpType=params.regFileHazardCmpType(),
-      modRdPortCnt=params.regFileNonSpModRdPortCnt,
-      modStageCnt=params.regFileModStageCnt,
-      optModHazardKind=params.regFileOptModHazardKind,
-      modExtType=PipeMemModExtType(),
-    )
-  )
-  val gprFileOddNonSp = PipeMemRmw[
-    UInt,
-    Bool,
-    FlareCpuPipeMemModType[
-      UInt,
-      Bool,
-      PipeMemModExtType,
-    ],
-    PipeMemRmwDualRdTypeDisabled[UInt, Bool],
-  ](
-    // `r0`, `r2`, `r4`, `r6`, `r8`, `r10`, `r12`, `fp`
-    wordType=params.regWordType(),
-    wordCount=params.gprFileOddNonSpWordCount,
-    hazardCmpType=params.regFileHazardCmpType(),
-    modType=mkGprFileOddNonSpModType(),
-    modRdPortCnt=params.regFileNonSpModRdPortCnt,
-    modStageCnt=params.regFileModStageCnt,
-    pipeName="FlareCpu_gprFileOddNonSp",
-    linkArr=Some(linkArr),
-    memArrIdx=enumPipeMemGprFileOddNonSp,
-    memArrSize=enumPipeMemLim,
-    optDualRd=false,
-    optReorder=false,
-    initBigInt=Some({
-      val tempArr = new ArrayBuffer[BigInt]()
-      for (idx <- 0 until params.gprFileOddNonSpWordCount) {
-        tempArr += BigInt(0)
-      }
-      tempArr.toSeq
-    }),
-    optModHazardKind=params.regFileOptModHazardKind,
-    optEnableClear=false,
-    memRamStyle="auto",
-    vivadoDebug=false,
-    optIncludeModFrontStageLink=false,
-  )(
-    //--------
-    doModInModFrontFunc=Some(
-      mkRegFilePipeMemDoModInModFrontFunc(
-        regFileKind=enumRegFileGprOddNonSp
-      )
-    ),
-    //--------
-  )
-
-  def mkGprFileSpModType() = (
-    FlareCpuPipeMemModType(
-      params=params,
-      wordType=params.regWordType(),
-      wordCount=params.gprFileSpWordCount,
-      hazardCmpType=params.regFileHazardCmpType(),
-      modRdPortCnt=params.gprFileSpModRdPortCnt,
-      modStageCnt=params.regFileModStageCnt,
-      optModHazardKind=params.regFileOptModHazardKind,
-      modExtType=PipeMemModExtType(),
-    )
-  )
-  val gprFileSp = PipeMemRmw[
-    UInt,
-    Bool,
-    FlareCpuPipeMemModType[
-      UInt,
-      Bool,
-      PipeMemModExtType,
-    ],
-    PipeMemRmwDualRdTypeDisabled[UInt, Bool],
-  ](
-    // `r0`, `r2`, `r4`, `r6`, `r8`, `r10`, `r12`, `fp`
-    wordType=params.regWordType(),
-    wordCount=params.gprFileSpWordCount,
-    hazardCmpType=params.regFileHazardCmpType(),
-    modType=mkGprFileSpModType(),
-    modRdPortCnt=params.gprFileSpModRdPortCnt,
-    modStageCnt=params.regFileModStageCnt,
-    pipeName="FlareCpu_gprFileSp",
-    linkArr=Some(linkArr),
-    memArrIdx=enumPipeMemGprFileSp,
-    memArrSize=enumPipeMemLim,
-    optDualRd=false,
-    optReorder=false,
-    initBigInt=Some({
-      val tempArr = new ArrayBuffer[BigInt]()
-      for (idx <- 0 until params.gprFileSpWordCount) {
-        tempArr += BigInt(0)
-      }
-      tempArr.toSeq
-    }),
-    optModHazardKind=params.regFileOptModHazardKind,
-    optEnableClear=false,
-    memRamStyle="auto",
-    vivadoDebug=false,
-    optIncludeModFrontStageLink=false,
-  )(
-    //--------
-    doModInModFrontFunc=Some(
-      mkRegFilePipeMemDoModInModFrontFunc(
-        regFileKind=enumRegFileGprSp
-      )
-    ),
-    //--------
-  )
-  def mkSprFileModType() = (
-    FlareCpuPipeMemModType(
-      params=params,
-      wordType=params.regWordType(),
-      wordCount=params.sprFileWordCount,
-      hazardCmpType=params.regFileHazardCmpType(),
-      modRdPortCnt=params.regFileNonSpModRdPortCnt,
-      modStageCnt=params.regFileModStageCnt,
-      optModHazardKind=params.regFileOptModHazardKind,
-      modExtType=PipeMemModExtType(),
-    )
-  )
-  val sprFile = PipeMemRmw[
-    UInt,
-    Bool,
-    FlareCpuPipeMemModType[
-      UInt,
-      Bool,
-      PipeMemModExtType,
-    ],
-    PipeMemRmwDualRdTypeDisabled[UInt, Bool],
-  ](
-    // `r0`, `r2`, `r4`, `r6`, `r8`, `r10`, `r12`, `fp`
-    wordType=params.regWordType(),
-    wordCount=params.sprFileWordCount,
-    hazardCmpType=params.regFileHazardCmpType(),
-    modType=mkSprFileModType(),
-    modRdPortCnt=params.regFileNonSpModRdPortCnt,
-    modStageCnt=params.regFileModStageCnt,
-    pipeName="FlareCpu_sprFile",
-    linkArr=Some(linkArr),
-    memArrIdx=enumPipeMemSprFile,
-    memArrSize=enumPipeMemLim,
-    optDualRd=false,
-    optReorder=false,
-    initBigInt=Some({
-      val tempArr = new ArrayBuffer[BigInt]()
-      for (idx <- 0 until params.sprFileWordCount) {
-        tempArr += BigInt(0)
-      }
-      tempArr.toSeq
-    }),
-    optModHazardKind=params.regFileOptModHazardKind,
-    optEnableClear=false,
-    memRamStyle="auto",
-    vivadoDebug=false,
-    optIncludeModFrontStageLink=false,
-  )(
-    //--------
-    doModInModFrontFunc=Some(
-      mkRegFilePipeMemDoModInModFrontFunc(
-        regFileKind=enumRegFileSpr
-      )
-    ),
-    //--------
-  )
-  //--------
-  //val nIf = Node()
-  // the `IF` pipeline stage
-  //val pIf = Payload(mkIcacheModType())
-  val pIfInpIcache, pIdOutpIcache = Payload(mkIcacheModType())
-  val pMemInpDcache, pMemOutpDcache = Payload(mkDcacheModType())
-  val pIdInpGprFileEven, pIdOutpGprFileEven = (
-    Payload(mkGprFileEvenModType())
-  )
-  val pIdInpGprFileOddNonSp, pIdOutpGprFileOddNonSp = (
-    Payload(mkGprFileOddNonSpModType())
-  )
-  val pIdInpGprFileSp, pIdOutpGprFileSp = (
-    Payload(mkGprFileSpModType())
-  )
-  val pIdInpSprFile, pIdOutpSprFile = (
-    Payload(mkSprFileModType())
-  )
-  //val pExInp
-  //val pExInp, pExOutp = Payload(
-
-  val cIf = CtrlLink(
-    up=Node(),
-    down=icache.io.front
-  )
-  linkArr += cIf
-  //val sIf = StageLink(
-  //  up=cIf.down,
-  //  down=Node(),
+  //def mkGprFileEvenModType() = (
+  //  FlareCpuPipeMemModType(
+  //    params=params,
+  //    wordType=params.regWordType(),
+  //    wordCount=params.gprFileEvenWordCount,
+  //    hazardCmpType=params.regFileHazardCmpType(),
+  //    modRdPortCnt=params.regFileNonSpModRdPortCnt,
+  //    modStageCnt=params.regFileModStageCnt,
+  //    optModHazardKind=params.regFileOptModHazardKind,
+  //    modExtType=PipeMemModExtType(),
+  //  )
   //)
-  //linkArr += sIf
-
-  //val pIdGprEven = Payload(gprFileEven.mkExt())
-
-  val cId = CtrlLink(
-    up=icache.mod.front.cMid0Front.down,
-    down=Node(),
-  )
-  linkArr += cId
-  //val nIdRegFileArr = Array.fill(enumRegFileLim)(Node())
-  val nIdIcache = Node()
-  val nIdGprFileEvenInp, nIdGprFileEvenOutp  = Node()
-  val nIdGprFileOddNonSpInp, nIdGprFileOddNonSpOutp = Node()
-  val nIdGprFileSpInp, nIdGprFileSpOutp = Node()
-  val nIdSprFileInp, nIdSprFileOutp = Node()
-  //nIdRegFileGprEven.setName("nIdRegFileGprEven")
-  //nIdRegFileGprOddNonSp.setName("nIdRegFileGprOddNonSp")
-  //nIdRegFileGprSp.setName("nIdRegFileGprSp")
-  //nIdRegFileSpr.setName("nIdRegFileSpr")
-
-  //val fId = ForkLink(
-  //  up=cId.down,
-  //  downs=(
-  //    //nIdRegFileArr
-  //    //List(
-  //    //  gprFileEven.io.front,
-  //    //  gprFileOddNonSp.io.front,
-  //    //  gprFileSp.io.front,
-  //    //  sprFile.io.front,
-  //    //)
-  //    List(
-  //      nIdIcache,
-  //      nIdGprFileEven,
-  //      nIdGprFileOddNonSp,
-  //      nIdGprFileSp,
-  //      nIdSprFile,
+  //val gprFileEven = PipeMemRmw[
+  //  UInt,
+  //  Bool,
+  //  FlareCpuPipeMemModType[
+  //    UInt,
+  //    Bool,
+  //    PipeMemModExtType,
+  //  ],
+  //  PipeMemRmwDualRdTypeDisabled[UInt, Bool],
+  //](
+  //  // `r0`, `r2`, `r4`, `r6`, `r8`, `r10`, `r12`, `fp`
+  //  wordType=params.regWordType(),
+  //  wordCount=params.gprFileEvenWordCount,
+  //  hazardCmpType=params.regFileHazardCmpType(),
+  //  modType=mkGprFileEvenModType(),
+  //  modRdPortCnt=params.regFileNonSpModRdPortCnt,
+  //  modStageCnt=params.regFileModStageCnt,
+  //  pipeName="FlareCpu_gprFileEven",
+  //  linkArr=Some(linkArr),
+  //  memArrIdx=enumPipeMemGprFileEven,
+  //  memArrSize=enumPipeMemLim,
+  //  optDualRd=false,
+  //  optReorder=false,
+  //  initBigInt=Some({
+  //    val tempArr = new ArrayBuffer[BigInt]()
+  //    for (idx <- 0 until params.gprFileEvenWordCount) {
+  //      tempArr += BigInt(0)
+  //    }
+  //    tempArr.toSeq
+  //  }),
+  //  optModHazardKind=params.regFileOptModHazardKind,
+  //  optEnableClear=false,
+  //  memRamStyle="auto",
+  //  vivadoDebug=false,
+  //  optIncludeModFrontStageLink=false,
+  //)(
+  //  //--------
+  //  doModInModFrontFunc=Some(
+  //    mkRegFilePipeMemDoModInModFrontFunc(
+  //      regFileKind=enumRegFileGprEven
   //    )
   //  ),
-  //  synchronous=true,
-  //)
-  //linkArr += fId
-
-  val fId = new Area {
-    val up = Stream(mkIcacheModType())
-    val downsIcache = Stream(mkIcacheModType())
-    val downsGprFileEven = Stream(mkIcacheModType())
-    val downsGprFileOddNonSp = Stream(mkIcacheModType())
-    val downsGprFileSp = Stream(mkIcacheModType())
-    val downsSprFile = Stream(mkIcacheModType())
-    val downs = List(
-      downsIcache,
-      downsGprFileEven,
-      downsGprFileOddNonSp,
-      downsGprFileSp,
-      downsSprFile,
-    )
-    val stmFork = StreamFork(
-      //dataType=mkRegFileForkJoinModType(),
-      input=up,
-      portCount=downs.size,
-      synchronous=true,
-    )
-    for (idx <- 0 until downs.size) {
-      downs(idx) << stmFork(idx)
-    }
-  }
-  cId.down.driveTo(fId.up)(
-    con=(payload, node) => {
-      //payload := node
-      payload := node(pIdOutpIcache)
-    }
-  )
-  nIdIcache.driveFrom(fId.downsIcache)(
-    con=(node, payload) => {
-      node(pIdOutpIcache) := payload
-    }
-  )
-
-  //val fId = StreamFork(
+  //  //--------
   //)
 
-  val sIdIcache = StageLink(
-    up=nIdIcache,
-    down=icache.io.modFront,
-  )
-  linkArr += sIdIcache
+  //val psExSetPc = KeepAttribute(
+  //  Flow(UInt(params.mainWidth bits))
+  //)
 
-  linkArr += DirectLink(
-    up=sIdIcache.down,
-    down=icache.io.modBack,
-  )
-
-  def doIdSplit(
-    node: Node,
-    pIdInpPayload: NamedType[FlareCpuPipeMemModType[
+  val regFile = PipeMemRmw[
+    UInt,
+    Bool,
+    FlareCpuPipeMemModType[
       UInt,
       Bool,
       PipeMemModExtType,
-    ]],
-    fIdOutpPayload: FlareCpuPipeMemModType[
-      IcacheWordType,
-      Bool,
-      PipeMemModExtType,
     ],
-    whichRegFile: Int,
-  ): Unit = {
-    //--------
-    assert(whichRegFile >= 0)
-    assert(whichRegFile < enumRegFileLim)
-    //--------
-    if (whichRegFile == enumRegFileGprEven) {
-      //node(pIdInpPayload).myExt.memAddr(0) := 3
-    } else if (whichRegFile == enumRegFileGprOddNonSp) {
-    } else if (whichRegFile == enumRegFileGprSp) {
-    } else { // if (whichRegFile == enumRegFileSpr)
-    }
-    //--------
-  }
-  // I think it's okay to not give names to these `DirectLink`s as we do
-  // have the nodes.
-  nIdGprFileEvenInp.driveFrom(fId.downsGprFileEven)(
-    con=(node, payload) => {
-      //node(pIdInpGprFileEven).myExt.memAddr(0) := 3
-      doIdSplit(
-        node=node,
-        pIdInpPayload=pIdInpGprFileEven,
-        fIdOutpPayload=payload,
-        whichRegFile=enumRegFileGprEven,
+    PipeMemRmwDualRdTypeDisabled[UInt, Bool]
+  ](
+    wordType=params.regWordType(),
+    wordCountArr={
+      val myArr = ArrayBuffer[Int]()
+      myArr += params.gprFileEvenWordCount
+      myArr += params.gprFileOddNonSpWordCount
+      myArr += params.gprFileSpWordCount
+      myArr += params.sprFileWordCount
+      myArr.toSeq
+    },
+    hazardCmpType=params.regFileHazardCmpType(),
+    modType=mkRegFileModType(),
+    modRdPortCnt=params.regFileModRdPortCnt,
+    modStageCnt=params.regFileModStageCnt,
+    pipeName="FlareCpu_pipeName",
+    linkArr=Some(linkArr),
+    initBigInt={
+      val myInitBigInt = new ArrayBuffer[ArrayBuffer[BigInt]]()
+      myInitBigInt += ArrayBuffer.fill(params.gprFileEvenWordCount)(
+        BigInt(0)
       )
-    }
-  )
-  nIdGprFileOddNonSpInp.driveFrom(fId.downsGprFileOddNonSp)(
-    con=(node, payload) => {
-      //node(pIdInpGprFileOddNonSp) := 
-      doIdSplit(
-        node=node,
-        pIdInpPayload=pIdInpGprFileOddNonSp,
-        fIdOutpPayload=payload,
-        whichRegFile=enumRegFileGprOddNonSp,
+      myInitBigInt += ArrayBuffer.fill(params.gprFileOddNonSpWordCount)(
+        BigInt(0)
       )
-    }
-  )
-  nIdGprFileSpInp.driveFrom(fId.downsGprFileSp)(
-    con=(node, payload) => {
-      //node(pIdInpGprFileSp) := 
-      doIdSplit(
-        node=node,
-        pIdInpPayload=pIdInpGprFileSp,
-        fIdOutpPayload=payload,
-        whichRegFile=enumRegFileGprSp,
+      myInitBigInt += ArrayBuffer.fill(params.gprFileSpWordCount)(
+        BigInt(0)
       )
-    }
-  )
-  nIdSprFileInp.driveFrom(fId.downsSprFile)(
-    con=(node, payload) => {
-      //node(pIdInpSprFile) := 
-      doIdSplit(
-        node=node,
-        pIdInpPayload=pIdInpSprFile,
-        fIdOutpPayload=payload,
-        whichRegFile=enumRegFileSpr,
+      myInitBigInt += ArrayBuffer.fill(params.sprFileWordCount)(
+        BigInt(0)
       )
-    }
-  )
-  val dIdGprFileEven = DirectLink(
-    up=nIdGprFileEvenInp,
-    down=(
-      nIdGprFileEvenOutp
-      //gprFileEven.io.front
+      Some(myInitBigInt)
+    },
+    optModHazardKind=PipeMemRmw.modHazardKindFwd,
+    memRamStyle="block",
+    optIncludeModFrontStageLink=false,
+  )(
+    doModInFrontFunc=Some(
+      (
+        outp: FlareCpuPipeMemModType[
+          UInt,
+          Bool,
+          PipeMemModExtType,
+        ],
+        inp: FlareCpuPipeMemModType[
+          UInt,
+          Bool,
+          PipeMemModExtType,
+        ],
+        cFront: CtrlLink,
+        ydx: Int,
+      ) => {
+        outp := inp
+      }
+    ),
+    doModInModFrontFunc=Some(
+      (
+        //PipeMemRmwPayloadExt[WordT, HazardCmpT],  // inp
+        //PipeMemRmwPayloadExt[WordT, HazardCmpT],  // outp
+        nextPrevTxnWasHazard: Bool, // nextPrevTxnWasHazard,
+        rPrevTxnWasHazard: Bool, // rPrevTxnWasHazard,
+        outp: FlareCpuPipeMemModType[
+          UInt,
+          Bool,
+          PipeMemModExtType,
+        ], // outp
+        inp: FlareCpuPipeMemModType[
+          UInt,
+          Bool,
+          PipeMemModExtType,
+        ], // inp
+        cMid0Front: CtrlLink, // mod.front.cMid0Front
+        modFront: Node,     // io.modFront
+        tempModFrontPayload: FlareCpuPipeMemModType[
+          UInt,
+          Bool,
+          PipeMemModExtType,
+        ], // io.tempModFrontPayload
+        myModMemWord: UInt,    // myModMemWord
+        //Vec[WordT],  // myRdMemWord
+        ydx: Int,    // ydx
+      ) => {
+        outp := inp
+      },
     ),
   )
-  linkArr += dIdGprFileEven
-  linkArr += DirectLink(
-    up=nIdGprFileEvenOutp,
-    down=gprFileEven.io.front,
-  )
-  //val dIdGprFileOddNonSp = DirectLink(
-  //  up=nIdGprFileOddNonSp,
-  //  down=gprFileOddNonSp.io.front,
-  //)
-  //linkArr += dIdGprFileOddNonSp
-  //val dIdGprFileSp = DirectLink(
-  //  up=nIdGprFileSp,
-  //  down=gprFileSp.io.front,
-  //)
-  //linkArr += dIdGprFileSp
-  //val dIdSprFile = DirectLink(
-  //  up=nIdSprFile,
-  //  down=sprFile.io.front,
-  //)
-  //linkArr += dIdSprFile
-  val dIdGprFileOddNonSp = DirectLink(
-    up=nIdGprFileOddNonSpInp,
-    down=(
-      nIdGprFileOddNonSpOutp
-      //gprFileOddNonSp.io.front
-    ),
-  )
-  linkArr += dIdGprFileOddNonSp
-  linkArr += DirectLink(
-    up=nIdGprFileOddNonSpOutp,
-    down=gprFileOddNonSp.io.front,
-  )
-  val dIdGprFileSp = DirectLink(
-    up=nIdGprFileSpInp,
-    down=(
-      nIdGprFileSpOutp
-      //gprFileSp.io.front
-    ),
-  )
-  linkArr += dIdGprFileSp
-  linkArr += DirectLink(
-    up=nIdGprFileSpOutp,
-    down=gprFileSp.io.front,
-  )
-  val dIdSprFile = DirectLink(
-    up=nIdSprFileInp,
-    down=(
-      nIdSprFileOutp
-      //sprFile.io.front
-    ),
-  )
-  linkArr += dIdSprFile
-  linkArr += DirectLink(
-    up=nIdSprFileOutp,
-    down=sprFile.io.front,
-  )
-
-  //val sExGprFileEven = StageLink(
-  //  up=gprFileEven.mod.front.cMid0Front.down,
-  //  down=Node(),
-  //)
-  //linkArr += sExGprFileEven
-  //val sExGprFileOddNonSp = StageLink(
-  //  up=gprFileOddNonSp.mod.front.cMid0Front.down,
-  //  down=Node(),
-  //)
-  //linkArr += sExGprFileOddNonSp
-  //val sExGprFileSp = StageLink(
-  //  up=gprFileSp.mod.front.cMid0Front.down,
-  //  down=Node(),
-  //)
-  //linkArr += sExGprFileSp
-  //val sExSprFile = StageLink(
-  //  up=sprFile.mod.front.cMid0Front.down,
-  //  down=Node(),
-  //)
-  //linkArr += sExSprFile
-
-  //val dExGprFileEven = DirectLink(
-  //  up=gprFileEven.mod.front.cMid0Front.down,
-  //  down=Node(),
-  //)
-  //linkArr += dExGprFileEven
-  //val dExGprFileOddNonSp = DirectLink(
-  //  up=gprFileOddNonSp.mod.front.cMid0Front.down,
-  //  down=Node(),
-  //)
-  //linkArr += dExGprFileOddNonSp
-  //val dExGprFileSp = DirectLink(
-  //  up=gprFileSp.mod.front.cMid0Front.down,
-  //  down=Node(),
-  //)
-  //linkArr += dExGprFileSp
-  //val dExSprFile = DirectLink(
-  //  up=sprFile.mod.front.cMid0Front.down,
-  //  down=Node(),
-  //)
-  //linkArr += dExSprFile
-  val jEx = JoinLink(
-    ups=(
-      List(
-        gprFileEven.mod.front.cMid0Front.down,
-        gprFileOddNonSp.mod.front.cMid0Front.down,
-        gprFileSp.mod.front.cMid0Front.down,
-        sprFile.mod.front.cMid0Front.down,
-        //dExGprFileEven.down,
-        //dExGprFileOddNonSp.down,
-        //dExGprFileSp.down,
-        //dExSprFile.down,
-      )
-    ),
+  //--------
+  //--------
+  val pIf = Payload(PipeMemModExtType())
+  val cIf = CtrlLink(
+    up=Node(),
     down=Node(),
   )
-  linkArr += jEx
+  linkArr += cIf
+  val sIf = StageLink(
+    up=cIf.down,
+    down=Node(),
+  )
+  linkArr += sIf
+  //linkArr += DirectLink(
+  //  up=sIf.down,
+  //  down=regFile.io.front
+  //)
+  //--------
+  val cId = CtrlLink(
+    up=sIf.down,
+    down=(
+      //Node()
+      regFile.io.front
+    ),
+  )
+  linkArr += cId
+  //--------
   val cEx = CtrlLink(
-    up=jEx.down,
+    up=regFile.mod.front.cMid0Front.down,
     down=Node(),
   )
   linkArr += cEx
-
-  //val sEx = StageLink(
-  //  up=cEx.down,
-  //  down=(
-  //    Node()
-  //  ),
-  //)
-  //linkArr += sEx
-
-  //val fEx = ForkLink(
-  //  up=sEx.down,
-  //  downs=(
-  //    List(
-  //      //dcache.io.front,
-  //      // can't put `dcache.io.front` here
-  //      gprFileEven.io.modFront,
-  //      gprFileOddNonSp.io.modFront,
-  //      gprFileSp.io.modFront,
-  //      sprFile.io.modFront,
-  //    )
-  //  ),
-  //  synchronous=true,
-  //)
-  //linkArr += fEx
-
-  // this is a hack because I couldn't figure out how to make the
-  // `JoinLink`s not give me an error!
-  val fEx = new Area {
-    val up = Stream(mkRegFileForkJoinModType())
-    val downsGprFileEven = Stream(mkRegFileForkJoinModType())
-    val downsGprFileOddNonSp = Stream(mkRegFileForkJoinModType())
-    val downsGprFileSp = Stream(mkRegFileForkJoinModType())
-    val downsSprFile = Stream(mkRegFileForkJoinModType())
-    val downs = List(
-      downsGprFileEven,
-      downsGprFileOddNonSp,
-      downsGprFileSp,
-      downsSprFile,
-    )
-    val stmFork = StreamFork(
-      //dataType=mkRegFileForkJoinModType(),
-      input=up,
-      portCount=downs.size,
-      synchronous=true,
-    )
-    for (idx <- 0 until downs.size) {
-      downs(idx) << stmFork(idx)
-    }
-  }
-  cEx.down.driveTo(fEx.up)(
-    con=(payload, node) => {
-      //payload := node()
-    }
+  val sEx = StageLink(
+    up=cEx.down,
+    down=regFile.io.modFront,
   )
-  gprFileEven.io.modFront.driveFrom(fEx.downsGprFileEven)(
-    con=(node, payload) => {
-    }
-  )
-  gprFileOddNonSp.io.modFront.driveFrom(fEx.downsGprFileOddNonSp)(
-    con=(node, payload) => {
-    }
-  )
-  gprFileSp.io.modFront.driveFrom(fEx.downsGprFileSp)(
-    con=(node, payload) => {
-    }
-  )
-  sprFile.io.modFront.driveFrom(fEx.downsSprFile)(
-    con=(node, payload) => {
-    }
-  )
-  val sMemGprFileEven = StageLink(
-    up=gprFileEven.io.modFront,
-    down=Node(),
-  )
-  linkArr += sMemGprFileEven
-  val sMemGprFileOddNonSp = StageLink(
-    up=gprFileOddNonSp.io.modFront,
-    down=Node(),
-  )
-  linkArr += sMemGprFileOddNonSp
-  val sMemGprFileSp = StageLink(
-    up=gprFileSp.io.modFront,
-    down=Node(),
-  )
-  linkArr += sMemGprFileSp
-  val sMemSprFile = StageLink(
-    up=sprFile.io.modFront,
-    down=Node(),
-  )
-  linkArr += sMemSprFile
-  //val sEx = StageLink(
-  //  up=cEx.down,
-  //  down=(
-  //    Node()
-  //  ),
-  //)
-  //linkArr += sEx
-
-  //val cMemGprFileEven = CtrlLink(
-  //  up=gprFileEven.io.modFront,
-  //  down=Node(),
-  //)
-  //linkArr += cMemGprFileEven
-  //val cMemGprFileOddNonSp = CtrlLink(
-  //  up=gprFileOddNonSp.io.modFront,
-  //  down=Node(),
-  //)
-  //linkArr += cMemGprFileOddNonSp
-  //val cMemGprFileSp = CtrlLink(
-  //  up=gprFileSp.io.modFront,
-  //  down=Node(),
-  //)
-  //linkArr += cMemGprFileSp
-  //val cMemSprFile = CtrlLink(
-  //  up=sprFile.io.modFront,
-  //  down=Node(),
-  //)
-  //linkArr += cMemSprFile
-
-  //val nMemGprFileEven = Node()
-  //val nMemGprFileOddNonSp = Node()
-  //val nMemGprFileSp = Node()
-  //val nMemSprFile = Node()
-
-  val jMem = JoinLink(
-    ups=(
-      //fEx.downs
-      List(
-        //dcache.io.front,
-        // can't put `dcache.io.front` here
-        //gprFileEven.io.modFront,
-        //gprFileOddNonSp.io.modFront,
-        //gprFileSp.io.modFront,
-        //sprFile.io.modFront,
-        sMemGprFileEven.down,
-        sMemGprFileOddNonSp.down,
-        sMemGprFileSp.down,
-        sMemSprFile.down,
-      )
-    ),
-    down=(
-      Node()
-    ),
-  )
-  linkArr += jMem
+  linkArr += sEx
+  //--------
   val cMem = CtrlLink(
-    up=jMem.down,
-    down=(
-      Node()
-    ),
+    up=regFile.io.modFront,
+    down=Node(),
   )
   linkArr += cMem
-
-  val nMemRegFile = Node()
-  val fMem = ForkLink(
+  val sMem = StageLink(
     up=cMem.down,
-    downs=(
-      List(
-        dcache.io.front,  // `dcache` has a `StageLink` inside of it, so we
-                          // don't put another `StageLink` before `fMem`
-        nMemRegFile,
-      )
-    ),
-    synchronous=true,
+    down=regFile.io.modBack,
   )
-  linkArr += fMem
-
-  val sMemRegFile = StageLink(
-    up=nMemRegFile,
-    down=Node(),
-  )
-  linkArr += sMemRegFile
-
-  // We can't put an `S2MLink` here because there's not one between 
-  // `dcache`'s `cFront` and `cMid0Front`. I guess we don't have *any*
-  // `S2MLink`s in this pipeline? No registered `ready` for me I guess....
-  // Unfortunate, but there's not much else that can be done about it! At
-  // least stalling is partially formally verified...
-
-  val fWbRegFile = ForkLink(
-    up=sMemRegFile.down,
-    downs=(
-      List(
-        gprFileEven.io.modBack,
-        gprFileOddNonSp.io.modBack,
-        gprFileSp.io.modBack,
-        sprFile.io.modBack,
-      ),
-    ),
-    synchronous=true,
-  )
-  val sWbDcache = StageLink(
-    up=dcache.mod.front.cMid0Front.down,
-    down=dcache.io.modFront,
-  )
-  linkArr += sWbDcache
-  linkArr += DirectLink(
-    up=sWbDcache.down,
-    down=dcache.io.modBack,
-  )
-
-  icache.io.back.ready := True
-  gprFileEven.io.back.ready := True
-  gprFileOddNonSp.io.back.ready := True
-  gprFileSp.io.back.ready := True
-  sprFile.io.back.ready := True
-  dcache.io.back.ready := True
+  linkArr += sMem
   //--------
-  // actual logic for each pipeline stage goes here
   val cIfArea = new cIf.Area {
-    // the `icache` front/`IF` pipeline stage goes here
-    when (up.isFiring) {
+    //when (up.isFiring) {
+    //}
+    when (!exSetPc.fire) {
+    } otherwise { // when (exSetPc.fire)
     }
   }
-
   val cIdArea = new cId.Area {
-    // Most of `ID` pipeline stage goes here.
-    when (up.isFiring) {
-    }
+    //when (up.isFiring) {
+    //}
   }
   val cExArea = new cEx.Area {
-    // the `EX` pipeline stage
-    when (up.isFiring) {
-    }
+    //when (up.isFiring) {
+    //}
+    //exSetPc.valid := True
+    //exSetPc.payload := 0x0
+    //outp := inp
+    //outp.allowOverride
+    //val nextHaltItState = KeepAttribute(
+    //  Bool()
+    //).setName(s"FlareCpu_doModInModFrontFunc_nextHaltItState_${ydx}")
+    //val rHaltItState = KeepAttribute(
+    //  RegNext(nextHaltItState)
+    //  init(nextHaltItState.getZero)
+    //).setName(s"FlareCpu_doModInModFrontFunc_rHaltItState_${ydx}")
+    //////val nextMulHaltItCnt = KeepAttribute(
+    //////  SInt(4 bits)
+    //////).setName("FlareCpu_doModInModFrontFunc_nextMulHaltItCnt")
+    //val nextMulHaltItCnt = SInt(4 bits)
+    //  .setName(s"FlareCpu_doModInModFrontFunc_nextMulHaltItCnt_${ydx}")
+    //val rMulHaltItCnt = (
+    //  RegNext(nextMulHaltItCnt)
+    //  init(-1)
+    //)
+    //  .setName(s"FlareCpu_doModInModFrontFunc_rMulHaltItCnt_${ydx}")
+    //nextHaltItState := rHaltItState
+    //nextMulHaltItCnt := rMulHaltItCnt
+    //def setOutpModMemWord(
+    //  someModMemWord: UInt=myModMemWord
+    //): Unit = {
+    //  //outp.myExt.modMemWord := (
+    //  //  someModMemWord + 0x1
+    //  //)
+    //  outp.myExt.modMemWordValid := True
+    //}
+    //val rSavedModMemWord = (
+    //  Reg(cloneOf(myModMemWord))
+    //  init(myModMemWord.getZero)
+    //)
+    //  .setName(s"FlareCpu_doModInModFrontFunc_rSavedModMemWord_${ydx}")
+    //val rPrevOutp = KeepAttribute(
+    //  RegNextWhen(
+    //    outp,
+    //    cMid0Front.up.isFiring
+    //  )
+    //  init(outp.getZero)
+    //)
+    //  .setName(s"FlareCpu_doModInModFrontFunc_rPrevOutp_${ydx}")
+    //def doMulHaltItFsmIdleInnards(
+    //  doDuplicateIt: Boolean
+    //): Unit = {
+    //  if (PipeMemRmwSimDut.doTestModOp) {
+    //    def myInitMulHaltItCnt = 0x1
+    //    cMid0Front.duplicateIt()
+    //    when (
+    //      //cMid0Front.down.isFiring
+    //      modFront.isFiring
+    //    ) {
+    //      nextHaltItState := (
+    //        //PipeMemRmwSimDutHaltItState.HALT_IT
+    //        True
+    //      )
+    //      nextMulHaltItCnt := myInitMulHaltItCnt
+    //    }
+    //    outp.myExt.modMemWordValid := False
+    //    rSavedModMemWord := myModMemWord
+    //  }
+    //}
+    //def doMulHaltItFsmHaltItInnards(): Unit = {
+    //  if (PipeMemRmwSimDut.doTestModOp) {
+    //    outp := (
+    //      RegNext(outp)
+    //      init(outp.getZero)
+    //    )
+    //    when ((rMulHaltItCnt - 1).msb) {
+    //      when (
+    //        //cMid0Front.down.isFiring
+    //        modFront.isFiring
+    //      ) {
+    //        setOutpModMemWord(rSavedModMemWord)
+    //        nextHaltItState := False//PipeMemRmwSimDutHaltItState.IDLE
+    //      }
+    //    } otherwise {
+    //      nextMulHaltItCnt := rMulHaltItCnt - 1
+    //      //cMid0Front.haltIt()
+    //      cMid0Front.duplicateIt()
+    //      outp.myExt.modMemWordValid := False
+    //    }
+    //  }
+    //}
+    //def doTestModOpMain(
+    //  doCheckHazard: Boolean=false
+    //): Unit = {
+    //  val myFindFirstHazardAddr = (doCheckHazard) generate (
+    //    KeepAttribute(
+    //      inp.myExt.memAddr.sFindFirst(
+    //        _ === rPrevOutp.myExt.memAddr(PipeMemRmw.modWrIdx)
+    //      )
+    //      //(
+    //      //  // Only check one register.
+    //      //  // This will work fine for testing the different
+    //      //  // categories of stalls, but the real CPU will need to
+    //      //  /// be tested for *all* registers
+    //      //  inp.myExt.memAddr(PipeMemRmw.modWrIdx)
+    //      //  === rPrevOutp.myExt.memAddr(PipeMemRmw.modWrIdx)
+    //      //)
+    //      .setName(s"myFindFirstHazardAddr_${ydx}")
+    //    )
+    //  )
+    //  def doHandleHazardWithDcacheMiss(
+    //    haveCurrLoad: Boolean,
+    //  ): Unit = {
+    //    def handleCurrFire(
+    //      someModMemWord: UInt=myModMemWord
+    //    ): Unit = {
+    //      outp.myExt.valid := True
+    //      nextPrevTxnWasHazard := False
+    //      setOutpModMemWord(
+    //        someModMemWord=someModMemWord
+    //      )
+    //    }
+    //    def handleDuplicateIt(
+    //      actuallyDuplicateIt: Boolean=true
+    //    ): Unit = {
+    //      outp := (
+    //        RegNext(outp) init(outp.getZero)
+    //      )
+    //      outp.myExt.valid := False
+    //      outp.myExt.modMemWordValid := (
+    //        False
+    //      )
+    //      if (actuallyDuplicateIt) {
+    //        cMid0Front.duplicateIt()
+    //      }
+    //    }
+    //    val rState = KeepAttribute(
+    //      Reg(Bool())
+    //      init(False)
+    //    )
+    //      .setName(
+    //        s"doHandleHazardWithDcacheMiss"
+    //        + s"_${doCheckHazard}_${haveCurrLoad}"
+    //        + s"_rState"
+    //        + s"${ydx}"
+    //      )
+    //    val rSavedModMemWord1 = (
+    //      Reg(cloneOf(myModMemWord))
+    //      init(myModMemWord.getZero)
+    //      .setName(
+    //        s"FlareCpu_doModInModFrontFunc"
+    //        + s"_${doCheckHazard}_${haveCurrLoad}"
+    //        + s"_rSavedModMemWord1"
+    //        + s"${ydx}"
+    //      )
+    //    )
+    //      
+    //    switch (rState) {
+    //      //is (False) {
+    //      //  when (
+    //      //    !tempModFrontPayload.dcacheHit
+    //      //  ) {
+    //      //    when (
+    //      //      modFront.isValid
+    //      //    ) {
+    //      //      if (haveCurrLoad) {
+    //      //        //cMid0Front.duplicateIt()
+    //      //        handleDuplicateIt()
+    //      //        rSavedModMemWord1 := myModMemWord
+    //      //        rState := True
+    //      //      } else {  // if (!haveCurrLoad)
+    //      //        when (modFront.isFiring) {
+    //      //          handleCurrFire()
+    //      //        }
+    //      //      }
+    //      //    } otherwise { // when (!modFront.isFiring)
+    //      //      handleDuplicateIt()
+    //      //    }
+    //      //  } otherwise {
+    //      //    when (cMid0Front.up.isFiring) {
+    //      //      handleCurrFire()
+    //      //    }
+    //      //  }
+    //      //}
+    //      //is (True) {
+    //      //  when (cMid0Front.up.isFiring) {
+    //      //    handleCurrFire(
+    //      //      someModMemWord=rSavedModMemWord1
+    //      //    )
+    //      //  } otherwise {
+    //      //    handleDuplicateIt(actuallyDuplicateIt=false)
+    //      //  }
+    //      //}
+    //    }
+    //  }
+    //  when (cMid0Front.up.isValid) {
+    //    //switch (inp.op) {
+    //    //  is (PipeMemRmwSimDut.ModOp.ADD_RA_RB) {
+    //    //    if (!doCheckHazard) {
+    //    //      setOutpModMemWord()
+    //    //    } else { // if (doCheckHazard)
+    //    //      doHandleHazardWithDcacheMiss(
+    //    //        haveCurrLoad=false,
+    //    //      )
+    //    //    }
+    //    //  }
+    //    //  is (PipeMemRmwSimDut.ModOp.LDR_RA_RB) {
+    //    //    if (!doCheckHazard) {
+    //    //      when (cMid0Front.up.isFiring) {
+    //    //        setOutpModMemWord()
+    //    //        nextPrevTxnWasHazard := True
+    //    //      }
+    //    //    } else { // if (doCheckHazard)
+    //    //      nextPrevTxnWasHazard := True
+    //    //      doHandleHazardWithDcacheMiss(
+    //    //        haveCurrLoad=true,
+    //    //      )
+    //    //    }
+    //    //  }
+    //    //  is (PipeMemRmwSimDut.ModOp.MUL_RA_RB) {
+    //    //    // we should stall `EX` in this case until the
+    //    //    // calculation is done. The same stalling logic
+    //    //    // will be used for `divmod`, etc.
+    //    //    switch (rHaltItState) {
+    //    //      is (
+    //    //        False//PipeMemRmwSimDutHaltItState.IDLE
+    //    //      ) {
+    //    //        doMulHaltItFsmIdleInnards(
+    //    //          doDuplicateIt=(
+    //    //            //true
+    //    //            doCheckHazard
+    //    //          )
+    //    //        )
+    //    //      }
+    //    //      is (
+    //    //        //PipeMemRmwSimDutHaltItState.HALT_IT
+    //    //        True
+    //    //      ) {
+    //    //        doMulHaltItFsmHaltItInnards()
+    //    //        when (
+    //    //          nextHaltItState
+    //    //          //=== PipeMemRmwSimDutHaltItState.IDLE
+    //    //          === False
+    //    //        ) {
+    //    //          nextPrevTxnWasHazard := False
+    //    //        }
+    //    //      }
+    //    //    }
+    //    //  }
+    //    //}
+    //  }
+    //}
+    //when (
+    //  (
+    //    //if (
+    //    //  //PipeMemRmwSimDut.doAddrOneHaltIt
+    //    //  PipeMemRmwSimDut.doTestModOp
+    //    //) (
+    //      rPrevTxnWasHazard
+    //    //) else (
+    //    //  False
+    //    //)
+    //  ) 
+    //) {
+    //  assert(PipeMemRmwSimDut.modRdPortCnt == 1)
+    //  doTestModOpMain(
+    //    doCheckHazard=true
+    //  )
+    //} elsewhen (
+    //  cMid0Front.up.isValid
+    //) {
+    //  doTestModOpMain()
+    //  //when (
+    //  //  False
+    //  //) {
+    //  //  //cMid0Front.haltIt()
+    //  //} elsewhen (
+    //  //  //if (optModHazardKind == PipeMemRmw.modHazardKindDupl) (
+    //  //  //  outp.myExt.hazardId.msb
+    //  //  //) else (
+    //  //    True
+    //  //  //)
+    //  //) {
+    //  //  //if (
+    //  //  //  //PipeMemRmwSimDut.doAddrOneHaltIt
+    //  //  //  PipeMemRmwSimDut.doTestModOp
+    //  //  //) {
+    //  //    doTestModOpMain()
+    //  //  //} else {
+    //  //  //  setOutpModMemWord()
+    //  //  //}
+    //  //}
+    //}
   }
-  val cMemArea = new cMem.Area {
-    // The `MEM` pipeline stages
-    when (up.isFiring) {
-    }
-  }
-
-  val nIdGprFileEvenArea = new Area {
-    //--------
-    def inpPayload = nIdGprFileEvenOutp(pIdOutpGprFileEven)
-    def inpModExt = inpPayload.modExt
-    def inpExt = inpPayload.myExt
-    //--------
-    def outpPayload = nIdGprFileEvenOutp(gprFileEven.io.frontPayload)
-    //def outpExt = outpPayload.myExt
-    //def outpModExt = outpPayload.modExt
-    //--------
-    val tempOutpPayload = cloneOf(inpPayload)
-    outpPayload := tempOutpPayload
-    tempOutpPayload := RegNext(tempOutpPayload)
-    when (nIdGprFileEvenOutp.isFiring) {
-      tempOutpPayload := inpPayload
-      tempOutpPayload.myExt.memAddr.allowOverride
-      tempOutpPayload.myExt.memAddr(0) := (
-        inpModExt.instrDecEtc.gprEvenRaIdx >> 1
-      )
-      tempOutpPayload.myExt.memAddr(1) := (
-        inpModExt.instrDecEtc.gprEvenRbIdx >> 1
-      )
-    }
-  }
-  val nIdGprFileOddNonSpArea = new Area {
-    //--------
-    def inpPayload = nIdGprFileOddNonSpOutp(pIdOutpGprFileOddNonSp)
-    def inpModExt = inpPayload.modExt
-    def inpExt = inpPayload.myExt
-    //--------
-    def outpPayload = (
-      nIdGprFileOddNonSpOutp(gprFileOddNonSp.io.frontPayload)
-    )
-    //def outpExt = outpPayload.myExt
-    //def outpModExt = outpPayload.modExt
-    //--------
-    //outpPayload := RegNext(outpPayload)
-    val tempOutpPayload = cloneOf(inpPayload)
-    outpPayload := tempOutpPayload
-    tempOutpPayload := RegNext(tempOutpPayload)
-    when (nIdGprFileOddNonSpOutp.isFiring) {
-      //--------
-      tempOutpPayload := inpPayload
-      tempOutpPayload.myExt.memAddr.allowOverride
-      tempOutpPayload.myExt.memAddr(0) := (
-        inpModExt.instrDecEtc.gprOddNonSpRaIdx >> 1
-      )
-      tempOutpPayload.myExt.memAddr(1) := (
-        inpModExt.instrDecEtc.gprOddNonSpRbIdx >> 1
-      )
-    }
-  }
-  val nIdGprFileSpArea = new Area {
-    //--------
-    def inpPayload = nIdGprFileSpOutp(pIdOutpGprFileSp)
-    def inpModExt = inpPayload.modExt
-    def inpExt = inpPayload.myExt
-    //--------
-    def outpPayload = nIdGprFileSpOutp(gprFileSp.io.frontPayload)
-    //def outpExt = outpPayload.myExt
-    //def outpModExt = outpPayload.modExt
-    //--------
-    val tempOutpPayload = cloneOf(inpPayload)
-    outpPayload := tempOutpPayload
-    tempOutpPayload := RegNext(tempOutpPayload)
-    //--------
-    when (nIdGprFileSpOutp.isFiring) {
-      tempOutpPayload := inpPayload
-      tempOutpPayload.myExt.memAddr.allowOverride
-      tempOutpPayload.myExt.memAddr(0) := 0
-      //outpExt.memAddr(1) := inpModExt.instrDecEtc.gprSpRbIdx
-    }
-  }
-  val nIdSprFileArea = new Area {
-    //--------
-    def inpPayload = nIdSprFileOutp(pIdOutpSprFile)
-    def inpModExt = inpPayload.modExt
-    def inpExt = inpPayload.myExt
-    //--------
-    def outpPayload = nIdSprFileOutp(sprFile.io.frontPayload)
-    //def outpExt = outpPayload.myExt
-    //def outpModExt = outpPayload.modExt
-    //--------
-    val tempOutpPayload = cloneOf(inpPayload)
-    outpPayload := tempOutpPayload
-    tempOutpPayload := RegNext(tempOutpPayload)
-    //--------
-    when (nIdSprFileOutp.isFiring) {
-      //--------
-      tempOutpPayload := inpPayload
-      //outpPayload.myExt := inpPayload.myExt
-      //println(s"${outpExt.rdMemWord.size} ${inpExt.rdMemWord.size}")
-      //outpExt.rdMemWord := inpExt.rdMemWord
-      tempOutpPayload.myExt.memAddr.allowOverride
-      tempOutpPayload.myExt.memAddr(0) := inpModExt.instrDecEtc.sprSaIdx
-      tempOutpPayload.myExt.memAddr(1) := inpModExt.instrDecEtc.sprSbIdx
-      //outpExt.memAddr(1) := inpModExt.instrDecEtc.gprSpRbIdx
-    }
-  }
-
+  //val cMemArea = new cMem.Area {
+  //  //when (up.isFiring) {
+  //  //}
+  //}
+  //--------
   Builder(linkArr.toSeq)
+  //--------
 }
 object FlareCpuVerilog extends App {
   Config.spinal.generateVerilog(FlareCpu(params=FlareCpuParams()))
