@@ -282,8 +282,7 @@ case class FlareCpu(
 
   case class PipeMemModExtType(
   ) extends Bundle {
-    // this `Bundle` is the non-`PipeMemRmw` main pipeline payload type
-
+    val regPc = UInt(params.mainWidth bits)
     val instrEnc = FlareCpuInstrEnc(params=params)
     val instrDecEtc = FlareCpuInstrDecEtc(params=params)
     //val icache = FlareCpuIcachePipePayload(params=params)
@@ -656,6 +655,7 @@ case class FlareCpu(
     up=Node(),
     down=Node(),
   )
+  cIf.up.valid := True
   linkArr += cIf
   val sIf = StageLink(
     up=cIf.down,
@@ -667,6 +667,7 @@ case class FlareCpu(
   //  down=regFile.io.front
   //)
   //--------
+  val pId = Payload(PipeMemModExtType())
   val cId = CtrlLink(
     up=sIf.down,
     down=(
@@ -699,11 +700,56 @@ case class FlareCpu(
   linkArr += sMem
   //--------
   val cIfArea = new cIf.Area {
-    //when (up.isFiring) {
-    //}
-    when (!exSetPc.fire) {
-    } otherwise { // when (exSetPc.fire)
+    //--------
+    val upPayload = PipeMemModExtType()
+    up(pIf) := upPayload
+    upPayload := (
+      RegNext(upPayload)
+      init(upPayload.getZero)
+    )
+    //--------
+    val rSavedExSetPc = (
+      Reg(Flow(UInt(params.mainWidth bits)))
+    )
+    rSavedExSetPc.init(rSavedExSetPc.getZero)
+
+    when (exSetPc.fire) {
+      rSavedExSetPc := exSetPc
     }
+
+    when (up.isFiring) {
+      rSavedExSetPc := rSavedExSetPc.getZero
+      when (exSetPc.fire) {
+        upPayload.regPc := exSetPc.payload
+      } elsewhen (rSavedExSetPc.fire) {
+        upPayload.regPc := rSavedExSetPc.payload
+      } otherwise { // no `exSetPc.fire` or `rSavedExSetPc.fire`
+        upPayload.regPc := upPayload.regPc + (params.instrMainWidth / 8)
+      }
+    }
+    //--------
+    io.ibus.valid := True
+    io.ibus.addr := upPayload.regPc
+    when (!io.ibus.ready) {
+      duplicateIt()
+    }
+    //object IbusState extends SpinalEnum(defaultEncoding=binarySequential) {
+    //  val
+    //    INIT_OR_NOT_READY,
+    //    READY
+    //    = newElement();
+    //}
+    //val rIbusState = (
+    //  Reg(IbusState()) init(IbusState.INIT_OR_NOT_READY)
+    //)
+    //switch (rIbusState) {
+    //  is (IbusState.INIT_OR_NOT_READY) {
+    //    io.ibus.valid := True
+    //  }
+    //  is (IbusState.READY) {
+    //  }
+    //}
+    //--------
   }
   val cIdArea = new cId.Area {
     //when (up.isFiring) {
