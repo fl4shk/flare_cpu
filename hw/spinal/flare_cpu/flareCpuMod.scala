@@ -718,21 +718,42 @@ case class FlareCpu(
     }
 
     when (up.isFiring) {
+      //--------
       rSavedExSetPc := rSavedExSetPc.getZero
+      //--------
       when (exSetPc.fire) {
-        upPayload.regPc := exSetPc.payload
+        upPayload.regPc := exSetPc.payload + (params.instrMainWidth / 8)
       } elsewhen (rSavedExSetPc.fire) {
-        upPayload.regPc := rSavedExSetPc.payload
-      } otherwise { // no `exSetPc.fire` or `rSavedExSetPc.fire`
+        upPayload.regPc := (
+          rSavedExSetPc.payload + (params.instrMainWidth / 8)
+        )
+      } otherwise {
         upPayload.regPc := upPayload.regPc + (params.instrMainWidth / 8)
       }
     }
+    //when (exSetPc.fire) {
+    //  upPayload.regPc := exSetPc.payload + (params.instrMainWidth / 8)
+    //}
     //--------
     io.ibus.valid := True
     io.ibus.addr := upPayload.regPc
+    //--------
     when (!io.ibus.ready) {
-      duplicateIt()
+      haltIt()
     }
+    //--------
+    //when (io.ibus.ready) {
+    //  when (exSetPc.fire) {
+    //    upPayload.regPc := exSetPc.payload
+    //  } elsewhen (rSavedExSetPc.fire) {
+    //    upPayload.regPc := rSavedExSetPc.payload
+    //  } 
+    //  //otherwise { // no `exSetPc.fire` or `rSavedExSetPc.fire`
+    //  //}
+    //} otherwise { //when (!io.ibus.ready) 
+    //  haltIt()
+    //}
+
     //object IbusState extends SpinalEnum(defaultEncoding=binarySequential) {
     //  val
     //    INIT_OR_NOT_READY,
@@ -752,8 +773,35 @@ case class FlareCpu(
     //--------
   }
   val cIdArea = new cId.Area {
-    //when (up.isFiring) {
-    //}
+    //--------
+    val upPayload = PipeMemModExtType()
+    up(pId) := upPayload
+    upPayload := (
+      RegNext(upPayload)
+      init(upPayload.getZero)
+    )
+    //--------
+    when (up.isFiring) {
+    }
+    when (io.ibus.ready) {
+      upPayload.instrEnc.g0Pre.assignFromBits(io.ibus.devData.asBits)
+      upPayload.instrEnc.g0LpreHi.assignFromBits(io.ibus.devData.asBits)
+      upPayload.instrEnc.g0LpreLo.assignFromBits(io.ibus.devData.asBits)
+      upPayload.instrEnc.g0Atomic.assignFromBits(io.ibus.devData.asBits)
+      upPayload.instrEnc.g1.assignFromBits(io.ibus.devData.asBits)
+      upPayload.instrEnc.g2.assignFromBits(io.ibus.devData.asBits)
+      upPayload.instrEnc.g3.assignFromBits(io.ibus.devData.asBits)
+      upPayload.instrEnc.g4.assignFromBits(io.ibus.devData.asBits)
+      upPayload.instrEnc.g5Sg0.assignFromBits(io.ibus.devData.asBits)
+      upPayload.instrEnc.g5Sg1.assignFromBits(io.ibus.devData.asBits)
+      upPayload.instrEnc.g7Sg00.assignFromBits(io.ibus.devData.asBits)
+      upPayload.instrEnc.g7Sg010.assignFromBits(io.ibus.devData.asBits)
+      upPayload.instrEnc.g7Sg0110.assignFromBits(io.ibus.devData.asBits)
+      upPayload.instrEnc.g7Sg01110.assignFromBits(io.ibus.devData.asBits)
+    } otherwise {
+      //duplicateIt()
+      haltIt()
+    }
   }
   val cExArea = new cEx.Area {
     //when (up.isFiring) {
