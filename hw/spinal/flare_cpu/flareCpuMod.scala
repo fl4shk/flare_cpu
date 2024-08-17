@@ -722,10 +722,10 @@ case class FlareCpu(
       rSavedExSetPc := rSavedExSetPc.getZero
       //--------
       when (exSetPc.fire) {
-        upPayload.regPc := exSetPc.payload + (params.instrMainWidth / 8)
+        upPayload.regPc := exSetPc.payload //+ (params.instrMainWidth / 8)
       } elsewhen (rSavedExSetPc.fire) {
         upPayload.regPc := (
-          rSavedExSetPc.payload + (params.instrMainWidth / 8)
+          rSavedExSetPc.payload //+ (params.instrMainWidth / 8)
         )
       } otherwise {
         upPayload.regPc := upPayload.regPc + (params.instrMainWidth / 8)
@@ -781,29 +781,1006 @@ case class FlareCpu(
       init(upPayload.getZero)
     )
     //--------
+    def upInstrEnc = upPayload.instrEnc
+    def upInstrDecEtc = upPayload.instrDecEtc
+    upInstrDecEtc.allowOverride
+    val rSavedUpInstrDecEtc = (
+      RegNextWhen(
+        upInstrDecEtc,
+        up.isFiring,
+      ) init(upInstrDecEtc.getZero)
+    )
+    //val canIrq = Bool()
+    //canIrq := True
     when (up.isFiring) {
+      //upInstrDecEtc := upInstrDecEtc.getZero
+      //upInstrDecEtc.isInvalid := False
+      //upInstrDecEtc.haveFullInstr := True
+
+      //def clearRegsMain(): Unit = {
+      //}
+
+      def finishInstr(
+        isBlJl: Boolean=false,
+        //writeSprFlags: Option[Bool]=None,
+        writeSpr0: Option[(UInt, Bool)]=None,
+        writeSpr1: Option[(UInt, Bool)]=None,
+      ): Unit = {
+        upInstrDecEtc.decodeTempIndexRaRbValid := False
+        upInstrDecEtc.decodeTempIndexRaSimmValid := False
+        upInstrDecEtc.decodeTempPreLpreValid := False
+        upInstrDecEtc.decodeTempPreValid := False
+        upInstrDecEtc.decodeTempLpreValid := False
+
+        upInstrDecEtc.isInvalid := False
+        upInstrDecEtc.haveFullInstr := True
+
+        //upInstrDecEtc.haveFullInstr := True
+        if (!isBlJl) {
+          upInstrDecEtc.raIdx := upInstrEnc.g2.raIdx
+        } else { // if (isBlSimm)
+          upInstrDecEtc.raIdx := FlareCpuInstrEncConst.gprLrIdx
+        }
+        upInstrDecEtc.rbIdx := upInstrEnc.g2.rbIdx
+        //upInstrDecEtc.saIdx := upInstrEnc.g2.raIdx
+        //upInstrDecEtc.sbIdx := upInstrEnc.g2.rbIdx
+
+        upInstrDecEtc.gprEvenRaIdx.valid := !upInstrDecEtc.raIdx(0)
+        upInstrDecEtc.gprEvenRaIdx.payload := (
+          Cat(
+            U"1'd0",
+            upInstrDecEtc.raIdx(upInstrDecEtc.raIdx.high downto 1),
+          ).asUInt
+        )
+        upInstrDecEtc.gprEvenRbIdx := (
+          Cat(
+            U"1'd0",
+            upInstrDecEtc.rbIdx(upInstrDecEtc.rbIdx.high downto 1),
+          ).asUInt
+        )
+        upInstrDecEtc.gprOddNonSpRaIdx.valid := (
+          upInstrDecEtc.raIdx(0)
+          && (
+            upInstrDecEtc.raIdx === FlareCpuInstrEncConst.gprSpIdx
+          )
+        )
+        upInstrDecEtc.gprOddNonSpRaIdx.payload := (
+          Cat(
+            U"1'd0",
+            upInstrDecEtc.raIdx(upInstrDecEtc.raIdx.high downto 1),
+          ).asUInt
+        )
+        upInstrDecEtc.gprOddNonSpRbIdx := (
+          Cat(
+            U"1'd0",
+            upInstrDecEtc.rbIdx(upInstrDecEtc.rbIdx.high downto 1),
+          ).asUInt
+        )
+        upInstrDecEtc.gprSpRaIdx.valid := (
+          upInstrDecEtc.raIdx === FlareCpuInstrEncConst.gprSpIdx
+        )
+        upInstrDecEtc.gprSpRaIdx.payload := (
+          0x0
+        )
+        upInstrDecEtc.gprSpRbIdx := 0x0
+        //if (!writeSprFlags) {
+        //  upInstrDecEtc.sprSaIdx.payload := upInstrDecEtc.saIdx
+        //} else 
+        //if (writeSprFlags)
+        //writeSprFlags match {
+        //  case Some(myWriteSprFlags) => {
+        //    when (myWriteSprFlags) {
+        //      upInstrDecEtc.sprEvenSaIdx.valid := True
+        //      upInstrDecEtc.sprEvenSaIdx.payload := (
+        //        FlareCpuInstrEncConst.sprFlagsIdx
+        //      )
+        //    }
+        //  }
+        //  case None => {
+        //    //upInstrDecE
+        //  }
+        //}
+        writeSpr0 match {
+          case Some(myWriteSpr0) => {
+            when (myWriteSpr0._2) {
+              //if (myWriteSpr0._1 % 2 == 0) {
+              //} else {
+              //}
+              when (!myWriteSpr0._1.lsb) {
+                upInstrDecEtc.sprEvenSaIdx.valid := True
+                upInstrDecEtc.sprEvenSaIdx.payload := myWriteSpr0._1
+                writeSpr1 match {
+                  case Some(myWriteSpr1) => {
+                  }
+                  case None => {
+                    //upInstrDecEtc.sprEvenSaIdx.valid := False
+                    disableSprOddWrite()
+                  }
+                }
+              } otherwise {
+                upInstrDecEtc.sprOddSaIdx.valid := True
+                upInstrDecEtc.sprOddSaIdx.payload := myWriteSpr0._1
+                writeSpr1 match {
+                  case Some(myWriteSpr1) => {
+                  }
+                  case None => {
+                    //upInstrDecEtc.sprEvenSaIdx.valid := False
+                    disableSprEvenWrite()
+                  }
+                }
+              }
+            }
+          }
+          case None => {
+            writeSpr1 match {
+              case Some(myWriteSpr1) => {
+              }
+              case None => {
+                disableSprWrites()
+              }
+            }
+          }
+        }
+        writeSpr1 match {
+          case Some(myWriteSpr1) => {
+            when (myWriteSpr1._2) {
+              //if (myWriteSpr1._1 % 2 == 0) {
+              //} else {
+              //}
+              when (!myWriteSpr1._1.lsb) {
+                upInstrDecEtc.sprEvenSaIdx.valid := True
+                upInstrDecEtc.sprEvenSaIdx.payload := myWriteSpr1._1
+              } otherwise {
+                upInstrDecEtc.sprOddSaIdx.valid := True
+                upInstrDecEtc.sprOddSaIdx.payload := myWriteSpr1._1
+              }
+            }
+          }
+          case None => {
+          }
+        }
+      }
+      def writeSprFlags(cond: Bool): Option[(UInt, Bool)] = (
+        Some(
+          (FlareCpuInstrEncConst.sprFlagsIdx, cond)
+        )
+      )
+      def markInstrInvalid(): Unit = {
+        upInstrDecEtc.haveFullInstr := True 
+        upInstrDecEtc.isInvalid := True
+        upInstrDecEtc.decOp := FlareCpuInstrDecOp.bubble
+        upInstrDecEtc.decodeTempPreLpreValid := False
+        upInstrDecEtc.decodeTempPreValid := False
+        upInstrDecEtc.decodeTempLpreValid := False
+        disableRegWrites()
+      }
+      def disableGprWrites(): Unit = {
+        upInstrDecEtc.gprEvenRaIdx.valid := False
+        upInstrDecEtc.gprOddNonSpRaIdx.valid := False
+        upInstrDecEtc.gprSpRaIdx.valid := False
+      }
+      def disableSprEvenWrite(): Unit = {
+        upInstrDecEtc.sprEvenSaIdx.valid := False
+      }
+      def disableSprOddWrite(): Unit = {
+        upInstrDecEtc.sprOddSaIdx.valid := False
+      }
+      def disableSprWrites(): Unit = {
+        disableSprEvenWrite()
+        disableSprOddWrite()
+      }
+      def disableRegWrites(): Unit = {
+        disableGprWrites()
+        disableSprWrites()
+      }
+      //def markInstrNotFull(): Unit = {
+      //}
+      //setRegsMain()
+
+      when (rSavedUpInstrDecEtc.decOp =/= FlareCpuInstrDecOp.lpreSimmHi) {
+        switch (upInstrEnc.g0Pre.grp) {
+          is (FlareCpuInstrEncConst.g0Grp) {
+            when (
+              upInstrEnc.g0Pre.subgrp
+              === FlareCpuInstrEncConst.g0PreSubgrp
+            ) {
+              when (!rSavedUpInstrDecEtc.decodeTempPreLpreValid) {
+                upInstrDecEtc.decodeTempPreLpreValid := True
+                upInstrDecEtc.decodeTempPreValid := True
+                upInstrDecEtc.isInvalid := False
+                upInstrDecEtc.haveFullInstr := False
+                //upInstrDecEtc.fullgrp := (
+                //  FlareCpuInstrFullgrpDec.g0Pre
+                //)
+                upInstrDecEtc.fullgrp := FlareCpuInstrFullgrpDec.g0Pre
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.preSimm
+                //upInstrDecEtc.fullSimm := (
+                //  upInstrEnc.g0Pre.simm.asSInt.resized.asUInt
+                //)
+                val tempSimm = SInt(params.mainWidth bits)
+                tempSimm := (
+                  upInstrEnc.g0Pre.simm.asSInt.resized
+                )
+                upInstrDecEtc.fullSimm := (
+                  tempSimm.asUInt
+                )
+                // I believe the Binutils port handles unsigned
+                // immediates as signed when there's `pre`
+                // TODO: check whether that's the case
+                //upInstrDecEtc.fullImm := (
+                //  upInstrEnc.g0Pre.simm.asSInt.resized.asUInt
+                //)
+                upInstrDecEtc.fullImm := (
+                  //upInstrEnc.g0Pre.simm.asSInt.resized.asUInt
+                  tempSimm.asUInt
+                )
+                disableRegWrites()
+              } otherwise {
+                markInstrInvalid()
+              }
+            } elsewhen (
+              upInstrEnc.g0LpreHi.subgrp
+              === FlareCpuInstrEncConst.g0LpreSubgrp
+            ) {
+              upInstrDecEtc.isInvalid := False
+              upInstrDecEtc.fullgrp := FlareCpuInstrFullgrpDec.g0LpreHi
+              upInstrDecEtc.haveFullInstr := False
+              upInstrDecEtc.decOp := FlareCpuInstrDecOp.lpreSimmHi
+              disableRegWrites()
+              val tempSimm = SInt(params.mainWidth bits)
+              tempSimm := (
+                upInstrEnc.g0LpreHi.simmHi.asSInt.resized
+              )
+              upInstrDecEtc.fullSimm := (
+                tempSimm.asUInt
+              )
+              upInstrDecEtc.fullImm := (
+                //upInstrEnc.g0LpreHi.simmHi.asSInt.resized.asUInt
+                tempSimm.asUInt
+              )
+            } elsewhen (
+              upInstrEnc.g0Atomic.subgrp
+              === FlareCpuInstrEncConst.g0AtomicSubgrp
+            ) {
+              upInstrDecEtc.fwl := upInstrEnc.g0Atomic.l
+              finishInstr()
+              disableRegWrites()
+              switch (Cat(
+                upInstrDecEtc.fwl,
+                rSavedUpInstrDecEtc.decodeTempIndexRaRbValid,
+              )) {
+                is (B"00") {
+                  upInstrDecEtc.decOp := FlareCpuInstrDecOp.xchg
+                }
+                is (B"01") {
+                  upInstrDecEtc.decOp := FlareCpuInstrDecOp.xchgLock
+                }
+                is (B"10") {
+                  upInstrDecEtc.decOp := FlareCpuInstrDecOp.cmpxchg
+                }
+                is (B"11") {
+                  upInstrDecEtc.decOp := FlareCpuInstrDecOp.cmpxchgLock
+                }
+              }
+              //when (
+              //  rSavedUpInstrDecEtc.indexRaRbValid
+              //  //|| rSavedUpInstrDecEtc.indexRaSimmValid
+              //) {
+              //  when (upInstrDecEtc.fwl) {
+              //    upInstrDecEtc.decOp := FlareCpuInstrDecOp.cmpxchgLock
+              //  } otherwise {
+              //    upInstrDecEtc.decOp := FlareCpuInstrDecOp.cmpxchg
+              //  }
+              //} otherwise {
+              //  when (upInstrDecEtc.fwl) {
+              //    upInstrDecEtc.decOp := FlareCpuInstrDecOp.xchgLock
+              //  } otherwise {
+              //    upInstrDecEtc.decOp := FlareCpuInstrDecOp.xchg
+              //  }
+              //}
+              //when (upInstrDecEtc.) {
+              //}
+            } otherwise {
+              markInstrInvalid()
+              //canIrq := False
+            }
+          }
+          is (FlareCpuInstrEncConst.g1Grp) {
+            upInstrDecEtc.fullgrp := FlareCpuInstrFullgrpDec.g1
+            when (!rSavedUpInstrDecEtc.decodeTempPreLpreValid) {
+              //upInstrDecEtc.fullSimm := (
+              //  upInstrEnc.g1.imm.asSInt.resized.asUInt
+              //)
+              val tempSimm = SInt(params.mainWidth bits)
+              tempSimm := (
+                upInstrEnc.g1.imm.asSInt.resized
+              )
+              upInstrDecEtc.fullSimm := (
+                tempSimm.asUInt
+              )
+              upInstrDecEtc.fullImm := (
+                upInstrEnc.g1.imm.resized
+              )
+            } otherwise {
+              upInstrDecEtc.fullSimm := Cat(
+                rSavedUpInstrDecEtc.fullSimm,
+                upInstrEnc.g1.imm,
+              ).asUInt(upInstrDecEtc.fullSimm.bitsRange)
+              upInstrDecEtc.fullImm := Cat(
+                rSavedUpInstrDecEtc.fullImm,
+                upInstrEnc.g1.imm,
+              ).asUInt(upInstrDecEtc.fullImm.bitsRange)
+            }
+            upInstrDecEtc.fwl := False
+            switch (upInstrEnc.g1.op) {
+              is (FlareCpuInstrG1EncOp.addRaS5) {
+                // Opcode 0x0: add rA, #simm5
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.addRaSimm
+                finishInstr()
+              }
+              is (FlareCpuInstrG1EncOp.addRaPcS5) {
+                // Opcode 0x1: add rA, pc, #simm5
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.addRaPcSimm
+                finishInstr()
+              }
+              is (FlareCpuInstrG1EncOp.addRaSpS5) {
+                // Opcode 0x2: add rA, sp, #simm5
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.addRaSpSimm
+                finishInstr()
+              }
+              is (FlareCpuInstrG1EncOp.addRaFpS5) {
+                // Opcode 0x3: add rA, fp, #simm5
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.addRaFpSimm
+                finishInstr()
+              }
+              is (FlareCpuInstrG1EncOp.cmpRaS5) {
+                // Opcode 0x4: cmp rA, #simm5
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.cmpRaSimm
+                disableGprWrites()
+                finishInstr(writeSpr0=writeSprFlags(True))
+              }
+              is (FlareCpuInstrG1EncOp.cpyRaS5) {
+                // Opcode 0x5: cpy rA, #simm5
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.cpyRaSimm
+                finishInstr()
+              }
+              is (FlareCpuInstrG1EncOp.lslRaI5) {
+                // Opcode 0x6: lsl rA, #imm5
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.lslRaImm
+                finishInstr()
+              }
+              is (FlareCpuInstrG1EncOp.lsrRaI5) {
+                // Opcode 0x7: lsr rA, #imm5
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.lsrRaImm
+                finishInstr()
+              }
+              is (FlareCpuInstrG1EncOp.asrRaI5) {
+                // Opcode 0x8: asr rA, #imm5
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.asrRaImm
+              }
+              is (FlareCpuInstrG1EncOp.andRaS5) {
+                // Opcode 0x9: and rA, #simm5
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.andRaSimm
+                finishInstr()
+              }
+              is (FlareCpuInstrG1EncOp.orrRaS5) {
+                // Opcode 0xa: orr rA, #simm5
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.orrRaSimm
+                finishInstr()
+              }
+              is (FlareCpuInstrG1EncOp.xorRaS5) {
+                // Opcode 0xb: xor rA, #simm5
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.xorRaSimm
+                finishInstr()
+              }
+              is (FlareCpuInstrG1EncOp.zeRaI5) {
+                // Opcode 0xc: ze rA, #imm5
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.zeRaImm
+                finishInstr()
+              }
+              is (FlareCpuInstrG1EncOp.seRaI5) {
+                // Opcode 0xd: se rA, #imm5
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.seRaImm
+                finishInstr()
+              }
+              is (FlareCpuInstrG1EncOp.swiRaS5) {
+                // Opcode 0xe: swi rA, #simm5
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.swiRaSimm
+                finishInstr()
+                disableRegWrites()
+              }
+              is (FlareCpuInstrG1EncOp.swiI5) {
+                // Opcode 0xf: swi #imm5
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.swiImm
+                finishInstr()
+                disableRegWrites()
+              }
+            }
+          }
+          is (FlareCpuInstrEncConst.g2Grp) {
+            upInstrDecEtc.fullgrp := FlareCpuInstrFullgrpDec.g2
+            upInstrDecEtc.fwl := upInstrEnc.g2.f
+            switch (upInstrEnc.g2.op) {
+              is (FlareCpuInstrG2EncOp.addRaRb) {
+                // Opcode 0x0: add rA, rB
+                //when (upInstrDecEtc.fwl) {
+                  upInstrDecEtc.decOp := FlareCpuInstrDecOp.addRaRb
+                //} otherwise {
+                //  upInstrDecEtc.decOp := FlareCpuInstrDecOp.addRaRbFlags
+                //}
+                finishInstr(writeSpr0=writeSprFlags(upInstrDecEtc.fwl))
+              }
+              is (FlareCpuInstrG2EncOp.subRaRb) {
+                // Opcode 0x1: sub rA, rB
+                //when (upInstrDecEtc.fwl) {
+                  upInstrDecEtc.decOp := FlareCpuInstrDecOp.subRaRb
+                //} otherwise {
+                //  upInstrDecEtc.decOp := FlareCpuInstrDecOp.subRaRbFlags
+                //}
+                finishInstr(writeSpr0=writeSprFlags(upInstrDecEtc.fwl))
+              }
+              is (FlareCpuInstrG2EncOp.addRaSpRb) {
+                // Opcode 0x2: add rA, sp, rB
+                //when (upInstrDecEtc.fwl) {
+                  upInstrDecEtc.decOp := FlareCpuInstrDecOp.addRaSpRb
+                //} otherwise {
+                //  upInstrDecEtc.decOp := FlareCpuInstrDecOp.addRaSpRbFlags
+                //}
+                finishInstr(writeSpr0=writeSprFlags(upInstrDecEtc.fwl))
+              }
+              is (FlareCpuInstrG2EncOp.addRaFpRb) {
+                // Opcode 0x3: add rA, fp, rB
+                //when (upInstrDecEtc.fwl) {
+                  upInstrDecEtc.decOp := FlareCpuInstrDecOp.addRaFpRb
+                //} otherwise {
+                //  upInstrDecEtc.decOp := FlareCpuInstrDecOp.addRaFpRbFlags
+                //}
+                finishInstr(writeSpr0=writeSprFlags(upInstrDecEtc.fwl))
+              }
+              is (FlareCpuInstrG2EncOp.cmpRaRb) {
+                // Opcode 0x4: cmp rA, rB
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.cmpRaRb
+                finishInstr(writeSpr0=writeSprFlags(True))
+                disableGprWrites()
+              }
+              is (FlareCpuInstrG2EncOp.cpyRaRb) {
+                // Opcode 0x5: cpy rA, rB
+                //when (upInstrDecEtc.fwl) {
+                  upInstrDecEtc.decOp := FlareCpuInstrDecOp.cpyRaRb
+                //} otherwise {
+                //  upInstrDecEtc.decOp := FlareCpuInstrDecOp.cpyRaRbFlags
+                //}
+                finishInstr(writeSpr0=writeSprFlags(upInstrDecEtc.fwl))
+              }
+              is (FlareCpuInstrG2EncOp.lslRaRb) {
+                // Opcode 0x6: lsl rA, rB
+                //when (upInstrDecEtc.fwl) {
+                  upInstrDecEtc.decOp := FlareCpuInstrDecOp.lslRaRb
+                //} otherwise {
+                //  upInstrDecEtc.decOp := FlareCpuInstrDecOp.lslRaRbFlags
+                //}
+                finishInstr(writeSpr0=writeSprFlags(upInstrDecEtc.fwl))
+              }
+              is (FlareCpuInstrG2EncOp.lsrRaRb) {
+                // Opcode 0x7: lsr rA, rB
+                //when (upInstrDecEtc.fwl) {
+                  upInstrDecEtc.decOp := FlareCpuInstrDecOp.lsrRaRb
+                //} otherwise {
+                //  upInstrDecEtc.decOp := FlareCpuInstrDecOp.lsrRaRbFlags
+                //}
+                finishInstr(writeSpr0=writeSprFlags(upInstrDecEtc.fwl))
+              }
+              is (FlareCpuInstrG2EncOp.asrRaRb) {
+                // Opcode 0x8: asr rA, rB
+                //when (upInstrDecEtc.fwl) {
+                  upInstrDecEtc.decOp := FlareCpuInstrDecOp.asrRaRb
+                //} otherwise {
+                //  upInstrDecEtc.decOp := FlareCpuInstrDecOp.asrRaRbFlags
+                //}
+                finishInstr(writeSpr0=writeSprFlags(upInstrDecEtc.fwl))
+              }
+              is (FlareCpuInstrG2EncOp.andRaRb) {
+                // Opcode 0x9: and rA, rB
+                //when (upInstrDecEtc.fwl) {
+                  upInstrDecEtc.decOp := FlareCpuInstrDecOp.andRaRb
+                //} otherwise {
+                //  upInstrDecEtc.decOp := FlareCpuInstrDecOp.andRaRbFlags
+                //}
+                finishInstr(writeSpr0=writeSprFlags(upInstrDecEtc.fwl))
+              }
+              is (FlareCpuInstrG2EncOp.orrRaRb) {
+                // Opcode 0xa: orr rA, rB
+                //when (upInstrDecEtc.fwl) {
+                  upInstrDecEtc.decOp := FlareCpuInstrDecOp.orrRaRb
+                //} otherwise {
+                //  upInstrDecEtc.decOp := FlareCpuInstrDecOp.orrRaRbFlags
+                //}
+                finishInstr(writeSpr0=writeSprFlags(upInstrDecEtc.fwl))
+              }
+              is (FlareCpuInstrG2EncOp.xorRaRb) {
+                // Opcode 0xb: xor rA, rB
+                //when (upInstrDecEtc.fwl) {
+                  upInstrDecEtc.decOp := FlareCpuInstrDecOp.xorRaRb
+                //} otherwise {
+                //  upInstrDecEtc.decOp := FlareCpuInstrDecOp.xorRaRbFlags
+                //}
+                finishInstr(writeSpr0=writeSprFlags(upInstrDecEtc.fwl))
+              }
+              is (FlareCpuInstrG2EncOp.adcRaRb) {
+                // Opcode 0xc: adc rA, rB
+                //when (upInstrDecEtc.fwl) {
+                  upInstrDecEtc.decOp := FlareCpuInstrDecOp.adcRaRb
+                //} otherwise {
+                //  upInstrDecEtc.decOp := FlareCpuInstrDecOp.adcRaRbFlags
+                //}
+                finishInstr(writeSpr0=writeSprFlags(upInstrDecEtc.fwl))
+              }
+              is (FlareCpuInstrG2EncOp.sbcRaRb) {
+                // Opcode 0xd: sbc rA, rB
+                //when (upInstrDecEtc.fwl) {
+                  upInstrDecEtc.decOp := FlareCpuInstrDecOp.sbcRaRb
+                //} otherwise {
+                //  upInstrDecEtc.decOp := FlareCpuInstrDecOp.sbcRaRbFlags
+                //}
+                finishInstr(writeSpr0=writeSprFlags(upInstrDecEtc.fwl))
+              }
+              is (FlareCpuInstrG2EncOp.cmpbcRaRb) {
+                // Opcode 0xe: cmpbc rA, rB
+                //when (upInstrDecEtc.fwl) {
+                  upInstrDecEtc.decOp := FlareCpuInstrDecOp.cmpbcRaRb
+                //} otherwise {
+                //  upInstrDecEtc.decOp := FlareCpuInstrDecOp.cmpbcRaRbFlags
+                //}
+                finishInstr(writeSpr0=writeSprFlags(True))
+                disableGprWrites()
+              }
+              default {
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.bubble
+                markInstrInvalid()
+              }
+            }
+          }
+          is (FlareCpuInstrEncConst.g3Grp) {
+            upInstrDecEtc.fullgrp := FlareCpuInstrFullgrpDec.g3
+            when (!rSavedUpInstrDecEtc.decodeTempPreLpreValid) {
+              val tempSimm = SInt(params.mainWidth bits)
+              tempSimm := (
+                upInstrEnc.g3.simm.resized
+              )
+              upInstrDecEtc.fullSimm := (
+                tempSimm.asUInt
+              )
+              //upInstrDecEtc.fullImm := (
+              //  upInstrEnc.g3.simm.resized
+              //)
+            } otherwise {
+              upInstrDecEtc.fullSimm := Cat(
+                rSavedUpInstrDecEtc.fullSimm,
+                upInstrEnc.g3.simm,
+              ).asUInt(upInstrDecEtc.fullSimm.bitsRange)
+            }
+            upInstrDecEtc.fullPcrelSimm := (
+              upPayload.regPc
+              + upInstrDecEtc.fullSimm
+            )
+            switch (upInstrEnc.g3.op) {
+              is (FlareCpuInstrG3EncOp.blS9) {
+                // Opcode 0x0: bl simm
+                finishInstr(isBlJl=true)
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.blSimm
+              }
+              is (FlareCpuInstrG3EncOp.braS9) {
+                // Opcode 0x1: bra simm
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.braSimm
+              }
+              is (FlareCpuInstrG3EncOp.beqS9) {
+                // Opcode 0x2: beq simm
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.beqSimm
+              }
+              is (FlareCpuInstrG3EncOp.bneS9) {
+                // Opcode 0x3: bne simm
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.bneSimm
+              }
+              is (FlareCpuInstrG3EncOp.bmiS9) {
+                // Opcode 0x4: bmi simm
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.bmiSimm
+              }
+              is (FlareCpuInstrG3EncOp.bplS9) {
+                // Opcode 0x5: bpl simm
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.bplSimm
+              }
+              is (FlareCpuInstrG3EncOp.bvsS9) {
+                // Opcode 0x6: bvs simm
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.bvsSimm
+              }
+              is (FlareCpuInstrG3EncOp.bvcS9) {
+                // Opcode 0x7: bvc simm
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.bvcSimm
+              }
+              is (FlareCpuInstrG3EncOp.bgeuS9) {
+                // Opcode 0x8: bgeu simm
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.bgeuSimm
+              }
+              is (FlareCpuInstrG3EncOp.bltuS9) {
+                // Opcode 0x9: bltu simm
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.bltuSimm
+              }
+              is (FlareCpuInstrG3EncOp.bgtuS9) {
+                // Opcode 0xa: bgtu simm
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.bgtuSimm
+              }
+              is (FlareCpuInstrG3EncOp.bleuS9) {
+                // Opcode 0xb: bleu simm
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.bleuSimm
+              }
+              is (FlareCpuInstrG3EncOp.bgesS9) {
+                // Opcode 0xc: bges simm
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.bgesSimm
+              }
+              is (FlareCpuInstrG3EncOp.bltsS9) {
+                // Opcode 0xd: blts simm
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.bltsSimm
+              }
+              is (FlareCpuInstrG3EncOp.bgtsS9) {
+                // Opcode 0xe: bgts simm
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.bgtsSimm
+              }
+              is (FlareCpuInstrG3EncOp.blesS9) {
+                // Opcode 0xf: bles simm
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.blesSimm
+              }
+            }
+          }
+          is (FlareCpuInstrEncConst.g4Grp) {
+            upInstrDecEtc.fullgrp := FlareCpuInstrFullgrpDec.g4
+            switch (upInstrEnc.g4.op) {
+              is (FlareCpuInstrG4EncOp.jlRa) {
+                finishInstr(isBlJl=true)
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.jlRa
+              }
+              is (FlareCpuInstrG4EncOp.jmpRa) {
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.jmpRa
+              }
+              is (FlareCpuInstrG4EncOp.jmpIra) {
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.jmpIra
+              }
+              is (FlareCpuInstrG4EncOp.reti) {
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.reti
+              }
+              is (FlareCpuInstrG4EncOp.ei) {
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.ei
+              }
+              is (FlareCpuInstrG4EncOp.di) {
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.di
+              }
+              is (FlareCpuInstrG4EncOp.pushRaRb) {
+                // Opcode 0x6: push rA, rB
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.pushRaRb
+              }
+              is (FlareCpuInstrG4EncOp.pushSaRb) {
+                // Opcode 0x7: push sA, rB
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.pushSaRb
+              }
+              is (FlareCpuInstrG4EncOp.popRaRb) {
+                // Opcode 0x8: pop rA, rB
+                when (!(
+                  (
+                    upInstrEnc.g2.raIdx.lsb === upInstrEnc.g2.rbIdx.lsb
+                    && (
+                      upInstrEnc.g2.rbIdx
+                      =/= FlareCpuInstrEncConst.gprSpIdx
+                    )
+                  ) || (
+                    upInstrEnc.g2.raIdx === upInstrEnc.g2.rbIdx
+                  )
+                )) {
+                  finishInstr()
+                  upInstrDecEtc.decOp := FlareCpuInstrDecOp.popRaRb
+                } otherwise {
+                  markInstrInvalid()
+                }
+              }
+              is (FlareCpuInstrG4EncOp.popSaRb) {
+                // Opcode 0x9: pop sA, rB
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.popSaRb
+              }
+              is (FlareCpuInstrG4EncOp.popPcRb) {
+                // Opcode 0xa: pop pc, rB
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.popPcRb
+              }
+              is (FlareCpuInstrG4EncOp.mulRaRb) {
+                // Opcode 0xb: mul rA, rB
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.mulRaRb
+              }
+              is (FlareCpuInstrG4EncOp.udivmodRaRb) {
+                // Opcode 0xc: udivmod rA, rB
+                finishInstr(writeSpr0=Some(
+                  FlareCpuInstrEncConst.sprLoIdx, True
+                ))
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.udivmodRaRb
+              }
+              is (FlareCpuInstrG4EncOp.sdivmodRaRb) {
+                // Opcode 0xd: sdivmod rA, rB
+                finishInstr(writeSpr0=Some(
+                  FlareCpuInstrEncConst.sprLoIdx, True
+                ))
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.udivmodRaRb
+              }
+            }
+          }
+          is (FlareCpuInstrEncConst.g5Grp) {
+            when (
+              upInstrEnc.g5Sg0.subgrp
+              === FlareCpuInstrEncConst.g5Sg0Subgrp
+            ) {
+              when (!rSavedUpInstrDecEtc.decodeTempIndexRaRbValid) {
+                upInstrDecEtc.decodeTempIndexRaRbValid := True
+                upInstrDecEtc.haveFullInstr := False
+              } otherwise {
+                markInstrInvalid()
+              }
+            } elsewhen (
+              upInstrEnc.g5Sg1.subgrp
+              === FlareCpuInstrEncConst.g5Sg1Subgrp
+            ) {
+              upInstrDecEtc.haveFullInstr := False
+              when (!rSavedUpInstrDecEtc.decodeTempIndexRaSimmValid) {
+                upInstrDecEtc.decodeTempIndexRaSimmValid := True
+                upInstrDecEtc.haveFullInstr := False
+              } otherwise {
+                markInstrInvalid()
+              }
+            } otherwise {
+              //upInstrDecEtc.isInvalid := True
+              markInstrInvalid()
+            }
+          }
+          is (FlareCpuInstrEncConst.g6Grp) {
+            markInstrInvalid()
+          }
+          is (FlareCpuInstrEncConst.g7Grp) {
+            when (
+              upInstrEnc.g7Sg00.subgrp
+              === FlareCpuInstrEncConst.g7Sg00Subgrp
+            ) {
+              upInstrDecEtc.fwl := upInstrEnc.g7Sg00.w
+              switch (upInstrEnc.g7Sg00.op) {
+                is (FlareCpuInstrG7Sg00FullOpEnc.cmpbRaRb) {
+                  finishInstr(writeSpr0=writeSprFlags(True))
+                  upInstrDecEtc.decOp := FlareCpuInstrDecOp.cmpbRaRb
+                }
+                is (FlareCpuInstrG7Sg00FullOpEnc.lsrbRaRb) {
+                  finishInstr()
+                  upInstrDecEtc.decOp := FlareCpuInstrDecOp.lsrbRaRb
+                }
+                is (FlareCpuInstrG7Sg00FullOpEnc.asrbRaRb) {
+                  finishInstr()
+                  upInstrDecEtc.decOp := FlareCpuInstrDecOp.asrbRaRb
+                }
+                is (FlareCpuInstrG7Sg00FullOpEnc.invalid0) {
+                  markInstrInvalid()
+                }
+                is (FlareCpuInstrG7Sg00FullOpEnc.cmphRaRb) {
+                  finishInstr(writeSpr0=writeSprFlags(True))
+                  upInstrDecEtc.decOp := FlareCpuInstrDecOp.cmphRaRb
+                }
+                is (FlareCpuInstrG7Sg00FullOpEnc.lsrhRaRb) {
+                  finishInstr()
+                  upInstrDecEtc.decOp := FlareCpuInstrDecOp.lsrhRaRb
+                }
+                is (FlareCpuInstrG7Sg00FullOpEnc.asrhRaRb) {
+                  finishInstr()
+                  upInstrDecEtc.decOp := FlareCpuInstrDecOp.asrhRaRb
+                }
+                is (FlareCpuInstrG7Sg00FullOpEnc.invalid1) {
+                  markInstrInvalid()
+                }
+              }
+            } elsewhen (
+              upInstrEnc.g7Sg010.subgrp
+              === FlareCpuInstrEncConst.g7Sg010Subgrp
+            ) {
+            } elsewhen (
+              upInstrEnc.g7Sg0110.subgrp
+              === FlareCpuInstrEncConst.g7Sg0110Subgrp
+            ) {
+              upInstrDecEtc.decOp := FlareCpuInstrDecOp.icreloadRaSimm
+              finishInstr()
+              disableRegWrites()
+            } elsewhen (
+              upInstrEnc.g7Sg01110.subgrp
+              === FlareCpuInstrEncConst.g7Sg01110Subgrp
+            ) {
+              upInstrDecEtc.decOp := FlareCpuInstrDecOp.icflush
+              finishInstr()
+              disableRegWrites()
+            } otherwise {
+              markInstrInvalid()
+            }
+          }
+        }
+      } otherwise { // when (the previous instruction was lpreSimmHi)
+        upInstrDecEtc.isInvalid := False
+        upInstrDecEtc.haveFullInstr := False
+        upInstrDecEtc.fullgrp := (
+          FlareCpuInstrFullgrpDec.g0LpreLo
+        )
+        upInstrDecEtc.fwl := False
+        upInstrDecEtc.decOp := FlareCpuInstrDecOp.lpreSimmLo
+        upInstrDecEtc.fullSimm := Cat(
+          rSavedUpInstrDecEtc.fullSimm,
+          upInstrEnc.g0LpreLo,
+        ).asUInt(upInstrDecEtc.fullSimm.bitsRange)
+        upInstrDecEtc.fullImm := Cat(
+          rSavedUpInstrDecEtc.fullImm,
+          upInstrEnc.g0LpreLo,
+        ).asUInt(upInstrDecEtc.fullImm.bitsRange)
+      }
     }
     when (io.ibus.ready) {
-      upPayload.instrEnc.g0Pre.assignFromBits(io.ibus.devData.asBits)
-      upPayload.instrEnc.g0LpreHi.assignFromBits(io.ibus.devData.asBits)
-      upPayload.instrEnc.g0LpreLo.assignFromBits(io.ibus.devData.asBits)
-      upPayload.instrEnc.g0Atomic.assignFromBits(io.ibus.devData.asBits)
-      upPayload.instrEnc.g1.assignFromBits(io.ibus.devData.asBits)
-      upPayload.instrEnc.g2.assignFromBits(io.ibus.devData.asBits)
-      upPayload.instrEnc.g3.assignFromBits(io.ibus.devData.asBits)
-      upPayload.instrEnc.g4.assignFromBits(io.ibus.devData.asBits)
-      upPayload.instrEnc.g5Sg0.assignFromBits(io.ibus.devData.asBits)
-      upPayload.instrEnc.g5Sg1.assignFromBits(io.ibus.devData.asBits)
-      upPayload.instrEnc.g7Sg00.assignFromBits(io.ibus.devData.asBits)
-      upPayload.instrEnc.g7Sg010.assignFromBits(io.ibus.devData.asBits)
-      upPayload.instrEnc.g7Sg0110.assignFromBits(io.ibus.devData.asBits)
-      upPayload.instrEnc.g7Sg01110.assignFromBits(io.ibus.devData.asBits)
-    } otherwise {
+      upInstrEnc.g0Pre.assignFromBits(io.ibus.devData.asBits)
+      upInstrEnc.g0LpreHi.assignFromBits(io.ibus.devData.asBits)
+      upInstrEnc.g0LpreLo.assignFromBits(io.ibus.devData.asBits)
+      upInstrEnc.g0Atomic.assignFromBits(io.ibus.devData.asBits)
+      upInstrEnc.g1.assignFromBits(io.ibus.devData.asBits)
+      upInstrEnc.g2.assignFromBits(io.ibus.devData.asBits)
+      upInstrEnc.g3.assignFromBits(io.ibus.devData.asBits)
+      upInstrEnc.g4.assignFromBits(io.ibus.devData.asBits)
+      upInstrEnc.g5Sg0.assignFromBits(io.ibus.devData.asBits)
+      upInstrEnc.g5Sg1.assignFromBits(io.ibus.devData.asBits)
+      upInstrEnc.g7Sg00.assignFromBits(io.ibus.devData.asBits)
+      upInstrEnc.g7Sg010.assignFromBits(io.ibus.devData.asBits)
+      upInstrEnc.g7Sg0110.assignFromBits(io.ibus.devData.asBits)
+      upInstrEnc.g7Sg01110.assignFromBits(io.ibus.devData.asBits)
+    } otherwise { // when (!io.ibus.ready)
       //duplicateIt()
       haltIt()
     }
   }
   val cExArea = new cEx.Area {
+    def performSetFlagsZn(
+      rawElemNumBytesPow: (Int, Int),
+      result: UInt,
+      //flagsOut: UInt,
+    ): Unit = {
+      //--------
+      //def myBits = params.elemNumBytesPow(
+      //  rawElemNumBytesPow=rawElemNumBytesPow
+      //)._2
+      //val outpFlags = UInt(params.mainWidth bits)
+      //outpFlags := (
+      //  //0x0
+      //  flags
+      //)
+      //outpFlags.allowOverride
+      //outpFlags(params.flagIdxZ) := (
+      //  result(myBits - 1 downto 0) === 0
+      //)
+      //outpFlags(params.flagIdxN) := result(myBits - 1)
+      //doWriteSpr(
+      //  regIdx=myInstrDecEtc.enumSprFlags,
+      //  payload=outpFlags,
+      //)
+      //--------
+    }
+    def performAddSub(
+      rawElemNumBytesPow: (Int, Int),
+      operandA: UInt,
+      operandB: UInt,
+      withCarryIn: Boolean,
+      doSub: Boolean,
+      doSetFlags: Boolean,
+      //flagsOut: UInt
+      result: UInt,
+      flagsOut: Option[UInt]=None,
+    ): Unit = {
+      ////--------
+      //def myBits = params.elemNumBytesPow(
+      //  rawElemNumBytesPow=rawElemNumBytesPow
+      //)._2
+      //assert(result.getWidth == myBits + 1)
+      ////--------
+      ////uint64_t
+      ////  ret = 0,
+      ////  temp_operand_a = operand_a,
+      ////  temp_operand_b = operand_b,
+      ////  temp_flags_c_mask = 0,
+      ////  temp_flags_vn_mask = 0;
+      //val tempOperandA = UInt((myBits + 1) bits)
+      //val tempOperandB = UInt((myBits + 1) bits)
+      //tempOperandA := Cat(False, operandA).asUInt
+      //tempOperandB := Cat(False, operandB).asUInt
+      //if (!doSub) {
+      //  //ret = temp_operand_a + temp_operand_b
+      //  //+ (with_carry_in
+      //  //  ? ((flags_in & FLARE32_FLAGS_C_MASK) >> FLARE32_FLAGS_C_BITPOS)
+      //  //  : 0x0ull);
+      //  result := (
+      //    tempOperandA + tempOperandB
+      //    + (
+      //      if (withCarryIn) {
+      //        flags(params.flagIdxC downto params.flagIdxC)
+      //      } else { // if (!withCarryIn)
+      //        U"1'd0"
+      //      }
+      //    ).resized
+      //  )
+      //} else { // if (doSub)
+      //  /* 6502-style subtraction */
+      //  //ret = temp_operand_a + (~temp_operand_b)
+      //  //  + (with_carry_in 
+      //  //    ? ((flags_in & FLARE32_FLAGS_C_MASK) >> FLARE32_FLAGS_C_BITPOS)
+      //  //    : 0x1ull);
+      //  result := (
+      //    tempOperandA + (~tempOperandB)
+      //    + (
+      //      if (withCarryIn) {
+      //        flags(params.flagIdxC downto params.flagIdxC)
+      //      } else { // if (!withCarryIn)
+      //        U"1'd1"
+      //      }
+      //    ).resized
+      //  )
+      //}
+
+      //if (doSetFlags) {
+      //  var useMyFlagsOut: Boolean = false
+      //  val tempFlagsOut = flagsOut match {
+      //    case Some(myFlagsOut) => {
+      //      useMyFlagsOut = true
+      //      myFlagsOut
+      //    }
+      //    case None => {
+      //      //outpFlags
+      //      UInt(params.mainWidth bits)
+      //    }
+      //  }
+      //  val tempFlags = cloneOf(tempFlagsOut)
+      //  tempFlagsOut := 0x0
+      //  tempFlagsOut.allowOverride
+      //  performSetFlagsZn(
+      //    rawElemNumBytesPow=rawElemNumBytesPow,
+      //    result=result,
+      //  )
+      //  tempFlagsOut(params.flagIdxC) := result(myBits)
+      //  tempFlagsOut(params.flagIdxV) := (
+      //    (tempOperandA ^ result.resized)
+      //    & (tempOperandB ^ result.resized)
+      //  )(myBits - 1)
+      //  if (!useMyFlagsOut) {
+      //    doWriteSpr(
+      //      regIdx=myInstrDecEtc.enumSprFlags,
+      //      payload=tempFlagsOut,
+      //    )
+      //  }
+      //}
+      ////--------
+    }
     //when (up.isFiring) {
     //}
     //exSetPc.valid := True

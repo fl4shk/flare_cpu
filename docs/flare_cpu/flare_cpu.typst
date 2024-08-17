@@ -67,6 +67,17 @@ Here are the special-purpose registers:
   `swi`'s argument. For `swi rA, #simm`, this is the value `rA + simm`
   //(reg encoding: `0x7`)
   (reg encoding: `0x5`)
+- `hi`:
+  - Uses:
+    - high 32 bits of `lumul` and `lsmul` multiply result
+    - high 32 bits of 64-bit divmod modulo result
+  (reg encoding: `0x6`)
+- `lo`:
+  - Uses:
+    - low 32 bits of `lumul` and `lsmul` multiply result
+    - low 32 bits of 64-bit divmod modulo result
+    - 32-bit divmod modulo result
+  (reg encoding: `0x7`)
 - Note:
   All other encodings for special-purpose registers are reserved.
 
@@ -839,6 +850,8 @@ Here is a list of instructions from this encoding group.
     `rB` as the stack pointer, post-decrementing
     `rB`.
   - This instruction does nothing when `rA` is the same register as `rB`. 
+  //- This instruction does nothing if `rA[0x0]` is equal to `rB[0x0]` and
+  //  `rB` *is not* `sp` 
   - Note: As a pseudo instruction, omitting "`, rB`" will
     automatically select `sp` as the particular stack
     pointer. 
@@ -872,8 +885,12 @@ Here is a list of instructions from this encoding group.
   // //--------
   - Effect: pops `rA` off the stack, using
     `rB` as the stack pointer, pre-incrementing `rB`.
-  - This instruction does nothing when `rA` is the
-    same register as `rB`. 
+  - This instruction does nothing when `rA` is the same register as `rB`. 
+  - This instruction does nothing when all of the following conditions are
+    met:
+    - `rA`'s register encoding's evenness/oddness is the same as `rB`'s
+      register encoding's evenness/oddness.
+    - `rB` *is not* `sp` 
   - Note: As a pseudo instruction, omitting "`, rB`" will
     automatically select `sp` as the particular stack
     pointer. 
@@ -893,7 +910,7 @@ Here is a list of instructions from this encoding group.
     even if `sA` is `flags` or `ie`.
   - Note: As a pseudo instruction, omitting "`, rB`" will
     automatically select `sp` as the particular stack
-    pointer. 
+    pointer.
   //--------
 - Opcode `0xa`:
   `pop pc, rB`
@@ -918,31 +935,35 @@ Here is a list of instructions from this encoding group.
   - Effect: `rA <= rA * rB;`
   //--------
 - Opcode `0xc`:
-  `udiv rA, rB`
+  `udivmod rA, rB`
   //--------
-  - Effect: `rA <= u32(rA) / u32(rB);`
-  - Note: If `index` is in effect, this instruction becomes 
-  //- Note: This instruction executes more quickly if the values of
-  //  `rA` and `rB` that are input to this instruction were the
-  //  same for the previous 32-bit divide or modulo instruction.
-  - Note: This instruction has another form,
-    `udivmod rA, rB, rC`, where `rC` is used as the
-    modulo output register of the 32-bit divide.
-    This form of this instruction is encoded as `index rC, r0`
-    followed by `udiv rA, rB`
+  - Effect:
+    - `rA <= u32(rA) / u32(rB);`
+    - `lo <= u32(rA) % u32(rB);`
+  //- Note: If `index` is in effect, this instruction becomes 
+  ////- Note: This instruction executes more quickly if the values of
+  ////  `rA` and `rB` that are input to this instruction were the
+  ////  same for the previous 32-bit divide or modulo instruction.
+  //- Note: This instruction has another form,
+  //  `udivmod rA, rB, rC`, where `rC` is used as the
+  //  modulo output register of the 32-bit divide.
+  //  This form of this instruction is encoded as `index rC, r0`
+  //  followed by `udiv rA, rB`
   //--------
 - Opcode `0xd`:
-  `sdiv rA, rB`
+  `sdivmod rA, rB`
   //--------
-  - Effect: `rA <= s32(rA) / s32(rB);`
-  //- Note: This instruction executes more quickly if the values of
-  //  `rA` and `rB` that are input to this instruction were the
-  //  same for the previous 32-bit divide or modulo instruction.
-  - Note: This instruction has another form,
-    `sdivmod rA, rB, rC`, where `rC` is used as the
-    modulo output register of the 32-bit divide.
-    This form of this instruction is encoded as `index rC, r0`
-    followed by `sdiv rA, rB`
+  - Effect: 
+    - `rA <= s32(rA) / s32(rB);`
+    - `lo <= s32(rA) % s32(rB);`
+  ////- Note: This instruction executes more quickly if the values of
+  ////  `rA` and `rB` that are input to this instruction were the
+  ////  same for the previous 32-bit divide or modulo instruction.
+  //- Note: This instruction has another form,
+  //  `sdivmod rA, rB, rC`, where `rC` is used as the
+  //  modulo output register of the 32-bit divide.
+  //  This form of this instruction is encoded as `index rC, r0`
+  //  followed by `sdiv rA, rB`
   //--------
 //- Opcode `0xe`:
 //  `umod rA, rB`
@@ -965,12 +986,12 @@ Here is a list of instructions from this encoding group.
   //--------
   - Effect: This instruction multiplies `rA` by
     `rB`, performing an unsigned 32-bit by 32-bit -> 64-bit
-    multiply, storing result in //`concat{r0, r1}`.
-    - `concat{r0, r1}` (only if `index` is not in effect).
-    - `concat{index_rA, index_rB}` (only if `index` is in effect), which
-      uses the assembly syntax `lumul rC, rD, rA, rB`, where
-      - `rC` becomes `index_rA`, and 
-      - `rD` becomes `index_rB`
+    multiply, storing result in `concat{hi, lo}` //`concat{r0, r1}`.
+    //- `concat{r0, r1}` (only if `index` is not in effect).
+    //- `concat{index_rA, index_rB}` (only if `index` is in effect), which
+    //  uses the assembly syntax `lumul rC, rD, rA, rB`, where
+    //  - `rC` becomes `index_rA`, and 
+    //  - `rD` becomes `index_rB`
   //- Effect: This instruction multiplies
   // //`concat{rA, r{A+1}}`
   // //by `concat{rB, r{B+1}}`,
@@ -991,12 +1012,12 @@ Here is a list of instructions from this encoding group.
     //multiply, storing result in
     //- `concat{r0, r1}` (only if `index` is not in effect).
     //- `concat{index_rA, index_rB}` (only if `index` is in effect).
-    multiply, storing result in //`concat{r0, r1}`.
-    - `concat{r0, r1}` (only if `index` is not in effect).
-    - `concat{index_rA, index_rB}` (only if `index` is in effect), which
-      uses the assembly syntax `lumul rC, rD, rA, rB`, where
-      - `rC` becomes `index_rA`, and 
-      - `rD` becomes `index_rB`
+    multiply, storing result in `concat{hi, lo}` //`concat{r0, r1}`.
+    //- `concat{r0, r1}` (only if `index` is not in effect).
+    //- `concat{index_rA, index_rB}` (only if `index` is in effect), which
+    //  uses the assembly syntax `lumul rC, rD, rA, rB`, where
+    //  - `rC` becomes `index_rA`, and 
+    //  - `rD` becomes `index_rB`
   //- Effect: This instruction multiplies
   // //`concat{rA, r{A+1}}`
   // //by `concat{rB, r{B+1}}`,
@@ -1010,7 +1031,7 @@ Here is a list of instructions from this encoding group.
   // `rB` were encoded with `(B[0x0] == 0b0)`,
   //--------
 - Opcode `0x10`:
-  `udiv64 rA, rB`
+  `udivmod64 rA, rB`
   //--------
   //- Effect: performs a 64-bit by 64-bit unsigned division of
   // {{r0, r1}` by `{rA, rB}`, storing 64-bit
@@ -1019,35 +1040,37 @@ Here is a list of instructions from this encoding group.
   // `rA`'s value is `0x00000000`, i.e. if the
   // operation is actually a 64-bit by 32-bit -> 64-bit unsigned
   // divide.
-  - Effect: performs a 64-bit by 64-bit unsigned division of
-    `concat{rA, r{A + 1}}`
-    by `concat{rB, r{B + 1}}`,
-    storing 64-bit result in
-    `concat{rA, r{A + 1}}`.
+  - Effect:
+    - performs a 64-bit by 64-bit unsigned division of
+      `concat{rA, r{A + 1}}`
+      by `concat{rB, r{B + 1}}`,
+      storing 64-bit result in
+      `concat{rA, r{A + 1}}`,
+    - ...and modulo results are stored in `concat{hi, lo}`.
   - Note: This instruction operates as if
     `rA` were encoded with `(A[0x0] == 0b0)`
     and
     `rB` were encoded with `(B[0x0] == 0b0)`,
-  - Note: This instruction has another form,
-    `udivmod64 rA, rB, rC, rD`, where `concat(rC, rD)` is used as the
-    64-bit register pair in which the modulo result of the 64-bit divide is
-    stored.
-    This form of this instruction is encoded as `index rC, rD`
-    followed by `udiv64 rA, rB`
-  //- Note: This instruction executes more quickly if
-  //  `rB`'s value is `0x00000000`, i.e. if the
-  //  operation is actually a 64-bit by 32-bit -> 64-bit unsigned
-  //  divide.
-  //- Note: This instruction executes more quickly if the values of
-  //  `concat{rA, r{A + 1}}` and `concat{rB, r{B + 1}}` before this divide
-  //  were previously the same for the previous divide or modulo instruction.
-  //- Note: This instruction executes more quickly if the values of
-  //  `concat{rA, r{A + 1}}`  and `concat{rB, r{B + 1}}` that are input to
-  //  this instruction were the same for the previous 64-bit divide or modulo
-  //  instruction.
+  //- Note: This instruction has another form,
+  //  `udivmod64 rA, rB, rC, rD`, where `concat(rC, rD)` is used as the
+  //  64-bit register pair in which the modulo result of the 64-bit divide is
+  //  stored.
+  //  This form of this instruction is encoded as `index rC, rD`
+  //  followed by `udiv64 rA, rB`
+  ////- Note: This instruction executes more quickly if
+  ////  `rB`'s value is `0x00000000`, i.e. if the
+  ////  operation is actually a 64-bit by 32-bit -> 64-bit unsigned
+  ////  divide.
+  ////- Note: This instruction executes more quickly if the values of
+  ////  `concat{rA, r{A + 1}}` and `concat{rB, r{B + 1}}` before this divide
+  ////  were previously the same for the previous divide or modulo instruction.
+  ////- Note: This instruction executes more quickly if the values of
+  ////  `concat{rA, r{A + 1}}`  and `concat{rB, r{B + 1}}` that are input to
+  ////  this instruction were the same for the previous 64-bit divide or modulo
+  ////  instruction.
   //--------
 - Opcode `0x11`:
-  `sdiv64 rA, rB`
+  `sdivmod64 rA, rB`
   //--------
   //- Effect: performs a 64-bit by 64-bit signed division of
   // `{r0, r1}` by `{rA, rB}`, storing 64-bit
@@ -1059,28 +1082,30 @@ Here is a list of instructions from this encoding group.
   //- Note: This instruction executes more quickly if
   // `rA` is equal to bits `[63:32]` of
   // `sign_extend_to_64(rB)`.
-  - Effect: performs a 64-bit by 64-bit signed division of
-    `concat{rA, r{A + 1}}`
-    by `concat{rB, r{B + 1}}`,
-    storing 64-bit result in
-    `concat{rA, r{A + 1}}`.
+  - Effect:
+    - performs a 64-bit by 64-bit signed division of
+      `concat{rA, r{A + 1}}`
+      by `concat{rB, r{B + 1}}`,
+      storing 64-bit result in
+      `concat{rA, r{A + 1}}`,
+    - ...and modulo results are stored in `concat{hi, lo}`.
   - Note: This instruction operates as if
     `rA` were encoded with `(A[0x0] == 0b0)`
     and
     `rB` were encoded with `(B[0x0] == 0b0)`,
-  //- Note: This instruction executes more quickly if
-  //  `rB` is equal to bits `[63:32]` of
-  //  `s64(r{B+1})`.
-  //- Note: This instruction executes more quickly if the values of
-  //  `concat{rA, r{A + 1}}`  and `concat{rB, r{B + 1}}` that are input to
-  //  this instruction were the same for the previous 64-bit divide or modulo
-  //  instruction.
-  - Note: This instruction has another form,
-    `sdivmod64 rA, rB, rC, rD`, where `concat(rC, rD)` is used as the
-    64-bit register pair in which the modulo result of the 64-bit divide is
-    stored.
-    This form of this instruction is encoded as `index rC, rD`
-    followed by `sdiv64 rA, rB`
+  ////- Note: This instruction executes more quickly if
+  ////  `rB` is equal to bits `[63:32]` of
+  ////  `s64(r{B+1})`.
+  ////- Note: This instruction executes more quickly if the values of
+  ////  `concat{rA, r{A + 1}}`  and `concat{rB, r{B + 1}}` that are input to
+  ////  this instruction were the same for the previous 64-bit divide or modulo
+  ////  instruction.
+  //- Note: This instruction has another form,
+  //  `sdivmod64 rA, rB, rC, rD`, where `concat(rC, rD)` is used as the
+  //  64-bit register pair in which the modulo result of the 64-bit divide is
+  //  stored.
+  //  This form of this instruction is encoded as `index rC, rD`
+  //  followed by `sdiv64 rA, rB`
   //--------
 //- Opcode `0x14`:
 //  `umod64 rA, rB`
