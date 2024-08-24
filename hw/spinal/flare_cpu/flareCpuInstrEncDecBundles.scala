@@ -603,8 +603,10 @@ case class FlareCpuInstrDecEtc(
   //val regFileGprSpModMemWordValid = Bool()
   //val regFileSprModMemWordValid = Bool()
 
-  val gprEvenRaIdx = Flow(UInt(params.numGprsSprsPow bits))
-  val gprEvenRbIdx = /*Flow*/(UInt(params.numGprsSprsPow bits))
+  val gprEvenNonFpRaIdx = Flow(UInt(params.numGprsSprsPow bits))
+  val gprEvenNonFpRbIdx = /*Flow*/(UInt(params.numGprsSprsPow bits))
+  val gprFpRaIdx = Flow(UInt(params.numGprsSprsPow bits))
+  val gprFpRbIdx = /*Flow*/(UInt(params.numGprsSprsPow bits))
   val gprOddNonSpRaIdx = Flow(UInt(params.numGprsSprsPow bits))
   val gprOddNonSpRbIdx = /*Flow*/(UInt(params.numGprsSprsPow bits))
   //val haveGprOddNonSpRaIdx = Bool()

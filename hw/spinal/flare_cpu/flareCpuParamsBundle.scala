@@ -130,12 +130,14 @@ case class FlareCpuCacheParams(
 }
 
 object FlareCpuParams {
-  def enumRegFileGprEven = 0
-  def enumRegFileGprOddNonSp = 1
-  def enumRegFileGprSp = 2
-  def enumRegFileSprEven = 3
-  def enumRegFileSprOdd = 4
-  def enumRegFileLim = 5
+  //def enumRegFileGprEven = 0
+  def enumRegFileGprEvenNonFp = 0
+  def enumRegFileGprFp = 1
+  def enumRegFileGprOddNonSp = 2
+  def enumRegFileGprSp = 3
+  def enumRegFileSprEven = 4
+  def enumRegFileSprOdd = 5
+  def enumRegFileLim = 6
 }
 
 case class FlareCpuParams(
@@ -162,7 +164,9 @@ case class FlareCpuParams(
 ) {
   //--------
   def regWordType() = UInt(mainWidth bits)
-  def gprFileEvenWordCount = 8
+  //def gprFileEvenWordCount = 8
+  def gprFileEvenNonFpWordCount = 7
+  def gprFileFpWordCount = 1
   def gprFileOddNonSpWordCount = 7
   def gprFileSpWordCount = 1
   //def sprFileWordCount = numGprsSprs

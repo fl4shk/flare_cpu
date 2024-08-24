@@ -179,20 +179,21 @@ case class FlareCpu(
   //busArb.io.inputs(1) << dataBmb
   //io.bus << busArb.io.output
   //--------
-  def enumRegFileGprEven = FlareCpuParams.enumRegFileGprEven
+  def enumRegFileGprEvenNonFp = FlareCpuParams.enumRegFileGprEvenNonFp
+  def enumRegFileGprFp = FlareCpuParams.enumRegFileGprFp
   def enumRegFileGprOddNonSp = FlareCpuParams.enumRegFileGprOddNonSp
   def enumRegFileGprSp = FlareCpuParams.enumRegFileGprSp
   def enumRegFileSprEven = FlareCpuParams.enumRegFileSprEven
   def enumRegFileSprOdd = FlareCpuParams.enumRegFileSprOdd
   def enumRegFileLim = FlareCpuParams.enumRegFileLim
 
-  def enumPipeMemIcache = 0
-  def enumPipeMemDcache = 1
-  def enumPipeMemGprFileEven = 2
-  def enumPipeMemGprFileOddNonSp = 3
-  def enumPipeMemGprFileSp = 4
-  def enumPipeMemSprFile = 5
-  def enumPipeMemLim = 6
+  //def enumPipeMemIcache = 0
+  //def enumPipeMemDcache = 1
+  //def enumPipeMemGprFileEven = 2
+  //def enumPipeMemGprFileOddNonSp = 3
+  //def enumPipeMemGprFileSp = 4
+  //def enumPipeMemSprFile = 5
+  //def enumPipeMemLim = 6
 
   val linkArr = PipeHelper.mkLinkArr()
   //def mkRegFilePipeMemDoModInModFrontFunc(
@@ -487,7 +488,7 @@ case class FlareCpu(
     FlareCpuPipeMemModType(
       params=params,
       wordType=params.regWordType(),
-      wordCountMax=params.gprFileEvenWordCount,
+      wordCountMax=params.sprFileEvenWordCount,
       hazardCmpType=params.regFileHazardCmpType(),
       modRdPortCnt=params.regFileModRdPortCnt,
       modStageCnt=params.regFileModStageCnt,
@@ -569,7 +570,8 @@ case class FlareCpu(
     wordType=params.regWordType(),
     wordCountArr={
       val myArr = ArrayBuffer[Int]()
-      myArr += params.gprFileEvenWordCount
+      myArr += params.gprFileEvenNonFpWordCount
+      myArr += params.gprFileFpWordCount
       myArr += params.gprFileOddNonSpWordCount
       myArr += params.gprFileSpWordCount
       //myArr += params.sprFileWordCount
@@ -585,7 +587,13 @@ case class FlareCpu(
     linkArr=Some(linkArr),
     initBigInt={
       val myInitBigInt = new ArrayBuffer[ArrayBuffer[BigInt]]()
-      myInitBigInt += ArrayBuffer.fill(params.gprFileEvenWordCount)(
+      //myInitBigInt += ArrayBuffer.fill(params.gprFileEvenWordCount)(
+      //  BigInt(0)
+      //)
+      myInitBigInt += ArrayBuffer.fill(params.gprFileEvenNonFpWordCount)(
+        BigInt(0)
+      )
+      myInitBigInt += ArrayBuffer.fill(params.gprFileFpWordCount)(
         BigInt(0)
       )
       myInitBigInt += ArrayBuffer.fill(params.gprFileOddNonSpWordCount)(
@@ -803,15 +811,21 @@ case class FlareCpu(
     //val canIrq = Bool()
     //canIrq := True
 
-    val myFrontPayloadGprEven = mkRegFileModType()
+    //val myFrontPayloadGprEven = mkRegFileModType()
+    val myFrontPayloadGprEvenNonFp = mkRegFileModType()
+    val myFrontPayloadGprFp = mkRegFileModType()
     val myFrontPayloadGprOddNonSp = mkRegFileModType()
     val myFrontPayloadGprSp = mkRegFileModType()
     val myFrontPayloadSprEven = mkRegFileModType()
     val myFrontPayloadSprOdd = mkRegFileModType()
 
-    myFrontPayloadGprEven := (
-      RegNext(myFrontPayloadGprEven)
-      init(myFrontPayloadGprEven.getZero)
+    myFrontPayloadGprEvenNonFp := (
+      RegNext(myFrontPayloadGprEvenNonFp)
+      init(myFrontPayloadGprEvenNonFp.getZero)
+    )
+    myFrontPayloadGprFp := (
+      RegNext(myFrontPayloadGprFp)
+      init(myFrontPayloadGprFp.getZero)
     )
     myFrontPayloadGprOddNonSp := (
       RegNext(myFrontPayloadGprOddNonSp)
@@ -830,8 +844,11 @@ case class FlareCpu(
       init(myFrontPayloadSprOdd.getZero)
     )
 
-    up(regFile.io.frontPayloadArr(enumRegFileGprEven)) := (
-      myFrontPayloadGprEven
+    up(regFile.io.frontPayloadArr(enumRegFileGprEvenNonFp)) := (
+      myFrontPayloadGprEvenNonFp
+    )
+    up(regFile.io.frontPayloadArr(enumRegFileGprFp)) := (
+      myFrontPayloadGprFp
     )
     up(regFile.io.frontPayloadArr(enumRegFileGprOddNonSp)) := (
       myFrontPayloadGprOddNonSp
@@ -853,19 +870,35 @@ case class FlareCpu(
 
       //def clearRegsMain(): Unit = {
       //}
-      myFrontPayloadGprEven.myExt.modMemWordValid := (
-        upInstrDecEtc.gprEvenRaIdx.valid
+      //--------
+      myFrontPayloadGprEvenNonFp.myExt.modMemWordValid := (
+        upInstrDecEtc.gprEvenNonFpRaIdx.valid
       )
-      myFrontPayloadGprEven.myExt.memAddr(0) := (
-        upInstrDecEtc.gprEvenRaIdx.payload(
-          myFrontPayloadGprEven.myExt.memAddr(0).bitsRange
+      myFrontPayloadGprEvenNonFp.myExt.memAddr(0) := (
+        upInstrDecEtc.gprEvenNonFpRaIdx.payload(
+          myFrontPayloadGprEvenNonFp.myExt.memAddr(0).bitsRange
         )
       )
-      myFrontPayloadGprEven.myExt.memAddr(1) := (
-        upInstrDecEtc.gprEvenRbIdx(
-          myFrontPayloadGprEven.myExt.memAddr(1).bitsRange
+      myFrontPayloadGprEvenNonFp.myExt.memAddr(1) := (
+        upInstrDecEtc.gprEvenNonFpRbIdx(
+          myFrontPayloadGprEvenNonFp.myExt.memAddr(1).bitsRange
         )
       )
+      //--------
+      myFrontPayloadGprFp.myExt.modMemWordValid := (
+        upInstrDecEtc.gprFpRaIdx.valid
+      )
+      myFrontPayloadGprFp.myExt.memAddr(0) := (
+        upInstrDecEtc.gprFpRaIdx.payload(
+          myFrontPayloadGprFp.myExt.memAddr(0).bitsRange
+        )
+      )
+      myFrontPayloadGprFp.myExt.memAddr(1) := (
+        upInstrDecEtc.gprFpRbIdx(
+          myFrontPayloadGprFp.myExt.memAddr(1).bitsRange
+        )
+      )
+      //--------
       myFrontPayloadGprOddNonSp.myExt.modMemWordValid := (
         upInstrDecEtc.gprOddNonSpRaIdx.valid
       )
@@ -879,6 +912,49 @@ case class FlareCpu(
           myFrontPayloadGprOddNonSp.myExt.memAddr(1).bitsRange
         )
       )
+      //--------
+      myFrontPayloadGprSp.myExt.modMemWordValid := (
+        upInstrDecEtc.gprSpRaIdx.valid
+      )
+      myFrontPayloadGprSp.myExt.memAddr(0) := (
+        upInstrDecEtc.gprSpRaIdx.payload(
+          myFrontPayloadGprSp.myExt.memAddr(0).bitsRange
+        )
+      )
+      myFrontPayloadGprSp.myExt.memAddr(1) := (
+        upInstrDecEtc.gprSpRbIdx(
+          myFrontPayloadGprSp.myExt.memAddr(1).bitsRange
+        )
+      )
+      //--------
+      myFrontPayloadSprEven.myExt.modMemWordValid := (
+        upInstrDecEtc.sprEvenSaIdx.valid
+      )
+      myFrontPayloadSprEven.myExt.memAddr(0) := (
+        upInstrDecEtc.sprEvenSaIdx.payload(
+          myFrontPayloadSprEven.myExt.memAddr(0).bitsRange
+        )
+      )
+      myFrontPayloadSprEven.myExt.memAddr(1) := (
+        upInstrDecEtc.sprEvenSbIdx(
+          myFrontPayloadSprEven.myExt.memAddr(1).bitsRange
+        )
+      )
+      //--------
+      myFrontPayloadSprOdd.myExt.modMemWordValid := (
+        upInstrDecEtc.sprOddSaIdx.valid
+      )
+      myFrontPayloadSprOdd.myExt.memAddr(0) := (
+        upInstrDecEtc.sprOddSaIdx.payload(
+          myFrontPayloadSprOdd.myExt.memAddr(0).bitsRange
+        )
+      )
+      myFrontPayloadSprOdd.myExt.memAddr(1) := (
+        upInstrDecEtc.sprOddSbIdx(
+          myFrontPayloadSprOdd.myExt.memAddr(1).bitsRange
+        )
+      )
+      //--------
 
       def finishInstr(
         //isBlJl: Boolean=false,
@@ -916,7 +992,15 @@ case class FlareCpu(
                 myWriteGpr._1
               )
             )
-            upInstrDecEtc.gprEvenRaIdx.valid := !tempRaIdx(0)
+            upInstrDecEtc.gprEvenNonFpRaIdx.valid := (
+              !tempRaIdx(0)
+              && (
+                tempRaIdx =/= FlareCpuInstrEncConst.gprFpIdx
+              )
+            )
+            upInstrDecEtc.gprFpRaIdx.valid := (
+              tempRaIdx === FlareCpuInstrEncConst.gprFpIdx
+            )
             upInstrDecEtc.gprOddNonSpRaIdx.valid := (
               tempRaIdx(0)
               && (
@@ -928,7 +1012,7 @@ case class FlareCpu(
             )
           }
           case None => {
-            upInstrDecEtc.gprEvenRaIdx.valid := False
+            upInstrDecEtc.gprEvenNonFpRaIdx.valid := False
             upInstrDecEtc.gprOddNonSpRaIdx.valid := False
             upInstrDecEtc.gprSpRaIdx.valid := False
           }
@@ -944,18 +1028,25 @@ case class FlareCpu(
         //} otherwise {
         //}
 
-        upInstrDecEtc.gprEvenRaIdx.payload := (
+        //--------
+        upInstrDecEtc.gprEvenNonFpRaIdx.payload := (
           Cat(
             U"1'd0",
             upInstrDecEtc.raIdx(upInstrDecEtc.raIdx.high downto 1),
           ).asUInt
         )
-        upInstrDecEtc.gprEvenRbIdx := (
+        upInstrDecEtc.gprEvenNonFpRbIdx := (
           Cat(
             U"1'd0",
             upInstrDecEtc.rbIdx(upInstrDecEtc.rbIdx.high downto 1),
           ).asUInt
         )
+        //--------
+        upInstrDecEtc.gprFpRaIdx.payload := (
+          0x0
+        )
+        upInstrDecEtc.gprFpRbIdx := 0x0
+        //--------
         upInstrDecEtc.gprOddNonSpRaIdx.payload := (
           Cat(
             U"1'd0",
@@ -968,10 +1059,12 @@ case class FlareCpu(
             upInstrDecEtc.rbIdx(upInstrDecEtc.rbIdx.high downto 1),
           ).asUInt
         )
+        //--------
         upInstrDecEtc.gprSpRaIdx.payload := (
           0x0
         )
         upInstrDecEtc.gprSpRbIdx := 0x0
+        //--------
         //if (!writeSprFlags) {
         //  upInstrDecEtc.sprSaIdx.payload := upInstrDecEtc.saIdx
         //} else 
@@ -1064,7 +1157,8 @@ case class FlareCpu(
         disableRegWrites()
       }
       def disableGprWrites(): Unit = {
-        upInstrDecEtc.gprEvenRaIdx.valid := False
+        upInstrDecEtc.gprEvenNonFpRaIdx.valid := False
+        upInstrDecEtc.gprFpRaIdx.valid := False
         upInstrDecEtc.gprOddNonSpRaIdx.valid := False
         upInstrDecEtc.gprSpRaIdx.valid := False
       }
@@ -1245,8 +1339,11 @@ case class FlareCpu(
               is (FlareCpuInstrG1EncOp.cmpRaS5) {
                 // Opcode 0x4: cmp rA, #simm5
                 upInstrDecEtc.decOp := FlareCpuInstrDecOp.cmpRaSimm
-                disableGprWrites()
-                finishInstr(writeSpr0=writeSprFlags(True))
+                //disableGprWrites()
+                finishInstr(
+                  writeGpr=None,
+                  writeSpr0=writeSprFlags(True)
+                )
               }
               is (FlareCpuInstrG1EncOp.cpyRaS5) {
                 // Opcode 0x5: cpy rA, #simm5
@@ -1295,14 +1392,14 @@ case class FlareCpu(
               is (FlareCpuInstrG1EncOp.swiRaS5) {
                 // Opcode 0xe: swi rA, #simm5
                 upInstrDecEtc.decOp := FlareCpuInstrDecOp.swiRaSimm
-                finishInstr()
-                disableRegWrites()
+                finishInstr(writeGpr=None)
+                //disableRegWrites()
               }
               is (FlareCpuInstrG1EncOp.swiI5) {
                 // Opcode 0xf: swi #imm5
                 upInstrDecEtc.decOp := FlareCpuInstrDecOp.swiImm
-                finishInstr()
-                disableRegWrites()
+                finishInstr(writeGpr=None)
+                //disableRegWrites()
               }
             }
           }
@@ -1317,7 +1414,9 @@ case class FlareCpu(
                 //} otherwise {
                 //  upInstrDecEtc.decOp := FlareCpuInstrDecOp.addRaRbFlags
                 //}
-                finishInstr(writeSpr0=writeSprFlags(upInstrDecEtc.fwl))
+                finishInstr(
+                  writeSpr0=writeSprFlags(upInstrDecEtc.fwl)
+                )
               }
               is (FlareCpuInstrG2EncOp.subRaRb) {
                 // Opcode 0x1: sub rA, rB
@@ -1326,102 +1425,157 @@ case class FlareCpu(
                 //} otherwise {
                 //  upInstrDecEtc.decOp := FlareCpuInstrDecOp.subRaRbFlags
                 //}
-                finishInstr(writeSpr0=writeSprFlags(upInstrDecEtc.fwl))
+                finishInstr(
+                  writeSpr0=writeSprFlags(upInstrDecEtc.fwl)
+                )
               }
               is (FlareCpuInstrG2EncOp.addRaSpRb) {
+                //--------
                 // Opcode 0x2: add rA, sp, rB
+                // we can always read `sp` since it's in its own
+                // `regFile` chunk
+                //--------
                 //when (upInstrDecEtc.fwl) {
                   upInstrDecEtc.decOp := FlareCpuInstrDecOp.addRaSpRb
                 //} otherwise {
                 //  upInstrDecEtc.decOp := FlareCpuInstrDecOp.addRaSpRbFlags
                 //}
-                finishInstr(writeSpr0=writeSprFlags(upInstrDecEtc.fwl))
+                //--------
+                finishInstr(
+                  writeSpr0=writeSprFlags(upInstrDecEtc.fwl)
+                )
+                //--------
               }
               is (FlareCpuInstrG2EncOp.addRaFpRb) {
+                //--------
                 // Opcode 0x3: add rA, fp, rB
+                // we can always read `fp` since it's in its own
+                // `regFile` chunk
+                //--------
                 //when (upInstrDecEtc.fwl) {
                   upInstrDecEtc.decOp := FlareCpuInstrDecOp.addRaFpRb
                 //} otherwise {
                 //  upInstrDecEtc.decOp := FlareCpuInstrDecOp.addRaFpRbFlags
                 //}
-                finishInstr(writeSpr0=writeSprFlags(upInstrDecEtc.fwl))
+                //--------
+                finishInstr(
+                  writeSpr0=writeSprFlags(upInstrDecEtc.fwl)
+                )
+                //--------
               }
               is (FlareCpuInstrG2EncOp.cmpRaRb) {
+                //--------
                 // Opcode 0x4: cmp rA, rB
+                //--------
                 upInstrDecEtc.decOp := FlareCpuInstrDecOp.cmpRaRb
-                finishInstr(writeSpr0=writeSprFlags(True))
-                disableGprWrites()
+                finishInstr(
+                  writeGpr=None,
+                  writeSpr0=writeSprFlags(True)
+                )
+                //disableGprWrites()
+                //--------
               }
               is (FlareCpuInstrG2EncOp.cpyRaRb) {
+                //--------
                 // Opcode 0x5: cpy rA, rB
+                //--------
                 //when (upInstrDecEtc.fwl) {
                   upInstrDecEtc.decOp := FlareCpuInstrDecOp.cpyRaRb
                 //} otherwise {
                 //  upInstrDecEtc.decOp := FlareCpuInstrDecOp.cpyRaRbFlags
                 //}
-                finishInstr(writeSpr0=writeSprFlags(upInstrDecEtc.fwl))
+                finishInstr(
+                  writeSpr0=writeSprFlags(upInstrDecEtc.fwl)
+                )
               }
               is (FlareCpuInstrG2EncOp.lslRaRb) {
+                //--------
                 // Opcode 0x6: lsl rA, rB
+                //--------
                 //when (upInstrDecEtc.fwl) {
                   upInstrDecEtc.decOp := FlareCpuInstrDecOp.lslRaRb
                 //} otherwise {
                 //  upInstrDecEtc.decOp := FlareCpuInstrDecOp.lslRaRbFlags
                 //}
-                finishInstr(writeSpr0=writeSprFlags(upInstrDecEtc.fwl))
+                finishInstr(
+                  writeSpr0=writeSprFlags(upInstrDecEtc.fwl)
+                )
               }
               is (FlareCpuInstrG2EncOp.lsrRaRb) {
+                //--------
                 // Opcode 0x7: lsr rA, rB
+                //--------
                 //when (upInstrDecEtc.fwl) {
                   upInstrDecEtc.decOp := FlareCpuInstrDecOp.lsrRaRb
                 //} otherwise {
                 //  upInstrDecEtc.decOp := FlareCpuInstrDecOp.lsrRaRbFlags
                 //}
+                //--------
                 finishInstr(writeSpr0=writeSprFlags(upInstrDecEtc.fwl))
+                //--------
               }
               is (FlareCpuInstrG2EncOp.asrRaRb) {
+                //--------
                 // Opcode 0x8: asr rA, rB
+                //--------
                 //when (upInstrDecEtc.fwl) {
                   upInstrDecEtc.decOp := FlareCpuInstrDecOp.asrRaRb
                 //} otherwise {
                 //  upInstrDecEtc.decOp := FlareCpuInstrDecOp.asrRaRbFlags
                 //}
+                //--------
                 finishInstr(writeSpr0=writeSprFlags(upInstrDecEtc.fwl))
+                //--------
               }
               is (FlareCpuInstrG2EncOp.andRaRb) {
+                //--------
                 // Opcode 0x9: and rA, rB
+                //--------
                 //when (upInstrDecEtc.fwl) {
                   upInstrDecEtc.decOp := FlareCpuInstrDecOp.andRaRb
                 //} otherwise {
                 //  upInstrDecEtc.decOp := FlareCpuInstrDecOp.andRaRbFlags
                 //}
+                //--------
                 finishInstr(writeSpr0=writeSprFlags(upInstrDecEtc.fwl))
+                //--------
               }
               is (FlareCpuInstrG2EncOp.orrRaRb) {
+                //--------
                 // Opcode 0xa: orr rA, rB
+                //--------
                 //when (upInstrDecEtc.fwl) {
                   upInstrDecEtc.decOp := FlareCpuInstrDecOp.orrRaRb
                 //} otherwise {
                 //  upInstrDecEtc.decOp := FlareCpuInstrDecOp.orrRaRbFlags
                 //}
+                //--------
                 finishInstr(writeSpr0=writeSprFlags(upInstrDecEtc.fwl))
+                //--------
               }
               is (FlareCpuInstrG2EncOp.xorRaRb) {
+                //--------
                 // Opcode 0xb: xor rA, rB
+                //--------
                 //when (upInstrDecEtc.fwl) {
                   upInstrDecEtc.decOp := FlareCpuInstrDecOp.xorRaRb
                 //} otherwise {
                 //  upInstrDecEtc.decOp := FlareCpuInstrDecOp.xorRaRbFlags
                 //}
+                //--------
                 finishInstr(writeSpr0=writeSprFlags(upInstrDecEtc.fwl))
+                //--------
               }
               is (FlareCpuInstrG2EncOp.adcRaRb) {
+                //--------
                 // Opcode 0xc: adc rA, rB
+                //--------
                 //when (upInstrDecEtc.fwl) {
                   upInstrDecEtc.decOp := FlareCpuInstrDecOp.adcRaRb
                 //} otherwise {
                 //  upInstrDecEtc.decOp := FlareCpuInstrDecOp.adcRaRbFlags
                 //}
+                //--------
                 finishInstr(writeSpr0=writeSprFlags(upInstrDecEtc.fwl))
               }
               is (FlareCpuInstrG2EncOp.sbcRaRb) {
@@ -1440,8 +1594,11 @@ case class FlareCpu(
                 //} otherwise {
                 //  upInstrDecEtc.decOp := FlareCpuInstrDecOp.cmpbcRaRbFlags
                 //}
-                finishInstr(writeSpr0=writeSprFlags(True))
-                disableGprWrites()
+                finishInstr(
+                  writeGpr=None,
+                  writeSpr0=writeSprFlags(True)
+                )
+                //disableGprWrites()
               }
               default {
                 upInstrDecEtc.decOp := FlareCpuInstrDecOp.bubble
@@ -1725,15 +1882,15 @@ case class FlareCpu(
               === FlareCpuInstrEncConst.g7Sg0110Subgrp
             ) {
               upInstrDecEtc.decOp := FlareCpuInstrDecOp.icreloadRaSimm
-              finishInstr()
-              disableRegWrites()
+              finishInstr(writeGpr=None)
+              //disableRegWrites()
             } elsewhen (
               upInstrEnc.g7Sg01110.subgrp
               === FlareCpuInstrEncConst.g7Sg01110Subgrp
             ) {
               upInstrDecEtc.decOp := FlareCpuInstrDecOp.icflush
-              finishInstr()
-              disableRegWrites()
+              finishInstr(writeGpr=None)
+              //disableRegWrites()
             } otherwise {
               markInstrInvalid()
             }
