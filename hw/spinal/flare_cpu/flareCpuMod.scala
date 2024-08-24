@@ -16,6 +16,7 @@ import libcheesevoyage.general._
 ////import libcheesevoyage.general.PipeSimpleDualPortMem
 //import libcheesevoyage.general.FpgacpuRamSimpleDualPort
 import libcheesevoyage.general.PipeMemRmw
+import libcheesevoyage.general.PipeMemRmwSimDut
 import libcheesevoyage.math.LongDivMultiCycle
 
 object FlareCpuInnerBusAccSz
@@ -94,7 +95,7 @@ case class FlareCpuPipeMemModType[
 ](
   params: FlareCpuParams,
   wordType: HardType[WordT],
-  wordCount: Int,
+  wordCountMax: Int,
   hazardCmpType: HardType[HazardCmpT],
   modRdPortCnt: Int,
   modStageCnt: Int,
@@ -107,7 +108,7 @@ case class FlareCpuPipeMemModType[
   //println(s"FlareCpuPipeMemModType: ${modRdPortCnt}")
   val myExt = PipeMemRmwPayloadExt(
     wordType=wordType(),
-    wordCount=wordCount,
+    wordCount=wordCountMax,
     hazardCmpType=hazardCmpType(),
     modRdPortCnt=modRdPortCnt,
     modStageCnt=modStageCnt,
@@ -181,7 +182,8 @@ case class FlareCpu(
   def enumRegFileGprEven = FlareCpuParams.enumRegFileGprEven
   def enumRegFileGprOddNonSp = FlareCpuParams.enumRegFileGprOddNonSp
   def enumRegFileGprSp = FlareCpuParams.enumRegFileGprSp
-  def enumRegFileSpr = FlareCpuParams.enumRegFileSpr
+  def enumRegFileSprEven = FlareCpuParams.enumRegFileSprEven
+  def enumRegFileSprOdd = FlareCpuParams.enumRegFileSprOdd
   def enumRegFileLim = FlareCpuParams.enumRegFileLim
 
   def enumPipeMemIcache = 0
@@ -485,7 +487,7 @@ case class FlareCpu(
     FlareCpuPipeMemModType(
       params=params,
       wordType=params.regWordType(),
-      wordCount=params.numGprsSprs,
+      wordCountMax=params.gprFileEvenWordCount,
       hazardCmpType=params.regFileHazardCmpType(),
       modRdPortCnt=params.regFileModRdPortCnt,
       modStageCnt=params.regFileModStageCnt,
@@ -570,7 +572,9 @@ case class FlareCpu(
       myArr += params.gprFileEvenWordCount
       myArr += params.gprFileOddNonSpWordCount
       myArr += params.gprFileSpWordCount
-      myArr += params.sprFileWordCount
+      //myArr += params.sprFileWordCount
+      myArr += params.sprFileEvenWordCount
+      myArr += params.sprFileOddWordCount
       myArr.toSeq
     },
     hazardCmpType=params.regFileHazardCmpType(),
@@ -590,7 +594,13 @@ case class FlareCpu(
       myInitBigInt += ArrayBuffer.fill(params.gprFileSpWordCount)(
         BigInt(0)
       )
-      myInitBigInt += ArrayBuffer.fill(params.sprFileWordCount)(
+      //myInitBigInt += ArrayBuffer.fill(params.sprFileWordCount)(
+      //  BigInt(0)
+      //)
+      myInitBigInt += ArrayBuffer.fill(params.sprFileEvenWordCount)(
+        BigInt(0)
+      )
+      myInitBigInt += ArrayBuffer.fill(params.sprFileOddWordCount)(
         BigInt(0)
       )
       Some(myInitBigInt)
@@ -792,6 +802,50 @@ case class FlareCpu(
     )
     //val canIrq = Bool()
     //canIrq := True
+
+    val myFrontPayloadGprEven = mkRegFileModType()
+    val myFrontPayloadGprOddNonSp = mkRegFileModType()
+    val myFrontPayloadGprSp = mkRegFileModType()
+    val myFrontPayloadSprEven = mkRegFileModType()
+    val myFrontPayloadSprOdd = mkRegFileModType()
+
+    myFrontPayloadGprEven := (
+      RegNext(myFrontPayloadGprEven)
+      init(myFrontPayloadGprEven.getZero)
+    )
+    myFrontPayloadGprOddNonSp := (
+      RegNext(myFrontPayloadGprOddNonSp)
+      init(myFrontPayloadGprOddNonSp.getZero)
+    )
+    myFrontPayloadGprSp := (
+      RegNext(myFrontPayloadGprSp)
+      init(myFrontPayloadGprSp.getZero)
+    )
+    myFrontPayloadSprEven := (
+      RegNext(myFrontPayloadSprEven)
+      init(myFrontPayloadSprEven.getZero)
+    )
+    myFrontPayloadSprOdd := (
+      RegNext(myFrontPayloadSprOdd)
+      init(myFrontPayloadSprOdd.getZero)
+    )
+
+    up(regFile.io.frontPayloadArr(enumRegFileGprEven)) := (
+      myFrontPayloadGprEven
+    )
+    up(regFile.io.frontPayloadArr(enumRegFileGprOddNonSp)) := (
+      myFrontPayloadGprOddNonSp
+    )
+    up(regFile.io.frontPayloadArr(enumRegFileGprSp)) := (
+      myFrontPayloadGprSp
+    )
+    up(regFile.io.frontPayloadArr(enumRegFileSprEven)) := (
+      myFrontPayloadSprEven
+    )
+    up(regFile.io.frontPayloadArr(enumRegFileSprOdd)) := (
+      myFrontPayloadSprOdd
+    )
+
     when (up.isFiring) {
       //upInstrDecEtc := upInstrDecEtc.getZero
       //upInstrDecEtc.isInvalid := False
@@ -799,10 +853,38 @@ case class FlareCpu(
 
       //def clearRegsMain(): Unit = {
       //}
+      myFrontPayloadGprEven.myExt.modMemWordValid := (
+        upInstrDecEtc.gprEvenRaIdx.valid
+      )
+      myFrontPayloadGprEven.myExt.memAddr(0) := (
+        upInstrDecEtc.gprEvenRaIdx.payload(
+          myFrontPayloadGprEven.myExt.memAddr(0).bitsRange
+        )
+      )
+      myFrontPayloadGprEven.myExt.memAddr(1) := (
+        upInstrDecEtc.gprEvenRbIdx(
+          myFrontPayloadGprEven.myExt.memAddr(1).bitsRange
+        )
+      )
+      myFrontPayloadGprOddNonSp.myExt.modMemWordValid := (
+        upInstrDecEtc.gprOddNonSpRaIdx.valid
+      )
+      myFrontPayloadGprOddNonSp.myExt.memAddr(0) := (
+        upInstrDecEtc.gprOddNonSpRaIdx.payload(
+          myFrontPayloadGprOddNonSp.myExt.memAddr(0).bitsRange
+        )
+      )
+      myFrontPayloadGprOddNonSp.myExt.memAddr(1) := (
+        upInstrDecEtc.gprOddNonSpRbIdx(
+          myFrontPayloadGprOddNonSp.myExt.memAddr(1).bitsRange
+        )
+      )
 
       def finishInstr(
-        isBlJl: Boolean=false,
-        //writeSprFlags: Option[Bool]=None,
+        //isBlJl: Boolean=false,
+        ////writeSprFlags: Option[Bool]=None,
+        //writeGpr: Bool=True,
+        writeGpr: Option[(UInt, Boolean)]=Some((U"1'd0", false)),
         writeSpr0: Option[(UInt, Bool)]=None,
         writeSpr1: Option[(UInt, Bool)]=None,
       ): Unit = {
@@ -816,16 +898,52 @@ case class FlareCpu(
         upInstrDecEtc.haveFullInstr := True
 
         //upInstrDecEtc.haveFullInstr := True
-        if (!isBlJl) {
-          upInstrDecEtc.raIdx := upInstrEnc.g2.raIdx
-        } else { // if (isBlSimm)
-          upInstrDecEtc.raIdx := FlareCpuInstrEncConst.gprLrIdx
+
+        //--------
+        // BEGIN: Old design for `finishInstr()`'s writing rA
+        //if (!isBlJl) {
+        //  upInstrDecEtc.raIdx := upInstrEnc.g2.raIdx
+        //} else { // if (isBlSimm)
+        //  upInstrDecEtc.raIdx := FlareCpuInstrEncConst.gprLrIdx
+        //}
+        // END: Old design for `finishInstr()`'s writing rA
+        writeGpr match {
+          case Some(myWriteGpr) => {
+            val tempRaIdx = (
+              if (!myWriteGpr._2) (
+                upInstrDecEtc.raIdx
+              ) else (
+                myWriteGpr._1
+              )
+            )
+            upInstrDecEtc.gprEvenRaIdx.valid := !tempRaIdx(0)
+            upInstrDecEtc.gprOddNonSpRaIdx.valid := (
+              tempRaIdx(0)
+              && (
+                tempRaIdx =/= FlareCpuInstrEncConst.gprSpIdx
+              )
+            )
+            upInstrDecEtc.gprSpRaIdx.valid := (
+              tempRaIdx === FlareCpuInstrEncConst.gprSpIdx
+            )
+          }
+          case None => {
+            upInstrDecEtc.gprEvenRaIdx.valid := False
+            upInstrDecEtc.gprOddNonSpRaIdx.valid := False
+            upInstrDecEtc.gprSpRaIdx.valid := False
+          }
         }
+        //--------
+
         upInstrDecEtc.rbIdx := upInstrEnc.g2.rbIdx
         //upInstrDecEtc.saIdx := upInstrEnc.g2.raIdx
         //upInstrDecEtc.sbIdx := upInstrEnc.g2.rbIdx
 
-        upInstrDecEtc.gprEvenRaIdx.valid := !upInstrDecEtc.raIdx(0)
+
+        //when (upInstrDecEtc.gprEvenRaIdx.valid) {
+        //} otherwise {
+        //}
+
         upInstrDecEtc.gprEvenRaIdx.payload := (
           Cat(
             U"1'd0",
@@ -838,12 +956,6 @@ case class FlareCpu(
             upInstrDecEtc.rbIdx(upInstrDecEtc.rbIdx.high downto 1),
           ).asUInt
         )
-        upInstrDecEtc.gprOddNonSpRaIdx.valid := (
-          upInstrDecEtc.raIdx(0)
-          && (
-            upInstrDecEtc.raIdx === FlareCpuInstrEncConst.gprSpIdx
-          )
-        )
         upInstrDecEtc.gprOddNonSpRaIdx.payload := (
           Cat(
             U"1'd0",
@@ -855,9 +967,6 @@ case class FlareCpu(
             U"1'd0",
             upInstrDecEtc.rbIdx(upInstrDecEtc.rbIdx.high downto 1),
           ).asUInt
-        )
-        upInstrDecEtc.gprSpRaIdx.valid := (
-          upInstrDecEtc.raIdx === FlareCpuInstrEncConst.gprSpIdx
         )
         upInstrDecEtc.gprSpRaIdx.payload := (
           0x0
@@ -1366,7 +1475,10 @@ case class FlareCpu(
             switch (upInstrEnc.g3.op) {
               is (FlareCpuInstrG3EncOp.blS9) {
                 // Opcode 0x0: bl simm
-                finishInstr(isBlJl=true)
+                finishInstr(
+                  //isBlJl=true
+                  writeGpr=Some((FlareCpuInstrEncConst.gprLrIdx, true))
+                )
                 upInstrDecEtc.decOp := FlareCpuInstrDecOp.blSimm
               }
               is (FlareCpuInstrG3EncOp.braS9) {
@@ -1450,7 +1562,10 @@ case class FlareCpu(
             upInstrDecEtc.fullgrp := FlareCpuInstrFullgrpDec.g4
             switch (upInstrEnc.g4.op) {
               is (FlareCpuInstrG4EncOp.jlRa) {
-                finishInstr(isBlJl=true)
+                finishInstr(
+                  //isBlJl=true
+                  writeGpr=Some((FlareCpuInstrEncConst.gprLrIdx, true))
+                )
                 upInstrDecEtc.decOp := FlareCpuInstrDecOp.jlRa
               }
               is (FlareCpuInstrG4EncOp.jmpRa) {

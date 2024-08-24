@@ -133,8 +133,9 @@ object FlareCpuParams {
   def enumRegFileGprEven = 0
   def enumRegFileGprOddNonSp = 1
   def enumRegFileGprSp = 2
-  def enumRegFileSpr = 3
-  def enumRegFileLim = 4
+  def enumRegFileSprEven = 3
+  def enumRegFileSprOdd = 4
+  def enumRegFileLim = 5
 }
 
 case class FlareCpuParams(
@@ -164,7 +165,9 @@ case class FlareCpuParams(
   def gprFileEvenWordCount = 8
   def gprFileOddNonSpWordCount = 7
   def gprFileSpWordCount = 1
-  def sprFileWordCount = numGprsSprs
+  //def sprFileWordCount = numGprsSprs
+  def sprFileEvenWordCount = 8
+  def sprFileOddWordCount = 8
   def regFileHazardCmpType() = Bool()
   //def regFileNonSpModRdPortCnt = 2
   //def gprFileSpModRdPortCnt = 1
