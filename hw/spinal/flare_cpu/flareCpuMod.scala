@@ -1803,6 +1803,124 @@ case class FlareCpu(
                 ))
                 upInstrDecEtc.decOp := FlareCpuInstrDecOp.udivmodRaRb
               }
+              is (FlareCpuInstrG4EncOp.lumulRaRb) {
+                // Opcode 0xe: lumul rA, rB
+                finishInstr(
+                  writeSpr0=Some(
+                    FlareCpuInstrEncConst.sprHiIdx, True
+                  ),
+                  writeSpr1=Some(
+                    FlareCpuInstrEncConst.sprLoIdx, True
+                  ),
+                )
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.lumulRaRb
+              }
+              is (FlareCpuInstrG4EncOp.lsmulRaRb) {
+                // Opcode 0xf: lsmul rA, rB
+                finishInstr(
+                  writeSpr0=Some(
+                    FlareCpuInstrEncConst.sprHiIdx, True
+                  ),
+                  writeSpr1=Some(
+                    FlareCpuInstrEncConst.sprLoIdx, True
+                  ),
+                )
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.lsmulRaRb
+              }
+              is (FlareCpuInstrG4EncOp.udivmod64RaRb) {
+                // Opcode 0x10: udivmod64 rA, rB
+                finishInstr(
+                  writeSpr0=Some(
+                    FlareCpuInstrEncConst.sprHiIdx, True
+                  ),
+                  writeSpr1=Some(
+                    FlareCpuInstrEncConst.sprLoIdx, True
+                  ),
+                )
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.udivmod64RaRb
+              }
+              is (FlareCpuInstrG4EncOp.sdivmod64RaRb) {
+                // Opcode 0x11: sdivmod64 rA, rB
+                finishInstr(
+                  writeSpr0=Some(
+                    FlareCpuInstrEncConst.sprHiIdx, True
+                  ),
+                  writeSpr1=Some(
+                    FlareCpuInstrEncConst.sprLoIdx, True
+                  ),
+                )
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.sdivmod64RaRb
+              }
+              is (FlareCpuInstrG4EncOp.ldubRaRb) {
+                // Opcode 0x12: ldub rA, [rB]
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.ldubRaRbLdst
+              }
+              is (FlareCpuInstrG4EncOp.ldsbRaRb) {
+                // Opcode 0x13: ldsb rA, [rB]
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.ldsbRaRbLdst
+              }
+              is (FlareCpuInstrG4EncOp.lduhRaRb) {
+                // Opcode 0x14: lduh rA, [rB]
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.lduhRaRbLdst
+              }
+              is (FlareCpuInstrG4EncOp.ldshRaRb) {
+                // Opcode 0x15: ldsh rA, [rB]
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.ldshRaRbLdst
+              }
+              is (FlareCpuInstrG4EncOp.ldrRaRb) {
+                // Opcode 0x16: ldr rA, [rB]
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.ldrRaRbLdst
+              }
+              //is (FlareCpuInstrG4EncOp.reserved17) {
+              //  // Opcode 0x17: reserved
+              //  //finishInstr()
+              //  //upInstrDecEtc.decOp := FlareCpuInstrDecOp.ldrRaRbLdst
+              //  markInstrInvalid()
+              //}
+              is (FlareCpuInstrG4EncOp.stbRaRb) {
+                // Opcode 0x18: stb rA, [rB]
+                finishInstr(writeGpr=None)
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.stbRaRbLdst
+              }
+              is (FlareCpuInstrG4EncOp.sthRaRb) {
+                // Opcode 0x19: sth rA, [rB]
+                finishInstr(writeGpr=None)
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.sthRaRbLdst
+              }
+              is (FlareCpuInstrG4EncOp.strRaRb) {
+                // Opcode 0x1a: str rA, [rB]
+                finishInstr(writeGpr=None)
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.strRaRbLdst
+              }
+              //is (FlareCpuInstrG4EncOp.reserved1b) {
+              //  // Opcode 0x1b: reserved
+              //  //finishInstr()
+              //  //upInstrDecEtc.decOp := FlareCpuInstrDecOp.ldrRaRbLdst
+              //  markInstrInvalid()
+              //}
+              is (FlareCpuInstrG4EncOp.cpyRaSb) {
+                // Opcode 0x1c: cpy rA, sB
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.cpyRaSb
+              }
+              is (FlareCpuInstrG4EncOp.cpySaRb) {
+                // Opcode 0x1d: cpy sA, rB
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.cpySaRb
+              }
+              is (FlareCpuInstrG4EncOp.cpySaSb) {
+                // Opcode 0x1e: cpy sA, sB
+                finishInstr()
+                upInstrDecEtc.decOp := FlareCpuInstrDecOp.cpySaSb
+              }
+              default {
+                markInstrInvalid()
+              }
             }
           }
           is (FlareCpuInstrEncConst.g5Grp) {
