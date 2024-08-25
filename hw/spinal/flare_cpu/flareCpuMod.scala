@@ -685,7 +685,7 @@ case class FlareCpu(
   //  down=regFile.io.front
   //)
   //--------
-  val pId = Payload(PipeMemModExtType())
+  //val pId = Payload(PipeMemModExtType())
   val cId = CtrlLink(
     up=sIf.down,
     down=(
@@ -695,6 +695,7 @@ case class FlareCpu(
   )
   linkArr += cId
   //--------
+  val pEx = Payload(Vec.fill(enumRegFileLim)(mkRegFileModType()))
   val cEx = CtrlLink(
     up=regFile.mod.front.cMid0Front.down,
     down=Node(),
@@ -719,11 +720,11 @@ case class FlareCpu(
   //--------
   val cIfArea = new cIf.Area {
     //--------
-    val upPayload = PipeMemModExtType()
-    up(pIf) := upPayload
-    upPayload := (
-      RegNext(upPayload)
-      init(upPayload.getZero)
+    val upModExt = PipeMemModExtType()
+    up(pIf) := upModExt
+    upModExt := (
+      RegNext(upModExt)
+      init(upModExt.getZero)
     )
     //--------
     val rSavedExSetPc = (
@@ -736,7 +737,7 @@ case class FlareCpu(
     }
     val rPrevRegPc = (
       RegNextWhen(
-        upPayload.regPc,
+        upModExt.regPc,
         up.isFiring,
       )
       init(0x0)
@@ -747,21 +748,21 @@ case class FlareCpu(
       rSavedExSetPc := rSavedExSetPc.getZero
       //--------
       when (exSetPc.fire) {
-        upPayload.regPc := exSetPc.payload //+ (params.instrMainWidth / 8)
+        upModExt.regPc := exSetPc.payload //+ (params.instrMainWidth / 8)
       } elsewhen (rSavedExSetPc.fire) {
-        upPayload.regPc := (
+        upModExt.regPc := (
           rSavedExSetPc.payload //+ (params.instrMainWidth / 8)
         )
       } otherwise {
-        upPayload.regPc := rPrevRegPc + (params.instrMainWidth / 8)
+        upModExt.regPc := rPrevRegPc + (params.instrMainWidth / 8)
       }
     }
     //when (exSetPc.fire) {
-    //  upPayload.regPc := exSetPc.payload + (params.instrMainWidth / 8)
+    //  upModExt.regPc := exSetPc.payload + (params.instrMainWidth / 8)
     //}
     //--------
     io.ibus.valid := True
-    io.ibus.addr := upPayload.regPc
+    io.ibus.addr := upModExt.regPc
     //--------
     when (!io.ibus.ready) {
       haltIt()
@@ -769,9 +770,9 @@ case class FlareCpu(
     //--------
     //when (io.ibus.ready) {
     //  when (exSetPc.fire) {
-    //    upPayload.regPc := exSetPc.payload
+    //    upModExt.regPc := exSetPc.payload
     //  } elsewhen (rSavedExSetPc.fire) {
-    //    upPayload.regPc := rSavedExSetPc.payload
+    //    upModExt.regPc := rSavedExSetPc.payload
     //  } 
     //  //otherwise { // no `exSetPc.fire` or `rSavedExSetPc.fire`
     //  //}
@@ -799,15 +800,15 @@ case class FlareCpu(
   }
   val cIdArea = new cId.Area {
     //--------
-    val upPayload = PipeMemModExtType()
-    up(pId) := upPayload
-    upPayload := (
-      RegNext(upPayload)
-      init(upPayload.getZero)
+    val upModExt = PipeMemModExtType()
+    //up(pId) := upModExt
+    upModExt := (
+      RegNext(upModExt)
+      init(upModExt.getZero)
     )
     //--------
-    def upInstrEnc = upPayload.instrEnc
-    def upInstrDecEtc = upPayload.instrDecEtc
+    def upInstrEnc = upModExt.instrEnc
+    def upInstrDecEtc = upModExt.instrDecEtc
     upInstrDecEtc.allowOverride
     val rSavedUpInstrDecEtc = (
       RegNextWhen(
@@ -881,6 +882,7 @@ case class FlareCpu(
       //myFrontPayloadGprEvenNonFp.myExt.modMemWordValid := (
       //  upInstrDecEtc.gprEvenNonFpRaIdx.valid
       //)
+      myFrontPayloadGprEvenNonFp.modExt := upModExt
       myFrontPayloadGprEvenNonFp.myExt.memAddr(0) := (
         upInstrDecEtc.gprEvenNonFpRaIdx.payload(
           myFrontPayloadGprEvenNonFp.myExt.memAddr(0).bitsRange
@@ -892,6 +894,7 @@ case class FlareCpu(
         )
       )
       //--------
+      myFrontPayloadGprFp.modExt := upModExt
       myFrontPayloadGprFp.myExt.modMemWordValid := (
         upInstrDecEtc.gprFpRaIdx.valid
       )
@@ -909,6 +912,7 @@ case class FlareCpu(
       //myFrontPayloadGprOddNonSp.myExt.modMemWordValid := (
       //  upInstrDecEtc.gprOddNonSpRaIdx.valid
       //)
+      myFrontPayloadGprOddNonSp.modExt := upModExt
       myFrontPayloadGprOddNonSp.myExt.memAddr(0) := (
         upInstrDecEtc.gprOddNonSpRaIdx.payload(
           myFrontPayloadGprOddNonSp.myExt.memAddr(0).bitsRange
@@ -923,6 +927,7 @@ case class FlareCpu(
       //myFrontPayloadGprSp.myExt.modMemWordValid := (
       //  upInstrDecEtc.gprSpRaIdx.valid
       //)
+      myFrontPayloadGprSp.modExt := upModExt
       myFrontPayloadGprSp.myExt.memAddr(0) := (
         upInstrDecEtc.gprSpRaIdx.payload(
           myFrontPayloadGprSp.myExt.memAddr(0).bitsRange
@@ -937,6 +942,7 @@ case class FlareCpu(
       //myFrontPayloadSprEven.myExt.modMemWordValid := (
       //  upInstrDecEtc.sprEvenSaIdx.valid
       //)
+      myFrontPayloadSprEven.modExt := upModExt
       myFrontPayloadSprEven.myExt.memAddr(0) := (
         upInstrDecEtc.sprEvenSaIdx.payload(
           myFrontPayloadSprEven.myExt.memAddr(0).bitsRange
@@ -951,6 +957,7 @@ case class FlareCpu(
       //myFrontPayloadSprOdd.myExt.modMemWordValid := (
       //  upInstrDecEtc.sprOddSaIdx.valid
       //)
+      myFrontPayloadSprOdd.modExt := upModExt
       myFrontPayloadSprOdd.myExt.memAddr(0) := (
         upInstrDecEtc.sprOddSaIdx.payload(
           myFrontPayloadSprOdd.myExt.memAddr(0).bitsRange
@@ -1633,7 +1640,7 @@ case class FlareCpu(
               ).asUInt(upInstrDecEtc.fullSimm.bitsRange)
             }
             upInstrDecEtc.fullPcrelSimm := (
-              upPayload.regPc
+              upModExt.regPc
               + upInstrDecEtc.fullSimm
             )
             switch (upInstrEnc.g3.op) {
@@ -2324,9 +2331,17 @@ case class FlareCpu(
         )
       }
     }
+    //duplicateIt()
     when (up.isFiring) {
-      val upModExt = Vec.fill(2)(PipeMemModExtType())
-      upModExt(0) := up(pId)
+      //val upModExt = Vec.fill(2)(PipeMemModExtType())
+      //upModExt(0) := up(regFile.io.modFrontPayload(0)).modExt
+      val upMod = Vec.fill(2)(Vec.fill(enumRegFileLim)(mkRegFileModType()))
+      for (ydx <- 0 until enumRegFileLim) {
+        upMod(0)(ydx) := up(regFile.io.modFrontPayload(ydx))
+        up(pEx)(ydx) := upMod(1)(ydx)
+      }
+      //upMod(0) := 
+      //up(pEx) := upMod(1)
     }
 
     //exSetPc.valid := True
