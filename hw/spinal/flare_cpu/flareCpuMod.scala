@@ -80,10 +80,10 @@ case class FlareCpuIo(
     params=params,
     isIcache=true,
   ))
-  val dbus = master(FlareCpuInnerBus(
-    params=params,
-    isIcache=false,
-  ))
+  //val dbus = master(FlareCpuInnerBus(
+  //  params=params,
+  //  isIcache=false,
+  //))
   val irq = in(Bool())
   //--------
 }
@@ -734,6 +734,13 @@ case class FlareCpu(
     when (exSetPc.fire) {
       rSavedExSetPc := exSetPc
     }
+    val rPrevRegPc = (
+      RegNextWhen(
+        upPayload.regPc,
+        up.isFiring,
+      )
+      init(0x0)
+    )
 
     when (up.isFiring) {
       //--------
@@ -746,7 +753,7 @@ case class FlareCpu(
           rSavedExSetPc.payload //+ (params.instrMainWidth / 8)
         )
       } otherwise {
-        upPayload.regPc := upPayload.regPc + (params.instrMainWidth / 8)
+        upPayload.regPc := rPrevRegPc + (params.instrMainWidth / 8)
       }
     }
     //when (exSetPc.fire) {
@@ -871,9 +878,9 @@ case class FlareCpu(
       //def clearRegsMain(): Unit = {
       //}
       //--------
-      myFrontPayloadGprEvenNonFp.myExt.modMemWordValid := (
-        upInstrDecEtc.gprEvenNonFpRaIdx.valid
-      )
+      //myFrontPayloadGprEvenNonFp.myExt.modMemWordValid := (
+      //  upInstrDecEtc.gprEvenNonFpRaIdx.valid
+      //)
       myFrontPayloadGprEvenNonFp.myExt.memAddr(0) := (
         upInstrDecEtc.gprEvenNonFpRaIdx.payload(
           myFrontPayloadGprEvenNonFp.myExt.memAddr(0).bitsRange
@@ -899,9 +906,9 @@ case class FlareCpu(
         )
       )
       //--------
-      myFrontPayloadGprOddNonSp.myExt.modMemWordValid := (
-        upInstrDecEtc.gprOddNonSpRaIdx.valid
-      )
+      //myFrontPayloadGprOddNonSp.myExt.modMemWordValid := (
+      //  upInstrDecEtc.gprOddNonSpRaIdx.valid
+      //)
       myFrontPayloadGprOddNonSp.myExt.memAddr(0) := (
         upInstrDecEtc.gprOddNonSpRaIdx.payload(
           myFrontPayloadGprOddNonSp.myExt.memAddr(0).bitsRange
@@ -913,9 +920,9 @@ case class FlareCpu(
         )
       )
       //--------
-      myFrontPayloadGprSp.myExt.modMemWordValid := (
-        upInstrDecEtc.gprSpRaIdx.valid
-      )
+      //myFrontPayloadGprSp.myExt.modMemWordValid := (
+      //  upInstrDecEtc.gprSpRaIdx.valid
+      //)
       myFrontPayloadGprSp.myExt.memAddr(0) := (
         upInstrDecEtc.gprSpRaIdx.payload(
           myFrontPayloadGprSp.myExt.memAddr(0).bitsRange
@@ -927,9 +934,9 @@ case class FlareCpu(
         )
       )
       //--------
-      myFrontPayloadSprEven.myExt.modMemWordValid := (
-        upInstrDecEtc.sprEvenSaIdx.valid
-      )
+      //myFrontPayloadSprEven.myExt.modMemWordValid := (
+      //  upInstrDecEtc.sprEvenSaIdx.valid
+      //)
       myFrontPayloadSprEven.myExt.memAddr(0) := (
         upInstrDecEtc.sprEvenSaIdx.payload(
           myFrontPayloadSprEven.myExt.memAddr(0).bitsRange
@@ -941,9 +948,9 @@ case class FlareCpu(
         )
       )
       //--------
-      myFrontPayloadSprOdd.myExt.modMemWordValid := (
-        upInstrDecEtc.sprOddSaIdx.valid
-      )
+      //myFrontPayloadSprOdd.myExt.modMemWordValid := (
+      //  upInstrDecEtc.sprOddSaIdx.valid
+      //)
       myFrontPayloadSprOdd.myExt.memAddr(0) := (
         upInstrDecEtc.sprOddSaIdx.payload(
           myFrontPayloadSprOdd.myExt.memAddr(0).bitsRange
@@ -2143,9 +2150,13 @@ case class FlareCpu(
       val tempFlagsZMask = myFlagsZMask(bits=bits)
       val tempFlagsVnMask = myFlagsVnMask(bits=bits)
       // set the `Z` flag
-      flagsOut(params.flagIdxZ) := (result & tempFlagsZMask) =/= 0
+      flagsOut(params.flagIdxZ) := (
+        (result & tempFlagsZMask) =/= 0
+      )
       // set the `N` flag
-      flagsOut(params.flagIdxN) := (result & tempFlagsVnMask) =/= 0
+      flagsOut(params.flagIdxN) := (
+        (result & tempFlagsVnMask) =/= 0
+      )
     }
     // Returns the sum/difference of the `add`/`sub`/`cmp`/`cmpb`/`cmph`
     // Note: `NULL` `flags_out` indicates don't compute output flags
@@ -2212,10 +2223,10 @@ case class FlareCpu(
       operandA: UInt,
       operandB: UInt,
       flagsIn: UInt,
-      flagsOut: Option[UInt]=None,
       withCarryIn: Boolean,
       doSub: Boolean,
       ret: UInt,
+      flagsOut: (UInt, Bool)=(U"32'd0", False),
     ): Unit = {
       //--------
       //val ret = UInt(33 bits)
@@ -2274,140 +2285,50 @@ case class FlareCpu(
         )
       }
       ret := tempRet(ret.bitsRange)
-      flagsOut match {
-        case Some(myFlagsOut) => {
-          //temp_flags_vn_mask = FLARE_SIM_FLAGS_VN_MASK (bits);
-          //temp_flags_c_mask = FLARE_SIM_FLAGS_C_MASK (bits);
-          tempFlagsVnMask := myFlagsVnMask(bits=bits)
-          tempFlagsCMask := myFlagsCMask(bits=bits)
+      when (flagsOut._2) {
+        //temp_flags_vn_mask = FLARE_SIM_FLAGS_VN_MASK (bits);
+        //temp_flags_c_mask = FLARE_SIM_FLAGS_C_MASK (bits);
+        tempFlagsVnMask := myFlagsVnMask(bits=bits)
+        tempFlagsCMask := myFlagsCMask(bits=bits)
 
-          //*flags_out = 0x0;
-          //flare_sim_set_flags_zn (bits, tempRet, flags_out);
-          setFlagsZn(
-            bits=bits,
-            result=tempRet,
-            flagsOut=myFlagsOut,
-          )
+        //*flags_out = 0x0;
+        //flare_sim_set_flags_zn (bits, tempRet, flags_out);
+        setFlagsZn(
+          bits=bits,
+          result=tempRet,
+          flagsOut=flagsOut._1,
+        )
 
-          ///* set the `C` flag */
-          //if (tempRet & temp_flags_c_mask)
-          //{
-          //  *flags_out |= FLARE_FLAGS_C_MASK;
-          //}
-          myFlagsOut(params.flagIdxC) := (tempRet & tempFlagsCMask) =/= 0
-          ///* set the `V` flag (6502-style) */
-          ////if (!((temp_operand_a ^ temp_operand_b) & temp_flags_vn_mask)
-          ////  && ((temp_operand_a ^ tempRet) & temp_flags_vn_mask))
-          ///* The above ^ commented-out method is equivalent, but slower. */
-          //if ((temp_operand_a ^ tempRet) & (temp_operand_b ^ tempRet)
-          //  & temp_flags_vn_mask)
-          //{
-          //  *flags_out |= FLARE_FLAGS_V_MASK;
-          //}
-          myFlagsOut(params.flagIdxV) := (
+        ///* set the `C` flag */
+        //if (tempRet & temp_flags_c_mask)
+        //{
+        //  *flags_out |= FLARE_FLAGS_C_MASK;
+        //}
+        flagsOut._1(params.flagIdxC) := (
+          (tempRet & tempFlagsCMask) =/= 0
+        )
+        ///* set the `V` flag (6502-style) */
+        ////if (!((temp_operand_a ^ temp_operand_b) & temp_flags_vn_mask)
+        ////  && ((temp_operand_a ^ tempRet) & temp_flags_vn_mask))
+        ///* The above ^ commented-out method is equivalent, but slower. */
+        //if ((temp_operand_a ^ tempRet) & (temp_operand_b ^ tempRet)
+        //  & temp_flags_vn_mask)
+        //{
+        //  *flags_out |= FLARE_FLAGS_V_MASK;
+        //}
+        flagsOut._1(params.flagIdxV) := (
+          (
             ((tempOperandA ^ tempRet) & (tempOperandB ^ tempRet)
             & tempFlagsVnMask)
           ) =/= 0
-        }
-        case None => {
-        }
+        )
       }
     }
-    //def performAddSub(
-    //  rawElemNumBytesPow: (Int, Int),
-    //  operandA: UInt,
-    //  operandB: UInt,
-    //  withCarryIn: Boolean,
-    //  doSub: Boolean,
-    //  doSetFlags: Boolean,
-    //  //flagsOut: UInt
-    //  result: UInt,
-    //  flagsOut: Option[UInt]=None,
-    //): Unit = {
-    //  ////--------
-    //  //def myBits = params.elemNumBytesPow(
-    //  //  rawElemNumBytesPow=rawElemNumBytesPow
-    //  //)._2
-    //  //assert(result.getWidth == myBits + 1)
-    //  ////--------
-    //  ////uint64_t
-    //  ////  ret = 0,
-    //  ////  temp_operand_a = operand_a,
-    //  ////  temp_operand_b = operand_b,
-    //  ////  temp_flags_c_mask = 0,
-    //  ////  temp_flags_vn_mask = 0;
-    //  //val tempOperandA = UInt((myBits + 1) bits)
-    //  //val tempOperandB = UInt((myBits + 1) bits)
-    //  //tempOperandA := Cat(False, operandA).asUInt
-    //  //tempOperandB := Cat(False, operandB).asUInt
-    //  //if (!doSub) {
-    //  //  //ret = temp_operand_a + temp_operand_b
-    //  //  //+ (with_carry_in
-    //  //  //  ? ((flags_in & FLARE32_FLAGS_C_MASK) >> FLARE32_FLAGS_C_BITPOS)
-    //  //  //  : 0x0ull);
-    //  //  result := (
-    //  //    tempOperandA + tempOperandB
-    //  //    + (
-    //  //      if (withCarryIn) {
-    //  //        flags(params.flagIdxC downto params.flagIdxC)
-    //  //      } else { // if (!withCarryIn)
-    //  //        U"1'd0"
-    //  //      }
-    //  //    ).resized
-    //  //  )
-    //  //} else { // if (doSub)
-    //  //  /* 6502-style subtraction */
-    //  //  //ret = temp_operand_a + (~temp_operand_b)
-    //  //  //  + (with_carry_in 
-    //  //  //    ? ((flags_in & FLARE32_FLAGS_C_MASK) >> FLARE32_FLAGS_C_BITPOS)
-    //  //  //    : 0x1ull);
-    //  //  result := (
-    //  //    tempOperandA + (~tempOperandB)
-    //  //    + (
-    //  //      if (withCarryIn) {
-    //  //        flags(params.flagIdxC downto params.flagIdxC)
-    //  //      } else { // if (!withCarryIn)
-    //  //        U"1'd1"
-    //  //      }
-    //  //    ).resized
-    //  //  )
-    //  //}
+    when (up.isFiring) {
+      val upModExt = Vec.fill(2)(PipeMemModExtType())
+      upModExt(0) := up(pId)
+    }
 
-    //  //if (doSetFlags) {
-    //  //  var useMyFlagsOut: Boolean = false
-    //  //  val tempFlagsOut = flagsOut match {
-    //  //    case Some(myFlagsOut) => {
-    //  //      useMyFlagsOut = true
-    //  //      myFlagsOut
-    //  //    }
-    //  //    case None => {
-    //  //      //outpFlags
-    //  //      UInt(params.mainWidth bits)
-    //  //    }
-    //  //  }
-    //  //  val tempFlags = cloneOf(tempFlagsOut)
-    //  //  tempFlagsOut := 0x0
-    //  //  tempFlagsOut.allowOverride
-    //  //  performSetFlagsZn(
-    //  //    rawElemNumBytesPow=rawElemNumBytesPow,
-    //  //    result=result,
-    //  //  )
-    //  //  tempFlagsOut(params.flagIdxC) := result(myBits)
-    //  //  tempFlagsOut(params.flagIdxV) := (
-    //  //    (tempOperandA ^ result.resized)
-    //  //    & (tempOperandB ^ result.resized)
-    //  //  )(myBits - 1)
-    //  //  if (!useMyFlagsOut) {
-    //  //    doWriteSpr(
-    //  //      regIdx=myInstrDecEtc.enumSprFlags,
-    //  //      payload=tempFlagsOut,
-    //  //    )
-    //  //  }
-    //  //}
-    //  ////--------
-    //}
-    //when (up.isFiring) {
-    //}
     //exSetPc.valid := True
     //exSetPc.payload := 0x0
     //outp := inp
