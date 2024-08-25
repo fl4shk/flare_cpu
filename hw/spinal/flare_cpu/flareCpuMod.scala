@@ -2053,124 +2053,359 @@ case class FlareCpu(
     }
   }
   val cExArea = new cEx.Area {
-    def performSetFlagsZn(
-      rawElemNumBytesPow: (Int, Int),
+    
+    //#define FLARE_FLAGS_Z_MASK \
+    //  (((flare_temp_t) 0x1ull) << FLARE_FLAGS_Z_BITPOS) 
+    //#define FLARE_FLAGS_C_MASK \
+    //  (((flare_temp_t) 0x1ull) << FLARE_FLAGS_C_BITPOS) 
+    //#define FLARE_FLAGS_V_MASK \
+    //  (((flare_temp_t) 0x1ull) << FLARE_FLAGS_V_BITPOS) 
+    //#define FLARE_FLAGS_N_MASK \
+    //  (((flare_temp_t) 0x1ull) << FLARE_FLAGS_N_BITPOS) 
+
+    //#define FLARE_SIM_FLAGS_VN_MASK(bits) \
+    //  ((uint64_t) 0x1ull << (uint64_t) (bits - 1))
+    //#define FLARE_SIM_FLAGS_Z_MASK(bits) \
+    //  (FLARE_SIM_FLAGS_VN_MASK (bits) - (int64_t) 0x1ll)
+    //#define FLARE_SIM_FLAGS_C_MASK(bits) \
+    //  (FLARE_SIM_FLAGS_VN_MASK (bits) << (uint64_t) 0x1ull)
+    def myFlagsVnMask(bits: Int) = (
+      U(s"${params.mainWidth + 1}'d1") << (bits - 1)
+    )
+    def myFlagsZMask(bits: Int) = (
+      myFlagsVnMask(bits=bits) - 1
+    )
+    def myFlagsCMask(bits: Int) = (
+      myFlagsVnMask(bits=bits) << 1
+    )
+    //def performSetFlagsZn(
+    //  rawElemNumBytesPow: (Int, Int),
+    //  result: UInt,
+    //  //flagsOut: UInt,
+    //): Unit = {
+    //  //--------
+    //  //def myBits = params.elemNumBytesPow(
+    //  //  rawElemNumBytesPow=rawElemNumBytesPow
+    //  //)._2
+    //  //val outpFlags = UInt(params.mainWidth bits)
+    //  //outpFlags := (
+    //  //  //0x0
+    //  //  flags
+    //  //)
+    //  //outpFlags.allowOverride
+    //  //outpFlags(params.flagIdxZ) := (
+    //  //  result(myBits - 1 downto 0) === 0
+    //  //)
+    //  //outpFlags(params.flagIdxN) := result(myBits - 1)
+    //  //doWriteSpr(
+    //  //  regIdx=myInstrDecEtc.enumSprFlags,
+    //  //  payload=outpFlags,
+    //  //)
+    //  //--------
+    //}
+
+
+    //static INLINE void
+    //flare_sim_set_flags_zn (uint32_t bits,
+    //                          uint64_t result,
+    //                          int32_t *flags_out)
+    //{
+    //  uint64_t
+    //    temp_flags_z_mask = FLARE_SIM_FLAGS_Z_MASK (bits),
+    //    temp_flags_vn_mask = FLARE_SIM_FLAGS_VN_MASK (bits);
+
+    //  /* set the `Z` flag */
+    //  if (result & temp_flags_z_mask)
+    //  {
+    //    *flags_out |= FLARE_FLAGS_Z_MASK;
+    //  }
+    //  else
+    //  {
+    //    *flags_out &= ~FLARE_FLAGS_Z_MASK;
+    //  }
+
+    //  /* set the `N` flag */
+    //  if (result & temp_flags_vn_mask)
+    //  {
+    //    *flags_out |= FLARE_FLAGS_N_MASK;
+    //  }
+    //  else
+    //  {
+    //    *flags_out &= ~FLARE_FLAGS_N_MASK;
+    //  }
+    //}
+    def setFlagsZn(
+      bits: Int,
       result: UInt,
-      //flagsOut: UInt,
+      flagsOut: UInt
     ): Unit = {
-      //--------
-      //def myBits = params.elemNumBytesPow(
-      //  rawElemNumBytesPow=rawElemNumBytesPow
-      //)._2
-      //val outpFlags = UInt(params.mainWidth bits)
-      //outpFlags := (
-      //  //0x0
-      //  flags
-      //)
-      //outpFlags.allowOverride
-      //outpFlags(params.flagIdxZ) := (
-      //  result(myBits - 1 downto 0) === 0
-      //)
-      //outpFlags(params.flagIdxN) := result(myBits - 1)
-      //doWriteSpr(
-      //  regIdx=myInstrDecEtc.enumSprFlags,
-      //  payload=outpFlags,
-      //)
-      //--------
+      assert(result.getWidth == params.mainWidth)
+      val tempFlagsZMask = myFlagsZMask(bits=bits)
+      val tempFlagsVnMask = myFlagsVnMask(bits=bits)
+      // set the `Z` flag
+      flagsOut(params.flagIdxZ) := (result & tempFlagsZMask) =/= 0
+      // set the `N` flag
+      flagsOut(params.flagIdxN) := (result & tempFlagsVnMask) =/= 0
     }
+    // Returns the sum/difference of the `add`/`sub`/`cmp`/`cmpb`/`cmph`
+    // Note: `NULL` `flags_out` indicates don't compute output flags
+    //static INLINE int32_t
+    //flare_sim_add_sub (uint32_t bits,
+    //                    int32_t operand_a,
+    //                    int32_t operand_b,
+    //                    int32_t flags_in,
+    //                    int32_t *flags_out, 
+    //                    bool with_carry_in,
+    //                    bool do_sub)
+    //{
+    //  uint64_t
+    //    ret = 0,
+    //    temp_operand_a = operand_a,
+    //    temp_operand_b = operand_b,
+    //    temp_flags_c_mask = 0,
+    //    temp_flags_vn_mask = 0;
+
+    //  if (!do_sub)
+    //  {
+    //    ret = temp_operand_a + temp_operand_b
+    //      + (with_carry_in
+    //        ? ((flags_in & FLARE_FLAGS_C_MASK) >> FLARE_FLAGS_C_BITPOS)
+    //        : 0x0ull);
+    //  }
+    //  else // if (do_sub)
+    //  {
+    //    /* 6502-style subtraction */
+    //    ret = temp_operand_a + (~temp_operand_b)
+    //      + (with_carry_in 
+    //        ? ((flags_in & FLARE_FLAGS_C_MASK) >> FLARE_FLAGS_C_BITPOS)
+    //        : 0x1ull);
+    //  }
+
+    //  if (flags_out != NULL)
+    //  {
+    //    temp_flags_vn_mask = FLARE_SIM_FLAGS_VN_MASK (bits);
+    //    temp_flags_c_mask = FLARE_SIM_FLAGS_C_MASK (bits);
+
+    //    *flags_out = 0x0;
+    //    flare_sim_set_flags_zn (bits, ret, flags_out);
+
+    //    /* set the `C` flag */
+    //    if (ret & temp_flags_c_mask)
+    //    {
+    //      *flags_out |= FLARE_FLAGS_C_MASK;
+    //    }
+    //    /* set the `V` flag (6502-style) */
+    //    //if (!((temp_operand_a ^ temp_operand_b) & temp_flags_vn_mask)
+    //    //  && ((temp_operand_a ^ ret) & temp_flags_vn_mask))
+    //    /* The above ^ commented-out method is equivalent, but slower. */
+    //    if ((temp_operand_a ^ ret) & (temp_operand_b ^ ret)
+    //      & temp_flags_vn_mask)
+    //    {
+    //      *flags_out |= FLARE_FLAGS_V_MASK;
+    //    }
+    //  }
+
+    //  return (int32_t) ret;
+    //}
     def performAddSub(
-      rawElemNumBytesPow: (Int, Int),
+      bits: Int,
       operandA: UInt,
       operandB: UInt,
+      flagsIn: UInt,
+      flagsOut: Option[UInt]=None,
       withCarryIn: Boolean,
       doSub: Boolean,
-      doSetFlags: Boolean,
-      //flagsOut: UInt
-      result: UInt,
-      flagsOut: Option[UInt]=None,
+      ret: UInt,
     ): Unit = {
-      ////--------
-      //def myBits = params.elemNumBytesPow(
-      //  rawElemNumBytesPow=rawElemNumBytesPow
-      //)._2
-      //assert(result.getWidth == myBits + 1)
-      ////--------
-      ////uint64_t
-      ////  ret = 0,
-      ////  temp_operand_a = operand_a,
-      ////  temp_operand_b = operand_b,
-      ////  temp_flags_c_mask = 0,
-      ////  temp_flags_vn_mask = 0;
-      //val tempOperandA = UInt((myBits + 1) bits)
-      //val tempOperandB = UInt((myBits + 1) bits)
-      //tempOperandA := Cat(False, operandA).asUInt
-      //tempOperandB := Cat(False, operandB).asUInt
-      //if (!doSub) {
-      //  //ret = temp_operand_a + temp_operand_b
-      //  //+ (with_carry_in
-      //  //  ? ((flags_in & FLARE32_FLAGS_C_MASK) >> FLARE32_FLAGS_C_BITPOS)
-      //  //  : 0x0ull);
-      //  result := (
-      //    tempOperandA + tempOperandB
-      //    + (
-      //      if (withCarryIn) {
-      //        flags(params.flagIdxC downto params.flagIdxC)
-      //      } else { // if (!withCarryIn)
-      //        U"1'd0"
-      //      }
-      //    ).resized
-      //  )
-      //} else { // if (doSub)
-      //  /* 6502-style subtraction */
-      //  //ret = temp_operand_a + (~temp_operand_b)
-      //  //  + (with_carry_in 
-      //  //    ? ((flags_in & FLARE32_FLAGS_C_MASK) >> FLARE32_FLAGS_C_BITPOS)
-      //  //    : 0x1ull);
-      //  result := (
-      //    tempOperandA + (~tempOperandB)
-      //    + (
-      //      if (withCarryIn) {
-      //        flags(params.flagIdxC downto params.flagIdxC)
-      //      } else { // if (!withCarryIn)
-      //        U"1'd1"
-      //      }
-      //    ).resized
-      //  )
-      //}
+      //--------
+      //val ret = UInt(33 bits)
+      val tempRet = UInt(params.mainWidth + 1 bits)
+      val tempOperandA = UInt((params.mainWidth + 1) bits)
+      val tempOperandB = UInt((params.mainWidth + 1) bits)
+      val tempFlagsCMask = UInt(params.mainWidth bits)
+      val tempFlagsVnMask = UInt(params.mainWidth bits)
+      //--------
+      assert(ret.getWidth == params.mainWidth)
+      assert(operandA.getWidth == params.mainWidth)
+      assert(operandB.getWidth == params.mainWidth)
+      assert(flagsIn.getWidth == params.mainWidth)
+      ret := 0x0
+      tempOperandA := Cat(False, operandA).asUInt
+      tempOperandB := Cat(False, operandB).asUInt
+      tempFlagsCMask := 0x0
+      tempFlagsVnMask := 0x0
+      //--------
+      if (!doSub) {
+        //tempRet = temp_operand_a + temp_operand_b
+        //  + (with_carry_in
+        //    ? ((flags_in & FLARE_FLAGS_C_MASK) >> FLARE_FLAGS_C_BITPOS)
+        //    : 0x0ull);
+        tempRet := (
+          tempOperandA + tempOperandB
+          + (
+            if (withCarryIn) (
+              Cat(
+                U(s"${params.mainWidth}'d0"),
+                flagsIn(params.flagIdxC)
+              ).asUInt
+            ) else ( // if (!withCarryIn)
+              U(s"${params.mainWidth}'d0")
+            )
+          )
+        )
+      } else { // if (doSub)
+        ///* 6502-style subtraction */
+        //tempRet = temp_operand_a + (~temp_operand_b)
+        //  + (with_carry_in 
+        //    ? ((flags_in & FLARE_FLAGS_C_MASK) >> FLARE_FLAGS_C_BITPOS)
+        //    : 0x1ull);
+        tempRet := (
+          tempOperandA + (~tempOperandB)
+          + (
+            if (withCarryIn) (
+              Cat(
+                U(s"${params.mainWidth}'d0"),
+                flagsIn(params.flagIdxC)
+              ).asUInt
+            ) else ( // if (!withCarryIn)
+              U(s"${params.mainWidth}'d1")
+            )
+          )
+        )
+      }
+      ret := tempRet(ret.bitsRange)
+      flagsOut match {
+        case Some(myFlagsOut) => {
+          //temp_flags_vn_mask = FLARE_SIM_FLAGS_VN_MASK (bits);
+          //temp_flags_c_mask = FLARE_SIM_FLAGS_C_MASK (bits);
+          tempFlagsVnMask := myFlagsVnMask(bits=bits)
+          tempFlagsCMask := myFlagsCMask(bits=bits)
 
-      //if (doSetFlags) {
-      //  var useMyFlagsOut: Boolean = false
-      //  val tempFlagsOut = flagsOut match {
-      //    case Some(myFlagsOut) => {
-      //      useMyFlagsOut = true
-      //      myFlagsOut
-      //    }
-      //    case None => {
-      //      //outpFlags
-      //      UInt(params.mainWidth bits)
-      //    }
-      //  }
-      //  val tempFlags = cloneOf(tempFlagsOut)
-      //  tempFlagsOut := 0x0
-      //  tempFlagsOut.allowOverride
-      //  performSetFlagsZn(
-      //    rawElemNumBytesPow=rawElemNumBytesPow,
-      //    result=result,
-      //  )
-      //  tempFlagsOut(params.flagIdxC) := result(myBits)
-      //  tempFlagsOut(params.flagIdxV) := (
-      //    (tempOperandA ^ result.resized)
-      //    & (tempOperandB ^ result.resized)
-      //  )(myBits - 1)
-      //  if (!useMyFlagsOut) {
-      //    doWriteSpr(
-      //      regIdx=myInstrDecEtc.enumSprFlags,
-      //      payload=tempFlagsOut,
-      //    )
-      //  }
-      //}
-      ////--------
+          //*flags_out = 0x0;
+          //flare_sim_set_flags_zn (bits, tempRet, flags_out);
+          setFlagsZn(
+            bits=bits,
+            result=tempRet,
+            flagsOut=myFlagsOut,
+          )
+
+          ///* set the `C` flag */
+          //if (tempRet & temp_flags_c_mask)
+          //{
+          //  *flags_out |= FLARE_FLAGS_C_MASK;
+          //}
+          myFlagsOut(params.flagIdxC) := (tempRet & tempFlagsCMask) =/= 0
+          ///* set the `V` flag (6502-style) */
+          ////if (!((temp_operand_a ^ temp_operand_b) & temp_flags_vn_mask)
+          ////  && ((temp_operand_a ^ tempRet) & temp_flags_vn_mask))
+          ///* The above ^ commented-out method is equivalent, but slower. */
+          //if ((temp_operand_a ^ tempRet) & (temp_operand_b ^ tempRet)
+          //  & temp_flags_vn_mask)
+          //{
+          //  *flags_out |= FLARE_FLAGS_V_MASK;
+          //}
+          myFlagsOut(params.flagIdxV) := (
+            ((tempOperandA ^ tempRet) & (tempOperandB ^ tempRet)
+            & tempFlagsVnMask)
+          ) =/= 0
+        }
+        case None => {
+        }
+      }
     }
+    //def performAddSub(
+    //  rawElemNumBytesPow: (Int, Int),
+    //  operandA: UInt,
+    //  operandB: UInt,
+    //  withCarryIn: Boolean,
+    //  doSub: Boolean,
+    //  doSetFlags: Boolean,
+    //  //flagsOut: UInt
+    //  result: UInt,
+    //  flagsOut: Option[UInt]=None,
+    //): Unit = {
+    //  ////--------
+    //  //def myBits = params.elemNumBytesPow(
+    //  //  rawElemNumBytesPow=rawElemNumBytesPow
+    //  //)._2
+    //  //assert(result.getWidth == myBits + 1)
+    //  ////--------
+    //  ////uint64_t
+    //  ////  ret = 0,
+    //  ////  temp_operand_a = operand_a,
+    //  ////  temp_operand_b = operand_b,
+    //  ////  temp_flags_c_mask = 0,
+    //  ////  temp_flags_vn_mask = 0;
+    //  //val tempOperandA = UInt((myBits + 1) bits)
+    //  //val tempOperandB = UInt((myBits + 1) bits)
+    //  //tempOperandA := Cat(False, operandA).asUInt
+    //  //tempOperandB := Cat(False, operandB).asUInt
+    //  //if (!doSub) {
+    //  //  //ret = temp_operand_a + temp_operand_b
+    //  //  //+ (with_carry_in
+    //  //  //  ? ((flags_in & FLARE32_FLAGS_C_MASK) >> FLARE32_FLAGS_C_BITPOS)
+    //  //  //  : 0x0ull);
+    //  //  result := (
+    //  //    tempOperandA + tempOperandB
+    //  //    + (
+    //  //      if (withCarryIn) {
+    //  //        flags(params.flagIdxC downto params.flagIdxC)
+    //  //      } else { // if (!withCarryIn)
+    //  //        U"1'd0"
+    //  //      }
+    //  //    ).resized
+    //  //  )
+    //  //} else { // if (doSub)
+    //  //  /* 6502-style subtraction */
+    //  //  //ret = temp_operand_a + (~temp_operand_b)
+    //  //  //  + (with_carry_in 
+    //  //  //    ? ((flags_in & FLARE32_FLAGS_C_MASK) >> FLARE32_FLAGS_C_BITPOS)
+    //  //  //    : 0x1ull);
+    //  //  result := (
+    //  //    tempOperandA + (~tempOperandB)
+    //  //    + (
+    //  //      if (withCarryIn) {
+    //  //        flags(params.flagIdxC downto params.flagIdxC)
+    //  //      } else { // if (!withCarryIn)
+    //  //        U"1'd1"
+    //  //      }
+    //  //    ).resized
+    //  //  )
+    //  //}
+
+    //  //if (doSetFlags) {
+    //  //  var useMyFlagsOut: Boolean = false
+    //  //  val tempFlagsOut = flagsOut match {
+    //  //    case Some(myFlagsOut) => {
+    //  //      useMyFlagsOut = true
+    //  //      myFlagsOut
+    //  //    }
+    //  //    case None => {
+    //  //      //outpFlags
+    //  //      UInt(params.mainWidth bits)
+    //  //    }
+    //  //  }
+    //  //  val tempFlags = cloneOf(tempFlagsOut)
+    //  //  tempFlagsOut := 0x0
+    //  //  tempFlagsOut.allowOverride
+    //  //  performSetFlagsZn(
+    //  //    rawElemNumBytesPow=rawElemNumBytesPow,
+    //  //    result=result,
+    //  //  )
+    //  //  tempFlagsOut(params.flagIdxC) := result(myBits)
+    //  //  tempFlagsOut(params.flagIdxV) := (
+    //  //    (tempOperandA ^ result.resized)
+    //  //    & (tempOperandB ^ result.resized)
+    //  //  )(myBits - 1)
+    //  //  if (!useMyFlagsOut) {
+    //  //    doWriteSpr(
+    //  //      regIdx=myInstrDecEtc.enumSprFlags,
+    //  //      payload=tempFlagsOut,
+    //  //    )
+    //  //  }
+    //  //}
+    //  ////--------
+    //}
     //when (up.isFiring) {
     //}
     //exSetPc.valid := True
