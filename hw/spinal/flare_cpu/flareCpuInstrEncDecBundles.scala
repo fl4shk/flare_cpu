@@ -581,6 +581,25 @@ extends SpinalEnum(defaultEncoding=binarySequential) {
     //--------
     = newElement()
 }
+object FlareCpuGprSelect extends SpinalEnum(
+  defaultEncoding=binarySequential
+) {
+  val
+    gprEvenNonFp,
+    gprFp,
+    gprOddNonSp,
+    gprSp
+    = newElement();
+}
+object FlareCpuSprSelect extends SpinalEnum(
+  defaultEncoding=binarySequential
+) {
+  val
+    sprEven,
+    sprOdd
+    = newElement();
+}
+
 case class FlareCpuInstrDecEtc(
   params: FlareCpuParams,
 ) extends Bundle {
@@ -603,21 +622,37 @@ case class FlareCpuInstrDecEtc(
   //val regFileGprSpModMemWordValid = Bool()
   //val regFileSprModMemWordValid = Bool()
 
+  val gprRaSel = FlareCpuGprSelect()
+  val gprRbSel = FlareCpuGprSelect()
+  val sprSaSel = FlareCpuSprSelect()
+  val sprSbSel = FlareCpuSprSelect()
+  //--------
+  val wrGprEvenNonFpRaIdx = Bool()
   val gprEvenNonFpRaIdx = Flow(UInt(params.numGprsSprsPow bits))
-  val gprEvenNonFpRbIdx = /*Flow*/(UInt(params.numGprsSprsPow bits))
+  val gprEvenNonFpRbIdx = Flow(UInt(params.numGprsSprsPow bits))
+  //--------
+  val wrGprFpRaIdx = Bool()
   val gprFpRaIdx = Flow(UInt(params.numGprsSprsPow bits))
-  val gprFpRbIdx = /*Flow*/(UInt(params.numGprsSprsPow bits))
+  val gprFpRbIdx = Flow(UInt(params.numGprsSprsPow bits))
+  //--------
+  val wrGprOddNonSpRaIdx = Bool()
   val gprOddNonSpRaIdx = Flow(UInt(params.numGprsSprsPow bits))
-  val gprOddNonSpRbIdx = /*Flow*/(UInt(params.numGprsSprsPow bits))
+  val gprOddNonSpRbIdx = Flow(UInt(params.numGprsSprsPow bits))
+  //--------
   //val haveGprOddNonSpRaIdx = Bool()
   //val haveGprOddNonSpRbIdx = Bool()
+  val wrGprSpRaIdx = Bool()
   val gprSpRaIdx = Flow(UInt(params.numGprsSprsPow bits))
-  val gprSpRbIdx = /*Flow*/(UInt(params.numGprsSprsPow bits))
-
+  val gprSpRbIdx = Flow(UInt(params.numGprsSprsPow bits))
+  //--------
+  val wrSprEvenSaIdx = Bool()
   val sprEvenSaIdx = Flow(UInt(params.numGprsSprsPow bits))
-  val sprEvenSbIdx = /*Flow*/(UInt(params.numGprsSprsPow bits))
+  val sprEvenSbIdx = Flow(UInt(params.numGprsSprsPow bits))
+  //--------
+  val wrSprOddSaIdx = Bool()
   val sprOddSaIdx = Flow(UInt(params.numGprsSprsPow bits))
-  val sprOddSbIdx = /*Flow*/(UInt(params.numGprsSprsPow bits))
+  val sprOddSbIdx = Flow(UInt(params.numGprsSprsPow bits))
+  //--------
 
   val raIdx = /*Flow*/(UInt(params.numGprsSprsPow bits))
   val rbIdx = /*Flow*/(UInt(params.numGprsSprsPow bits))
