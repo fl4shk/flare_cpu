@@ -589,6 +589,7 @@ object FlareCpuGprSelect extends SpinalEnum(
     gprFp,
     gprOddNonSp,
     gprSp
+    //gpr64
     = newElement();
 }
 object FlareCpuSprSelect extends SpinalEnum(
@@ -623,7 +624,10 @@ case class FlareCpuInstrDecEtc(
   //val regFileSprModMemWordValid = Bool()
 
   val gprRaSel = FlareCpuGprSelect()
+  //val gprRa64LoSel = FlareCpuGprSelect()
+  val gprRa64IsNonFpSp = Bool() // 64-bit GPR rA pair select
   val gprRbSel = FlareCpuGprSelect()
+  val gprRb64IsNonFpSp = Bool() // 64-bit GPR rB pair select
   val sprSaSel = FlareCpuSprSelect()
   val sprSbSel = FlareCpuSprSelect()
   //--------
