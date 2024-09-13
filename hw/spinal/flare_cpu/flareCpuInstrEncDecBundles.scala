@@ -601,6 +601,15 @@ object FlareCpuSprSelect extends SpinalEnum(
     = newElement();
 }
 
+case class FlareCpuDecodeTemp(
+  params: FlareCpuParams,
+) extends Bundle {
+  val indexRaRbValid = Bool()
+  val indexRaSimmValid = Bool()
+  val preLpreValid = Bool()
+  val preValid = Bool()
+  val lpreValid = Bool()
+}
 case class FlareCpuInstrDecEtc(
   params: FlareCpuParams,
 ) extends Bundle {
@@ -662,11 +671,7 @@ case class FlareCpuInstrDecEtc(
   val rbIdx = /*Flow*/(UInt(params.numGprsSprsPow bits))
   val indexRaIdx = UInt(params.numGprsSprsPow bits)
   val indexRbIdx = UInt(params.numGprsSprsPow bits)
-  val decodeTempIndexRaRbValid = Bool()
-  val decodeTempIndexRaSimmValid = Bool()
-  val decodeTempPreLpreValid = Bool()
-  val decodeTempPreValid = Bool()
-  val decodeTempLpreValid = Bool()
+  val decodeTemp = FlareCpuDecodeTemp(params=params)
   //val saIdx = /*Flow*/(UInt(params.numGprsSprsPow bits))
   //val sbIdx = /*Flow*/(UInt(params.numGprsSprsPow bits))
   //--------

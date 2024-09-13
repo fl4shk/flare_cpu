@@ -1261,14 +1261,17 @@ case class FlareCpu(
         rdWrSpr0: Option[(UInt, Bool, Boolean)]=None,
         rdWrSpr1: Option[(UInt, Bool, Boolean)]=None,
       ): Unit = {
-        upInstrDecEtc.decodeTempIndexRaRbValid := False
-        upInstrDecEtc.decodeTempIndexRaSimmValid := False
-        upInstrDecEtc.decodeTempPreLpreValid := False
-        upInstrDecEtc.decodeTempPreValid := False
-        upInstrDecEtc.decodeTempLpreValid := False
+        //upInstrDecEtc.decodeTemp.indexRaRbValid := False
+        //upInstrDecEtc.decodeTemp.indexRaSimmValid := False
+        //upInstrDecEtc.decodeTemp.preLpreValid := False
+        //upInstrDecEtc.decodeTemp.preValid := False
+        //upInstrDecEtc.decodeTemp.lpreValid := False
+        upInstrDecEtc.decodeTemp := upInstrDecEtc.decodeTemp.getZero
 
         upInstrDecEtc.isInvalid := False
         upInstrDecEtc.haveFullInstr := True
+        upInstrDecEtc.raIdx := upInstrEnc.g2.raIdx
+        upInstrDecEtc.rbIdx := upInstrEnc.g2.rbIdx
 
         //upInstrDecEtc.haveFullInstr := True
 
@@ -1726,30 +1729,43 @@ case class FlareCpu(
         upInstrDecEtc.haveFullInstr := True 
         upInstrDecEtc.isInvalid := True
         upInstrDecEtc.decOp := FlareCpuInstrDecOp.bubble
-        upInstrDecEtc.decodeTempIndexRaRbValid := False
-        upInstrDecEtc.decodeTempIndexRaSimmValid := False
-        upInstrDecEtc.decodeTempPreLpreValid := False
-        upInstrDecEtc.decodeTempPreValid := False
-        upInstrDecEtc.decodeTempLpreValid := False
+
+        //upInstrDecEtc.decodeTemp.indexRaRbValid := False
+        //upInstrDecEtc.decodeTemp.indexRaSimmValid := False
+        //upInstrDecEtc.decodeTemp.preLpreValid := False
+        //upInstrDecEtc.decodeTemp.preValid := False
+        //upInstrDecEtc.decodeTemp.lpreValid := False
+        //upInstrDecEtc.decodeTemp.assignFromBits(B"5'd0")
+
+        upInstrDecEtc.decodeTemp := upInstrDecEtc.decodeTemp.getZero
         disableRegWrites()
       }
       def disableGprWrites(): Unit = {
-        //upInstrDecEtc.gprEvenNonFpRaIdx.valid := False
-        //upInstrDecEtc.gprFpRaIdx.valid := False
-        //upInstrDecEtc.gprOddNonSpRaIdx.valid := False
-        //upInstrDecEtc.gprSpRaIdx.valid := False
+        //--------
+        upInstrDecEtc.gprEvenNonFpRaIdx.valid := False
+        upInstrDecEtc.gprFpRaIdx.valid := False
+        upInstrDecEtc.gprOddNonSpRaIdx.valid := False
+        upInstrDecEtc.gprSpRaIdx.valid := False
+        //--------
         upInstrDecEtc.wrGprEvenNonFpRaIdx := False
         upInstrDecEtc.wrGprFpRaIdx := False
         upInstrDecEtc.wrGprOddNonSpRaIdx := False
         upInstrDecEtc.wrGprSpRaIdx := False
+        //--------
       }
       def disableSprEvenWrite(): Unit = {
-        //upInstrDecEtc.sprEvenSaIdx.valid := False
+        //--------
+        upInstrDecEtc.sprEvenSaIdx.valid := False
+        //--------
         upInstrDecEtc.wrSprEvenSaIdx := False
+        //--------
       }
       def disableSprOddWrite(): Unit = {
-        //upInstrDecEtc.sprOddSaIdx.valid := False
+        //--------
+        upInstrDecEtc.sprOddSaIdx.valid := False
+        //--------
         upInstrDecEtc.wrSprOddSaIdx := False
+        //--------
       }
       def disableSprWrites(): Unit = {
         disableSprEvenWrite()
@@ -1771,9 +1787,9 @@ case class FlareCpu(
               upInstrEnc.g0Pre.subgrp
               === FlareCpuInstrEncConst.g0PreSubgrp
             ) {
-              when (!rSavedUpInstrDecEtc.decodeTempPreLpreValid) {
-                upInstrDecEtc.decodeTempPreLpreValid := True
-                upInstrDecEtc.decodeTempPreValid := True
+              when (!rSavedUpInstrDecEtc.decodeTemp.preLpreValid) {
+                upInstrDecEtc.decodeTemp.preLpreValid := True
+                upInstrDecEtc.decodeTemp.preValid := True
                 upInstrDecEtc.isInvalid := False
                 upInstrDecEtc.haveFullInstr := False
                 //upInstrDecEtc.fullgrp := (
@@ -1834,7 +1850,7 @@ case class FlareCpu(
               disableRegWrites()
               switch (Cat(
                 upInstrDecEtc.fwl,
-                rSavedUpInstrDecEtc.decodeTempIndexRaRbValid,
+                rSavedUpInstrDecEtc.decodeTemp.indexRaRbValid,
               )) {
                 is (B"00") {
                   upInstrDecEtc.decOp := FlareCpuInstrDecOp.xchg
@@ -1874,7 +1890,7 @@ case class FlareCpu(
           }
           is (FlareCpuInstrEncConst.g1Grp) {
             upInstrDecEtc.fullgrp := FlareCpuInstrFullgrpDec.g1
-            when (!rSavedUpInstrDecEtc.decodeTempPreLpreValid) {
+            when (!rSavedUpInstrDecEtc.decodeTemp.preLpreValid) {
               //upInstrDecEtc.fullSimm := (
               //  upInstrEnc.g1.imm.asSInt.resized.asUInt
               //)
@@ -2192,7 +2208,7 @@ case class FlareCpu(
           }
           is (FlareCpuInstrEncConst.g3Grp) {
             upInstrDecEtc.fullgrp := FlareCpuInstrFullgrpDec.g3
-            when (!rSavedUpInstrDecEtc.decodeTempPreLpreValid) {
+            when (!rSavedUpInstrDecEtc.decodeTemp.preLpreValid) {
               val tempSimm = SInt(params.mainWidth bits)
               tempSimm := (
                 upInstrEnc.g3.simm.resized
@@ -2586,7 +2602,11 @@ case class FlareCpu(
               }
               is (FlareCpuInstrG4EncOp.cpySaRb) {
                 // Opcode 0x1d: cpy sA, rB
-                finishInstr()
+                finishInstr(
+                  rdWrSpr0=Some(
+                    upInstrEnc.g2.raIdx, True, true
+                  ),
+                )
                 upInstrDecEtc.decOp := FlareCpuInstrDecOp.cpySaRb
               }
               is (FlareCpuInstrG4EncOp.cpySaSb) {
@@ -2608,8 +2628,8 @@ case class FlareCpu(
               upInstrEnc.g5Sg0.subgrp
               === FlareCpuInstrEncConst.g5Sg0Subgrp
             ) {
-              when (!rSavedUpInstrDecEtc.decodeTempIndexRaRbValid) {
-                upInstrDecEtc.decodeTempIndexRaRbValid := True
+              when (!rSavedUpInstrDecEtc.decodeTemp.indexRaRbValid) {
+                upInstrDecEtc.decodeTemp.indexRaRbValid := True
                 upInstrDecEtc.haveFullInstr := False
               } otherwise {
                 markInstrInvalid()
@@ -2619,8 +2639,8 @@ case class FlareCpu(
               === FlareCpuInstrEncConst.g5Sg1Subgrp
             ) {
               upInstrDecEtc.haveFullInstr := False
-              when (!rSavedUpInstrDecEtc.decodeTempIndexRaSimmValid) {
-                upInstrDecEtc.decodeTempIndexRaSimmValid := True
+              when (!rSavedUpInstrDecEtc.decodeTemp.indexRaSimmValid) {
+                upInstrDecEtc.decodeTemp.indexRaSimmValid := True
                 upInstrDecEtc.haveFullInstr := False
               } otherwise {
                 markInstrInvalid()
