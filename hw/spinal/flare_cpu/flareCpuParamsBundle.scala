@@ -215,6 +215,7 @@ case class FlareCpuParams(
   def lpreWidth = 27
   def lpreFullWidth = mainWidth
   def instrEncGrpWidth = 3
+  def g7Sg01110BlankWidth = 8
   //def instrEncG1G5G6Simm5Width = 5
   //def instrEncG3Simm9Width = 9
   //--------

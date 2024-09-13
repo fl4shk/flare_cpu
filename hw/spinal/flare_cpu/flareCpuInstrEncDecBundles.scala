@@ -368,6 +368,8 @@ case class FlareCpuInstrG7Sg0110Enc(
   val grp = UInt(FlareCpuInstrEncConst.g7GrpWidth bits)
   val subgrp = UInt(FlareCpuInstrEncConst.g7Sg0110SubgrpWidth bits)
   def fullgrp = Cat(grp, subgrp)
+  val imm = UInt(params.g1g7ImmWidth bits) 
+  val raIdx = UInt(params.numGprsSprsPow bits)
 }
 
 case class FlareCpuInstrG7Sg01110Enc(
@@ -376,6 +378,7 @@ case class FlareCpuInstrG7Sg01110Enc(
   val grp = UInt(FlareCpuInstrEncConst.g7GrpWidth bits)
   val subgrp = UInt(FlareCpuInstrEncConst.g7Sg01110SubgrpWidth bits)
   def fullgrp = Cat(grp, subgrp)
+  val blank = UInt(params.g7Sg01110BlankWidth bits)
 }
 
 object FlareCpuInstrFullgrpDec extends SpinalEnum(
