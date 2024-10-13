@@ -58,14 +58,40 @@ case class FlareCpuFormalTestIoIbus(
     up=cId.down,
     down=Node(),
   )
+  linkArr += sId
   //--------
-  //val cIfArea = FlareCpuPipeStageIf(
-  //)
+  def optFormalTest = FlareCpuParams.enumFormalTestIoIbus
+  val psExSetPc = Flow(UInt(params.mainWidth bits))
+  psExSetPc := (
+    RegNext(psExSetPc)
+    init(psExSetPc.getZero)
+  )
+  val psIdHaltIt = Bool()
+  psIdHaltIt := False
+  val cIfArea = FlareCpuPipeStageIf(
+    params=params,
+    cIf=cIf,
+    io=io,
+    psExSetPc=psExSetPc,
+    psIdHaltIt=psIdHaltIt,
+    optFormalTest=optFormalTest,
+  ).setName("cIfArea")
+  val cIdArea = FlareCpuPipeStageId(
+    params=params,
+    cId=cId,
+    io=io,
+    regFile=None,
+    psIdHaltIt=psIdHaltIt,
+    optFormalTest=optFormalTest,
+  ).setName("cIdArea")
   GenerationFlags.formal {
     //anyseq(sId.down.valid)
     anyseq(sId.down.ready)
     //anyseq(sId.down.cancel)
   }
+  //--------
+  Builder(linkArr.toSeq)
+  //--------
 }
 object FlareCpuFormalTestIoIbus extends App {
   //val params = new FlareCpuParams(
@@ -74,6 +100,10 @@ object FlareCpuFormalTestIoIbus extends App {
   val params = FlareCpuParams()
   case class FlareCpuTesterIoBus() extends Component {
     val dut = FormalDut(FlareCpuFormalTestIoIbus(params=params))
+
+    val ibus = dut.io.ibus
+    anyseq(ibus.ready)
+    anyseq(ibus.devData)
   }
   new SpinalFormalConfig(
     //.withConfig(config=SpinalConfig(
