@@ -15,7 +15,7 @@ import libcheesevoyage.general._
 ////import libcheesevoyage.general.PipeSimpleDualPortMem
 //import libcheesevoyage.general.FpgacpuRamSimpleDualPort
 import libcheesevoyage.general.PipeMemRmw
-import libcheesevoyage.math.LongDivPipelined
+import libcheesevoyage.math.LongDivMultiCycle
 
 object FlareCpuCacheParams {
   def defaultNumLinesPow = (
@@ -130,6 +130,7 @@ case class FlareCpuCacheParams(
 }
 
 object FlareCpuParams {
+  //--------
   //def enumRegFileGprEven = 0
   def enumRegFileGprEvenNonFp = 0
   def enumRegFileGprFp = 1
@@ -138,6 +139,25 @@ object FlareCpuParams {
   def enumRegFileSprEven = 4
   def enumRegFileSprOdd = 5
   def enumRegFileLim = 6
+  //--------
+  def mkRegFileModType(
+    params: FlareCpuParams,
+  ) = (
+    FlareCpuPipeMemModType(
+      params=params,
+      wordType=params.regWordType(),
+      wordCountMax=params.sprFileEvenWordCount,
+      hazardCmpType=params.regFileHazardCmpType(),
+      modRdPortCnt=params.regFileModRdPortCnt,
+      modStageCnt=params.regFileModStageCnt,
+      optModHazardKind=params.regFileOptModHazardKind,
+      modExtType=FlareCpuPipeMemModExtType(params=params),
+    )
+  )
+  //--------
+  def enumFormalTestNone = 0
+  def enumFormalTestIoIbus = 1
+  //--------
 }
 
 case class FlareCpuParams(
@@ -161,6 +181,9 @@ case class FlareCpuParams(
     //2 // at the time of this writing, this does nothing!
     1
   ), 
+  //optFormalTest: Int=(
+  //  FlareCpuParams.enumFormalTestNone
+  //),
 ) {
   //--------
   def regWordType() = UInt(mainWidth bits)

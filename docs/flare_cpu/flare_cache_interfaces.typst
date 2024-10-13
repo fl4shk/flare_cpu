@@ -1,0 +1,78 @@
+#set text(
+  font: "New Computer Modern",
+  size: 10pt,
+)
+#set document(
+  title: [Flare CPU Cache Interface Internals],
+  author: "Andrew Clark (FL4SHK)",
+  date: auto,
+)
+#set heading(
+  numbering: "I.A.1.i.a"
+)
+= Flare CPU Instruction Cache Interface
+
+== `ibus` Interface
+```
+valid:    out Bool()
+ready:    in Bool()
+addr:     out UInt(32 bits)
+devData:  in UInt(16 bits)
+```
+- This is using `valid`/`ready` handshaking, but `valid` does not have to
+  be driven in a registered fashion (so unlike AXI I guess?).
+//- The `IF` Pipeline Stage:
+
+- Pseudocode fragments:
+  - ```
+  when (ID.up.isValid) {
+    when (
+      ID.rMultiCycleState === MultiCycleState.PRIMARY;
+      and we have a group 7 instruction that has not had an `ID.up.isFiring`
+      yet;
+    ) {
+      psIdHaltIt := True;
+      ID.haltIt();
+      ID.rMultiCycleState := MultiCycleState.G7_SUB_DECODE;
+      ...
+    }
+  }
+  ```
+  - ```
+  when (io.ibus.ready) {
+    do C-style `union`-like instruction decoding;
+    ID.dontHaltIt();
+  } otherwise {
+    ID.haltIt();
+  }
+  ```
+- #table(
+  columns: (auto, auto, auto, auto, auto, auto),
+  //inset: 10pt,
+  align: center,
+  //--------
+    //--------
+    // inputs
+    [*`ibus.valid`*],
+    [*`ibus.ready`*],
+    [*`psIdHaltIt`*],
+    //--------
+    // separator
+    [\#],
+    //--------
+    // outputs
+    [*`IF.haltIt`*],
+    [*`ID.haltIt`*],
+    //--------
+  //--------
+  [0], [0], [0], [\#]
+  //--------
+  //[`1`], [`0`], [`0`],
+  //[`1`], [`1`], [`0`],
+  ////--------
+  //[`-`], [`-`], [`-`],
+  ////--------
+  //[`0`], [`1`], [`0`],
+  ////[`1`], [`1`], [`0`],
+  ////--------
+)

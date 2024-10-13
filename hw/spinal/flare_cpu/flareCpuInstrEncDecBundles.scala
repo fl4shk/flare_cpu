@@ -16,7 +16,7 @@ import libcheesevoyage.general._
 //import libcheesevoyage.general.FpgacpuRamSimpleDualPort
 import libcheesevoyage.general.PipeMemRmw
 import libcheesevoyage.general.PipeHelper
-import libcheesevoyage.math.LongDivPipelined
+import libcheesevoyage.math.LongDivMultiCycle
 
 object FlareCpuInstrEncConst {
   //--------
