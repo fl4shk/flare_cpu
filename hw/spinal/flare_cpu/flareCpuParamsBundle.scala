@@ -185,6 +185,12 @@ case class FlareCpuParams(
   //  FlareCpuParams.enumFormalTestNone
   //),
 ) {
+  //def formal(): Boolean = {
+  //  GenerationFlags.formal {
+  //    return true
+  //  }
+  //  return false
+  //}
   //--------
   def regWordType() = UInt(mainWidth bits)
   //def gprFileEvenWordCount = 8

@@ -19,10 +19,63 @@ import libcheesevoyage.general._
 import libcheesevoyage.general.PipeMemRmw
 import libcheesevoyage.general.PipeMemRmwSimDut
 import libcheesevoyage.math.LongDivMultiCycle
+import libcheesevoyage.formal.LcvFormal
 
-case class FlareCpuFormalTestIoIbusIo(
-  params: FlareCpuParams,
-) extends Bundle {
+//case class FlareCpuFormalTestIoIbusIo(
+//  params: FlareCpuParams,
+//) extends Bundle {
+//}
+//object FlareCpuFormal {
+//  def mkStopAnyseqCnt
+//}
+object FlareCpuFormal {
+  def defaultDelayCntWidth = 8
+  def delayStopAnyseq[
+    WordT <: Data,
+  ](
+    signal: WordT,
+    reset: WordT,
+    delay: UInt,
+    cntWidth: Int=defaultDelayCntWidth,
+  ) = (
+    LcvFormal.DelayStopAnyseq(
+      signal=signal,
+      reset=reset,
+      delay=delay,
+      cntWidth=cntWidth,
+    )
+  )
+  //case class DelayStopAnyseq[
+  //  WordT <: Data,
+  //](
+  //  signal: WordT,
+  //  reset: WordT,
+  //  delay: UInt,
+  //  cntWidth: Int=defaultDelayCntWidth,
+  //) extends Area {
+  //  val rCnt = KeepAttribute(
+  //    Reg(UInt(cntWidth bits))
+  //    init(0x0)
+  //  )
+  //  when (rCnt < delay) {
+  //    rCnt := rCnt + 1
+  //  } otherwise {
+  //    signal := reset
+  //  }
+  //}
+  //def delayStopAnyseq(
+  //  params: FlareCpuParams,
+  //  signal: UInt,
+  //  resetValue: Int,
+  //) = {
+  //  delayStopAnyseq[
+  //    UInt
+  //  ](
+  //    params=params,
+  //    signal=signal,
+  //    resetValue=resetValue
+  //  )
+  //}
 }
 case class FlareCpuFormalTestIoIbus(
   params: FlareCpuParams,
@@ -84,11 +137,24 @@ case class FlareCpuFormalTestIoIbus(
     psIdHaltIt=psIdHaltIt,
     optFormalTest=optFormalTest,
   ).setName("cIdArea")
-  GenerationFlags.formal {
-    //anyseq(sId.down.valid)
-    anyseq(sId.down.ready)
-    //anyseq(sId.down.cancel)
-  }
+  //val rSIdDownReadyCnt = Reg(UInt(8 bits)) init(0x0)
+  //if (params.formal) {
+  //  //anyseq(sId.down.valid)
+  //  //when (rSIdDownReadyCnt < 32) {
+  //  //  anyseq(sId.down.ready)
+  //  //  rSIdDownReadyCnt
+  //  //} otherwise {
+  //  //}
+  //  //anyseq(sId.down.cancel)
+  //}
+  anyseq(sId.down.ready)
+  //val rSIdDownReadyDelayStopAnyseq = (params.formal) generate (
+  //  FlareCpuFormal.delayStopAnyseq(
+  //    signal=sId.down.ready,
+  //    reset=True,
+  //    delay=8,
+  //  )
+  //)
   //--------
   Builder(linkArr.toSeq)
   //--------
@@ -98,12 +164,31 @@ object FlareCpuFormalTestIoIbus extends App {
   //  optFormalTest=FlareCpuParams.enumFormalTestIoIbus
   //)
   val params = FlareCpuParams()
-  case class FlareCpuTesterIoBus() extends Component {
+  case class FlareCpuTesterIoIbus() extends Component {
     val dut = FormalDut(FlareCpuFormalTestIoIbus(params=params))
 
     val ibus = dut.io.ibus
     anyseq(ibus.ready)
     anyseq(ibus.devData)
+    //assumeInitial(
+    //  ClockDomain.isResetActive
+    //)
+    //when (pastValid) {
+    //  assume(!ClockDomain.isResetActive)
+    //}
+    //
+    ////val rDidReset = RegNextWhen()
+    ////assumeInitial(!rDidReset)
+    //when (RegNext(ClockDomain.isResetActive)) {
+    //  assume(!ClockDomain.isResetActive)
+    //}
+    ////when (ClockDomain.isResetActive) {
+    ////  assume(
+    ////    RegNext(Clo
+    ////  )
+    ////}
+    ////ClockDomain.isResetActive := RegNext(False) init(True)
+    assumeInitial(ClockDomain.current.isResetActive)
   }
   new SpinalFormalConfig(
     //.withConfig(config=SpinalConfig(
@@ -118,11 +203,12 @@ object FlareCpuFormalTestIoIbus extends App {
       _keepDebugInfo=true
     )
     .withBMC(10)
+    .withCover(10)
     //.withProve(10)
     .doVerify({
       //val dut=FormalDut(FlareCpuFormalTestIoIbus(
       //  params=params,
       //))
-      FlareCpuTesterIoBus()
+      FlareCpuTesterIoIbus()
     })
 }

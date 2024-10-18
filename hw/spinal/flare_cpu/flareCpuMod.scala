@@ -1,5 +1,6 @@
 package flare_cpu
 import spinal.core._
+import spinal.core.formal._
 //import spinal.lib.bus.tilelink
 import spinal.lib._
 import spinal.lib.misc.pipeline._
@@ -190,8 +191,8 @@ case class FlareCpuPipeStageIf(
   ),
 ) extends Area {
   //--------
-  def up = cIf.up
-  def down = cIf.down
+  val up = cIf.up
+  val down = cIf.down
   //--------
   def enumRegFileGprEvenNonFp = FlareCpuParams.enumRegFileGprEvenNonFp
   def enumRegFileGprFp = FlareCpuParams.enumRegFileGprFp
@@ -269,6 +270,55 @@ case class FlareCpuPipeStageIf(
     doHaltItEtc()
   }
   //--------
+  def myFormal = (
+    optFormalTest != FlareCpuParams.enumFormalTestNone
+  )
+  //if (params.formal()) {
+  //println("testificate")
+  if (optFormalTest == FlareCpuParams.enumFormalTestIoIbus) {
+    //when (!psExSetPc.fire) {
+    //  assert(
+    //    upModExt.regPc === psExSetPc.payload
+    //  )
+    //}
+    //when (
+    //  pastValidAfterReset()
+    //  //&& (
+    //  //  RegNextWhen(True, !ClockDomain.isResetActive) init(False)
+    //  //)
+    //) {
+      when (!io.ibus.ready || psIdHaltIt) {
+        assert(
+          !cIf.up.isReady
+        )
+        assert(
+          !cIf.down.isValid
+        )
+      }
+    //}
+    //  when (past(up.isFiring)) {
+    //    assert(
+    //      rSavedExSetPc === rSavedExSetPc.getZero
+    //    )
+    //    when (past(psExSetPc.fire)) {
+    //      assert(
+    //        past(upModExt.regPc) === past(psExSetPc.payload)
+    //      )
+    //    } elsewhen (past(rSavedExSetPc).fire) {
+    //      assert(
+    //        past(upModExt.regPc) === past(rSavedExSetPc.payload)
+    //      )
+    //    } otherwise {
+    //      assert(
+    //        past(upModExt.regPc)
+    //        === past(rPrevRegPc) + (params.instrMainWidth / 8)
+    //      )
+    //    }
+    //  }
+    //}
+  }
+  //}
+  //--------
   //when (io.ibus.ready) {
   //  when (exSetPc.fire) {
   //    upModExt.regPc := exSetPc.payload
@@ -326,8 +376,8 @@ case class FlareCpuPipeStageId(
   ),
 ) extends Area {
   //--------
-  def up = cId.up
-  def down = cId.down
+  val up = cId.up
+  val down = cId.down
   //--------
   def enumRegFileGprEvenNonFp = FlareCpuParams.enumRegFileGprEvenNonFp
   def enumRegFileGprFp = FlareCpuParams.enumRegFileGprFp
@@ -1118,6 +1168,27 @@ case class FlareCpuPipeStageId(
     //def markInstrNotFull(): Unit = {
     //}
     //setRegsMain()
+    if (optFormalTest == FlareCpuParams.enumFormalTestIoIbus) {
+      //when (pastValidAfterReset) {
+        when (past(up.isFiring)) {
+          cover(
+            past(
+              rMultiCycleState
+              === MultiCycleState.PRIMARY
+            ) && past(
+              upInstrEnc.g0Pre.grp
+              === FlareCpuInstrEncConst.g0Grp
+            ) && past(
+              upInstrEnc.g0LpreHi.subgrp
+              === FlareCpuInstrEncConst.g0LpreSubgrp
+            ) && (
+              rMultiCycleState
+              === MultiCycleState.LPRE_SIMM_LO
+            )
+          )
+        }
+      //}
+    }
 
     switch (rMultiCycleState) {
       is (MultiCycleState.PRIMARY) {
@@ -2191,6 +2262,140 @@ case class FlareCpuPipeStageId(
     // outputs of ID upon an `EX.up.isValid` if EX is going to stall.
     cId.haltIt()
   }
+  def myFormal = (
+    optFormalTest != FlareCpuParams.enumFormalTestNone
+  )
+  //if (params.formal) {
+  val myDidReset = Bool()
+  //assumeInitial(!myDidReset)
+  //assume(!myDidReset)
+  //when (pastValid) {
+  //  //when (ClockDomain.isResetActive) {
+  //  //  //rDidReset := True
+  //  //}
+  //}
+  val rDidReset = RegNext(myDidReset)
+  myDidReset := rDidReset
+  //GenerationFlags.formal {
+    //println("testificate\n")
+  if (optFormalTest == FlareCpuParams.enumFormalTestIoIbus) {
+    when (!pastValid) {
+      //assume(!myDidReset)
+      myDidReset := False
+    } otherwise {
+      //when (ClockDomain.isResetActive) {
+      //}
+      when (
+        past(ClockDomain.current.isResetActive)
+        && !ClockDomain.current.isResetActive
+      ) {
+        myDidReset := True
+        //assume(myDidReset)
+      }
+      //myDidReset := True
+    }
+    assumeInitial(
+      rMultiCycleState === MultiCycleState.PRIMARY
+    )
+    //assumeInitial(
+    //  !rDidHandleG7SubDecode
+    //)
+    //assumeInitial(
+    //  ClockDomain.isResetActive
+    //)
+    //when (ClockDomain.isResetActive) {
+    //  assume(!RegNext(ClockDomain.isResetActive))
+    //}
+    //cover(
+    //  pastValidAfterReset
+    //  && (
+    //    RegNextWhen(True, ClockDomain.isResetActive) init(False)
+    //  )
+    //  && !ClockDomain.isResetActive
+    //)
+    cover(
+      
+      //pastValidAfterReset
+      ////&& (
+      ////  RegNextWhen(True, ClockDomain.isResetActive) init(False)
+      ////)
+      //pastValid
+      //&& 
+      myDidReset
+      //&& !ClockDomain.isResetActive
+    )
+    cover(rMultiCycleState === MultiCycleState.LPRE_SIMM_LO)
+    when (
+      pastValidAfterReset
+      ////&& (
+      ////  RegNextWhen(True, ClockDomain.isResetActive) init(False)
+      ////)
+      //pastValid
+      //&& 
+      //myDidReset
+      //&& !ClockDomain.isResetActive
+    ) {
+      //cover(rMultiCycleState === MultiCycleState.LPRE_SIMM_LO)
+      when (up.isFiring) {
+        assert(
+          io.ibus.ready
+        )
+        assert(
+          !psIdHaltIt
+        )
+      }
+      //otherwise { // when (!up.isFiring)
+      //}
+      when (
+        //(
+        //  RegNextWhen(True, up.isFiring) init(False)
+        //) && (
+          //RegNext(up.isFiring) init(False)
+        //)
+        past(up.isFiring)
+      ) {
+        assert(
+          !rDidHandleG7SubDecode
+        )
+      }
+      when (up.isValid) {
+        switch (rMultiCycleState) {
+          is (MultiCycleState.PRIMARY) {
+            when (
+              upInstrEnc.g0Pre.grp === FlareCpuInstrEncConst.g7Grp
+              && !rDidHandleG7SubDecode
+            ) {
+              assert(
+                psIdHaltIt
+              )
+              assert(
+                !cId.up.isReady
+              )
+              assert(
+                !cId.down.isValid
+              )
+            }
+          }
+          is (MultiCycleState.LPRE_SIMM_LO) {
+            //when (RegNextWhen(True, up.isFiring) init(False)) {
+              assert(
+                !rDidHandleG7SubDecode
+              )
+            //}
+          }
+          is (MultiCycleState.G7_SUB_DECODE) {
+            //when (RegNextWhen(True, up.isFiring) init(False)) {
+              assert(
+                rDidHandleG7SubDecode
+              )
+            //}
+          }
+        }
+      }
+    }
+  }
+  //}
+  //}
 }
 case class FlareCpuPipeStageEx(
   params: FlareCpuParams,
