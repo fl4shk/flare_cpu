@@ -99,10 +99,30 @@ case class FlareCpuIo(
   //--------
 }
 
-case class FlareCpuPipeMemModExtType(
+object FlareCpuFormalInstrCnt {
+  def cntWidth = 8
+}
+case class FlareCpuFormalInstrCnt(
   params: FlareCpuParams,
 ) extends Bundle {
+  val any = UInt(FlareCpuFormalInstrCnt.cntWidth bits)
+  val fwd = UInt(FlareCpuFormalInstrCnt.cntWidth bits)
+  val jmp = UInt(FlareCpuFormalInstrCnt.cntWidth bits)
+}
+case class FlareCpuPipeMemModExtType(
+  params: FlareCpuParams,
+  optFormalTest: Int,
+  //=(
+  //  FlareCpuParams.enumFormalTestNone
+  //),
+) extends Bundle {
   val regPc = UInt(params.mainWidth bits)
+  val instrCnt = (
+    optFormalTest != FlareCpuParams.enumFormalTestNone
+  ) generate (
+    //UInt(8 bits)
+    FlareCpuFormalInstrCnt(params=params)
+  )
   val instrEnc = FlareCpuInstrEnc(params=params)
   val instrDecEtc = FlareCpuInstrDecEtc(params=params)
   //val icache = FlareCpuIcachePipePayload(params=params)
@@ -180,12 +200,97 @@ case class FlareCpuDcachePipePayload(
   val valid = Bool()
   val dirty = Bool()
 }
+//case class FlareCpuPsExSetPcPayload(
+//  params: FlareCpuParams,
+//  optFormalTest: Int=(
+//    FlareCpuParams.enumFormalTestNone
+//  ),
+//) extends Bundle {
+//  //--------
+//  val regPc = UInt(params.mainWidth bits)
+//  //--------
+//  val instrCnt = (
+//    optFormalTest != FlareCpuParams.enumFormalTestNone
+//  ) generate (
+//    UInt(8 bits)
+//  )
+//  //--------
+//}
+//case class FlareCpuCalcNextPc(
+//  params: FlareCpuParams,
+//  cl: CtrlLink,
+//  //io: FlareCpuIo,
+//  psExSetPc: Flow[FlareCpuPsExSetPcPayload],
+//  psIdHaltIt: Bool,
+//  optFormalTest: Int=(
+//    FlareCpuParams.enumFormalTestNone
+//  ),
+//) extends Area {
+//  //--------
+//  val up = cl.up
+//  val down = cl.down
+//  //--------
+//  def enumRegFileGprEvenNonFp = FlareCpuParams.enumRegFileGprEvenNonFp
+//  def enumRegFileGprFp = FlareCpuParams.enumRegFileGprFp
+//  def enumRegFileGprOddNonSp = FlareCpuParams.enumRegFileGprOddNonSp
+//  def enumRegFileGprSp = FlareCpuParams.enumRegFileGprSp
+//  def enumRegFileSprEven = FlareCpuParams.enumRegFileSprEven
+//  def enumRegFileSprOdd = FlareCpuParams.enumRegFileSprOdd
+//  def enumRegFileLim = FlareCpuParams.enumRegFileLim
+//  //--------
+//  def enumFormalTestNone = FlareCpuParams.enumFormalTestNone
+//  def enumFormalTestIoIbus = FlareCpuParams.enumFormalTestIoIbus
+//  //--------
+//  val nextRegPc = UInt(params.mainWidth bits)
+//  nextRegPc := (
+//    RegNext(nextRegPc)
+//    init(nextRegPc.getZero)
+//  )
+//  val rSavedExSetPc = (
+//    //Reg(Flow(UInt(params.mainWidth bits)))
+//    Reg(
+//      Flow(FlareCpuPsExSetPcPayload(
+//        params=params,
+//        optFormalTest=optFormalTest,
+//      ))
+//    )
+//  )
+//  rSavedExSetPc.init(rSavedExSetPc.getZero)
+//
+//  when (psExSetPc.fire) {
+//    rSavedExSetPc := psExSetPc
+//  }
+//  val rPrevRegPc = (
+//    RegNextWhen(
+//      //upModExt.regPc,
+//      nextRegPc,
+//      up.isFiring,
+//    )
+//    init(nextRegPc.getZero)
+//  )
+//
+//  when (up.isFiring) {
+//    //--------
+//    rSavedExSetPc := rSavedExSetPc.getZero
+//    //--------
+//    when (psExSetPc.fire) {
+//      nextRegPc := psExSetPc.regPc //+ (params.instrMainWidth / 8)
+//    } elsewhen (rSavedExSetPc.fire) {
+//      nextRegPc := (
+//        rSavedExSetPc.regPc //+ (params.instrMainWidth / 8)
+//      )
+//    } otherwise {
+//      nextRegPc := rPrevRegPc + (params.instrMainWidth / 8)
+//    }
+//  }
+//}
 case class FlareCpuPipeStageIf(
   params: FlareCpuParams,
   cIf: CtrlLink,
+  pModExt: Payload[FlareCpuPipeMemModExtType],
   io: FlareCpuIo,
-  psExSetPc: Flow[UInt],
   psIdHaltIt: Bool,
+  psExSetPc: Flow[UInt],
   optFormalTest: Int=(
     FlareCpuParams.enumFormalTestNone
   ),
@@ -205,15 +310,36 @@ case class FlareCpuPipeStageIf(
   def enumFormalTestNone = FlareCpuParams.enumFormalTestNone
   def enumFormalTestIoIbus = FlareCpuParams.enumFormalTestIoIbus
   //--------
-  val upModExt = FlareCpuPipeMemModExtType(params=params)
-  //up(pIf) := upModExt
+  def myFormal = (
+    optFormalTest != FlareCpuParams.enumFormalTestNone
+  )
+  def myFormalIoIbus = (
+    optFormalTest == FlareCpuParams.enumFormalTestIoIbus
+  )
+  //--------
+  val upModExt = FlareCpuPipeMemModExtType(
+    params=params,
+    optFormalTest=optFormalTest,
+  )
+  up(pModExt) := upModExt
   upModExt := (
     RegNext(upModExt)
     init(upModExt.getZero)
   )
-  //--------
+  def nextRegPc = upModExt.regPc
+  //val nextRegPc = UInt(params.mainWidth bits)
+  //nextRegPc := (
+  //  RegNext(nextRegPc)
+  //  init(nextRegPc.getZero)
+  //)
   val rSavedExSetPc = (
     Reg(Flow(UInt(params.mainWidth bits)))
+    //Reg(
+    //  Flow(FlareCpuPsExSetPcPayload(
+    //    params=params,
+    //    optFormalTest=optFormalTest,
+    //  ))
+    //)
   )
   rSavedExSetPc.init(rSavedExSetPc.getZero)
 
@@ -222,26 +348,41 @@ case class FlareCpuPipeStageIf(
   }
   val rPrevRegPc = (
     RegNextWhen(
-      upModExt.regPc,
+      //upModExt.regPc,
+      nextRegPc,
       up.isFiring,
     )
-    init(0x0)
+    init(nextRegPc.getZero)
+  )
+  val rPrevInstrCnt = (myFormal) generate (
+    RegNextWhen(
+      upModExt.instrCnt,
+      up.isFiring
+    )
+    init(upModExt.instrCnt.getZero)
   )
 
   when (up.isFiring) {
     //--------
     rSavedExSetPc := rSavedExSetPc.getZero
+    if (myFormal) {
+      upModExt.instrCnt.any := rPrevInstrCnt.any + 1
+    }
     //--------
     when (psExSetPc.fire) {
-      upModExt.regPc := psExSetPc.payload //+ (params.instrMainWidth / 8)
+      upModExt.instrCnt.jmp := rPrevInstrCnt.jmp + 1
+      nextRegPc := psExSetPc.payload //+ (params.instrMainWidth / 8)
     } elsewhen (rSavedExSetPc.fire) {
-      upModExt.regPc := (
+      nextRegPc := (
         rSavedExSetPc.payload //+ (params.instrMainWidth / 8)
       )
+      upModExt.instrCnt.jmp := rPrevInstrCnt.jmp + 1
     } otherwise {
-      upModExt.regPc := rPrevRegPc + (params.instrMainWidth / 8)
+      nextRegPc := rPrevRegPc + (params.instrMainWidth / 8)
+      upModExt.instrCnt.fwd := rPrevInstrCnt.fwd + 1
     }
   }
+  //--------
   //when (exSetPc.fire) {
   //  upModExt.regPc := exSetPc.payload + (params.instrMainWidth / 8)
   //}
@@ -249,6 +390,12 @@ case class FlareCpuPipeStageIf(
   io.ibus.valid := True
   io.ibus.addr := upModExt.regPc
   //--------
+  val myDoHaltIt = (myFormal) generate (
+    Bool()
+  )
+  if (myFormal) {
+    myDoHaltIt := False
+  }
   def doHaltItEtc(): Unit = {
     //io.ibus.valid := False
     io.ibus.addr := (
@@ -256,6 +403,9 @@ case class FlareCpuPipeStageIf(
       init(io.ibus.addr.getZero)
     )
     cIf.haltIt()
+    if (myFormal) {
+      myDoHaltIt := True
+    }
   }
   when (
     //(RegNext(io.ibus.valid) init(False))
@@ -270,12 +420,9 @@ case class FlareCpuPipeStageIf(
     doHaltItEtc()
   }
   //--------
-  def myFormal = (
-    optFormalTest != FlareCpuParams.enumFormalTestNone
-  )
   //if (params.formal()) {
   //println("testificate")
-  if (optFormalTest == FlareCpuParams.enumFormalTestIoIbus) {
+  if (myFormalIoIbus) {
     //when (!psExSetPc.fire) {
     //  assert(
     //    upModExt.regPc === psExSetPc.payload
@@ -293,6 +440,9 @@ case class FlareCpuPipeStageIf(
         )
         assert(
           !cIf.down.isValid
+        )
+        assert(
+          myDoHaltIt
         )
       }
     //}
@@ -316,6 +466,84 @@ case class FlareCpuPipeStageIf(
     //    }
     //  }
     //}
+    when (
+      up.isFiring
+    ) {
+      assert(
+        !myDoHaltIt
+      )
+    }
+    when (
+      pastValidAfterReset
+    ) {
+      when (past(up.isFiring)) {
+        assert(
+          rSavedExSetPc === rSavedExSetPc.getZero
+        )
+      }
+      when (
+        up.isFiring
+      ) {
+        when (
+          RegNextWhen(True, up.isFiring) init(False)
+        ) {
+          when (
+            !psExSetPc.fire
+            && !rSavedExSetPc.fire
+          ) {
+            assert(
+              nextRegPc
+              === rPrevRegPc + (params.instrMainWidth / 8)
+            )
+            assert(
+              upModExt.instrCnt.fwd
+              === rPrevInstrCnt.fwd + 1
+            )
+            cover(
+              !past(up.isFiring)
+              && stable(psExSetPc.fire)
+            )
+            cover(
+              !past(up.isFiring)
+              && stable(rSavedExSetPc.fire)
+            )
+            when (!past(up.isFiring)) {
+              assert(
+                stable(psExSetPc.fire)
+              )
+              assert(
+                stable(rSavedExSetPc.fire)
+              )
+            }
+          } elsewhen (
+            psExSetPc.fire
+          ) {
+            assert(
+              nextRegPc === psExSetPc.payload
+            )
+            assert(
+              upModExt.instrCnt.jmp
+              === rPrevInstrCnt.jmp + 1
+            )
+          } otherwise {
+            //assert(
+            //  rSavedExSetPc.fire
+            //)
+            assert(
+              nextRegPc === rSavedExSetPc.payload
+            )
+            assert(
+              upModExt.instrCnt.jmp
+              === rPrevInstrCnt.jmp + 1
+            )
+          }
+        }
+        assert(
+          upModExt.instrCnt.any
+          === rPrevInstrCnt.any + 1
+        )
+      }
+    }
   }
   //}
   //--------
@@ -352,6 +580,8 @@ case class FlareCpuPipeStageIf(
 case class FlareCpuPipeStageId(
   params: FlareCpuParams,
   cId: CtrlLink,
+  pModExt: Payload[FlareCpuPipeMemModExtType],
+  //pId: Payload[FlareCpuPipeMemModExtType],
   io: FlareCpuIo,
   regFile: Option[PipeMemRmw[
     UInt,
@@ -369,6 +599,7 @@ case class FlareCpuPipeStageId(
   //  FlareCpuPipeMemModExtType,
   //],
   psIdHaltIt: Bool,
+  psExSetPc: Flow[UInt],
   //up: NodeApi,
   //down: NodeApi,
   optFormalTest: Int=(
@@ -388,7 +619,10 @@ case class FlareCpuPipeStageId(
   def enumRegFileLim = FlareCpuParams.enumRegFileLim
   //--------
   def mkRegFileModType() = (
-    FlareCpuParams.mkRegFileModType(params=params)
+    FlareCpuParams.mkRegFileModType(
+      params=params,
+      optFormalTest=optFormalTest,
+    )
     //FlareCpuPipeMemModType(
     //  params=params,
     //  wordType=params.regWordType(),
@@ -404,12 +638,26 @@ case class FlareCpuPipeStageId(
   def enumFormalTestNone = FlareCpuParams.enumFormalTestNone
   def enumFormalTestIoIbus = FlareCpuParams.enumFormalTestIoIbus
   //--------
-  val upModExt = FlareCpuPipeMemModExtType(params=params)
+  def myFormal = (
+    optFormalTest != FlareCpuParams.enumFormalTestNone
+  )
+  def myFormalIoIbus = (
+    optFormalTest == FlareCpuParams.enumFormalTestIoIbus
+  )
+  val upModExt = FlareCpuPipeMemModExtType(
+    params=params,
+    optFormalTest=optFormalTest,
+  )
   //up(pId) := upModExt
   upModExt := (
     RegNext(upModExt)
     init(upModExt.getZero)
   )
+  upModExt.allowOverride
+  when (up.isValid) {
+    upModExt.regPc := cId.up(pModExt).regPc
+  }
+  cId.bypass(pModExt) := upModExt
   //--------
   def upInstrEnc = upModExt.instrEnc
   def upInstrDecEtc = upModExt.instrDecEtc
@@ -1168,27 +1416,27 @@ case class FlareCpuPipeStageId(
     //def markInstrNotFull(): Unit = {
     //}
     //setRegsMain()
-    if (optFormalTest == FlareCpuParams.enumFormalTestIoIbus) {
-      //when (pastValidAfterReset) {
-        when (past(up.isFiring)) {
-          cover(
-            past(
-              rMultiCycleState
-              === MultiCycleState.PRIMARY
-            ) && past(
-              upInstrEnc.g0Pre.grp
-              === FlareCpuInstrEncConst.g0Grp
-            ) && past(
-              upInstrEnc.g0LpreHi.subgrp
-              === FlareCpuInstrEncConst.g0LpreSubgrp
-            ) && (
-              rMultiCycleState
-              === MultiCycleState.LPRE_SIMM_LO
-            )
-          )
-        }
-      //}
-    }
+    //if (optFormalTest == FlareCpuParams.enumFormalTestIoIbus) {
+    //  //when (pastValidAfterReset) {
+    //    when (past(up.isFiring)) {
+    //      cover(
+    //        past(
+    //          rMultiCycleState
+    //          === MultiCycleState.PRIMARY
+    //        ) && past(
+    //          upInstrEnc.g0Pre.grp
+    //          === FlareCpuInstrEncConst.g0Grp
+    //        ) && past(
+    //          upInstrEnc.g0LpreHi.subgrp
+    //          === FlareCpuInstrEncConst.g0LpreSubgrp
+    //        ) && (
+    //          rMultiCycleState
+    //          === MultiCycleState.LPRE_SIMM_LO
+    //        )
+    //      )
+    //    }
+    //  //}
+    //}
 
     switch (rMultiCycleState) {
       is (MultiCycleState.PRIMARY) {
@@ -2262,41 +2510,41 @@ case class FlareCpuPipeStageId(
     // outputs of ID upon an `EX.up.isValid` if EX is going to stall.
     cId.haltIt()
   }
-  def myFormal = (
-    optFormalTest != FlareCpuParams.enumFormalTestNone
-  )
-  //if (params.formal) {
-  val myDidReset = Bool()
-  //assumeInitial(!myDidReset)
-  //assume(!myDidReset)
-  //when (pastValid) {
-  //  //when (ClockDomain.isResetActive) {
-  //  //  //rDidReset := True
-  //  //}
+  //when (psExSetPc.fire) {
   //}
-  val rDidReset = RegNext(myDidReset)
-  myDidReset := rDidReset
+  //--------
+  //if (params.formal) {
+  //val myDidReset = Bool()
+  ////assumeInitial(!myDidReset)
+  ////assume(!myDidReset)
+  ////when (pastValid) {
+  ////  //when (ClockDomain.isResetActive) {
+  ////  //  //rDidReset := True
+  ////  //}
+  ////}
+  //val rDidReset = RegNext(myDidReset)
+  //myDidReset := rDidReset
   //GenerationFlags.formal {
     //println("testificate\n")
-  if (optFormalTest == FlareCpuParams.enumFormalTestIoIbus) {
-    when (!pastValid) {
-      //assume(!myDidReset)
-      myDidReset := False
-    } otherwise {
-      //when (ClockDomain.isResetActive) {
-      //}
-      when (
-        past(ClockDomain.current.isResetActive)
-        && !ClockDomain.current.isResetActive
-      ) {
-        myDidReset := True
-        //assume(myDidReset)
-      }
-      //myDidReset := True
-    }
-    assumeInitial(
-      rMultiCycleState === MultiCycleState.PRIMARY
-    )
+  if (myFormalIoIbus) {
+    //when (!pastValid) {
+    //  //assume(!myDidReset)
+    //  myDidReset := False
+    //} otherwise {
+    //  //when (ClockDomain.isResetActive) {
+    //  //}
+    //  when (
+    //    past(ClockDomain.current.isResetActive)
+    //    && !ClockDomain.current.isResetActive
+    //  ) {
+    //    myDidReset := True
+    //    //assume(myDidReset)
+    //  }
+    //  //myDidReset := True
+    //}
+    //assumeInitial(
+    //  rMultiCycleState === MultiCycleState.PRIMARY
+    //)
     //assumeInitial(
     //  !rDidHandleG7SubDecode
     //)
@@ -2313,17 +2561,17 @@ case class FlareCpuPipeStageId(
     //  )
     //  && !ClockDomain.isResetActive
     //)
-    cover(
-      
-      //pastValidAfterReset
-      ////&& (
-      ////  RegNextWhen(True, ClockDomain.isResetActive) init(False)
-      ////)
-      //pastValid
-      //&& 
-      myDidReset
-      //&& !ClockDomain.isResetActive
-    )
+    //cover(
+    //  
+    //  //pastValidAfterReset
+    //  ////&& (
+    //  ////  RegNextWhen(True, ClockDomain.isResetActive) init(False)
+    //  ////)
+    //  //pastValid
+    //  //&& 
+    //  myDidReset
+    //  //&& !ClockDomain.isResetActive
+    //)
     cover(rMultiCycleState === MultiCycleState.LPRE_SIMM_LO)
     when (
       pastValidAfterReset
@@ -2336,6 +2584,14 @@ case class FlareCpuPipeStageId(
       //&& !ClockDomain.isResetActive
     ) {
       //cover(rMultiCycleState === MultiCycleState.LPRE_SIMM_LO)
+      cover(
+        up.isFiring
+        && io.ibus.ready
+      )
+      cover(
+        up.isFiring
+        && !psIdHaltIt
+      )
       when (up.isFiring) {
         assert(
           io.ibus.ready
@@ -2346,6 +2602,14 @@ case class FlareCpuPipeStageId(
       }
       //otherwise { // when (!up.isFiring)
       //}
+      cover(
+        past(up.isFiring)
+        && (
+          past(rMultiCycleState) === MultiCycleState.G7_SUB_DECODE
+        ) && (
+          rMultiCycleState === MultiCycleState.PRIMARY
+        )
+      )
       when (
         //(
         //  RegNextWhen(True, up.isFiring) init(False)
@@ -2357,6 +2621,14 @@ case class FlareCpuPipeStageId(
         assert(
           !rDidHandleG7SubDecode
         )
+        when (
+          past(rMultiCycleState)
+          === MultiCycleState.G7_SUB_DECODE
+        ) {
+          assert(
+            rMultiCycleState === MultiCycleState.PRIMARY
+          )
+        }
       }
       when (up.isValid) {
         switch (rMultiCycleState) {
@@ -2392,7 +2664,38 @@ case class FlareCpuPipeStageId(
           }
         }
       }
+      cover(
+        past(up.isFiring)
+        && (
+          rMultiCycleState === MultiCycleState.LPRE_SIMM_LO
+        ) && (
+          past(rMultiCycleState) === MultiCycleState.PRIMARY
+        )
+      )
+      when (
+        past(up.isFiring)
+        && (
+          rMultiCycleState === MultiCycleState.LPRE_SIMM_LO
+        )
+      ) {
+        assert(
+          past(rMultiCycleState) === MultiCycleState.PRIMARY
+        )
+      }
     }
+    //when (
+    //  !(
+    //    RegNextWhen(psExSetPc.fire, up.isFiring) init(False)
+    //  )
+    //) {
+    //}
+    cover (
+      upModExt.regPc
+      === (
+        RegNextWhen(upModExt.regPc, up.isFiring)
+        + (params.instrMainWidth / 8)
+      )
+    )
   }
   //}
   //}
@@ -2785,7 +3088,10 @@ case class FlareCpuPipeStageEx(
 }
 
 case class FlareCpu(
-  params: FlareCpuParams
+  params: FlareCpuParams,
+  optFormalTest: Int=(
+    FlareCpuParams.enumFormalTestNone
+  ),
 ) extends Component {
   //--------
   val io = FlareCpuIo(params=params)
@@ -3182,6 +3488,10 @@ case class FlareCpu(
   psIdHaltIt := False
   // `exSetPc` is to be driven by the `EX` pipeline stage
   val psExSetPc = Flow(UInt(params.mainWidth bits))
+  //val psExSetPc = Flow(FlareCpuPsExSetPcPayload(
+  //  params=params,
+  //  optFormalTest=optFormalTest,
+  //))
   psExSetPc.allowOverride
   psExSetPc := (
     RegNext(psExSetPc)
@@ -3286,7 +3596,10 @@ case class FlareCpu(
     wordType=params.regWordType(),
     wordCountArr=regFileWordCountArr,
     hazardCmpType=params.regFileHazardCmpType(),
-    modType=FlareCpuParams.mkRegFileModType(params=params),
+    modType=FlareCpuParams.mkRegFileModType(
+      params=params,
+      optFormalTest=optFormalTest,
+    ),
     modRdPortCnt=params.regFileModRdPortCnt,
     modStageCnt=params.regFileModStageCnt,
     pipeName="FlareCpu_pipeName",
@@ -3379,7 +3692,10 @@ case class FlareCpu(
   )
   //--------
   //--------
-  //val pIf = Payload(FlareCpuPipeMemModExtType(params=params))
+  val pModExt = Payload(FlareCpuPipeMemModExtType(
+    params=params,
+    optFormalTest=optFormalTest,
+  ))
   val cIf = CtrlLink(
     up=Node(),
     down=Node(),
@@ -3397,6 +3713,7 @@ case class FlareCpu(
   //)
   //--------
   //val pId = Payload(FlareCpuPipeMemModExtType())
+  //val pId = Payload(FlareCpuPipeMemModExtType(params=params))
   val cId = CtrlLink(
     up=sIf.down,
     down=(
@@ -3405,6 +3722,7 @@ case class FlareCpu(
     ),
   )
   linkArr += cId
+  // We have no `sId` because we use `regFile.mod.front.sFront` for that
   //--------
   //val pEx = Payload(Vec.fill(enumRegFileLim)(mkRegFileModType()))
   //val cEx = CtrlLink(
@@ -3434,9 +3752,10 @@ case class FlareCpu(
   val cIfArea = FlareCpuPipeStageIf(
     params=params,
     cIf=cIf,
+    pModExt=pModExt,
     io=io,
-    psExSetPc=psExSetPc,
     psIdHaltIt=psIdHaltIt,
+    psExSetPc=psExSetPc,
   )
   //val cIdArea = new cId.Area {
   //  //--------
@@ -3449,10 +3768,13 @@ case class FlareCpu(
   val cIdArea = FlareCpuPipeStageId(
     params=params,
     cId=cId,
+    pModExt=pModExt,
+    //pId=pId,
     io=io,
     regFile=Some(regFile),
     //mkRegFileModType=FlareCpuParams.mkRegFileModType(params=params),
     psIdHaltIt=psIdHaltIt,
+    psExSetPc=psExSetPc,
   )
   //val psEx = new Area {
   //  val psExNextHaltItState = KeepAttribute(
@@ -3486,7 +3808,7 @@ case class FlareCpu(
     //]], // io.tempModFrontPayload
     //getMyModMemWordFunc: (Int) => UInt,
     //ydxArg: Int,    // ydx
-  doModParams: PipeMemRmwDoModInModFrontFuncParams[
+    doModParams: PipeMemRmwDoModInModFrontFuncParams[
       UInt,
       Bool,
       FlareCpuPipeMemModType[

@@ -87,13 +87,18 @@ case class FlareCpuFormalTestIoIbus(
     haveDbus=false,
   )
   //--------
+  def optFormalTest = FlareCpuParams.enumFormalTestIoIbus
+  //--------
   val linkArr = PipeHelper.mkLinkArr()
   //--------
+  val pModExt = Payload(FlareCpuPipeMemModExtType(
+    params=params,
+    optFormalTest=optFormalTest,
+  ))
   val cIf = CtrlLink(
     up=Node(),
     down=Node(),
   )
-  cIf.up.valid := True
   linkArr += cIf
 
   val sIf = StageLink(
@@ -102,6 +107,7 @@ case class FlareCpuFormalTestIoIbus(
   )
   linkArr += sIf
   //--------
+  //val pId = Payload(FlareCpuPipeMemModExtType(params=params))
   val cId = CtrlLink(
     up=sIf.down,
     down=Node(),
@@ -113,28 +119,45 @@ case class FlareCpuFormalTestIoIbus(
   )
   linkArr += sId
   //--------
-  def optFormalTest = FlareCpuParams.enumFormalTestIoIbus
-  val psExSetPc = Flow(UInt(params.mainWidth bits))
-  psExSetPc := (
-    RegNext(psExSetPc)
-    init(psExSetPc.getZero)
+  val psExSetPc = Flow(
+    UInt(params.mainWidth bits)
+    //FlareCpuPsExSetPcPayload(
+    //  params=params,
+    //  optFormalTest=optFormalTest,
+    //)
   )
+  //psExSetPc := (
+  //  RegNext(psExSetPc)
+  //  init(psExSetPc.getZero)
+  //)
+  anyseq(psExSetPc)
+  //when (
+  //  psExSetPc.fire
+  //) {
+  //  assert(
+  //    
+  //  )
+  //}
   val psIdHaltIt = Bool()
   psIdHaltIt := False
   val cIfArea = FlareCpuPipeStageIf(
     params=params,
     cIf=cIf,
+    pModExt=pModExt,
     io=io,
-    psExSetPc=psExSetPc,
     psIdHaltIt=psIdHaltIt,
+    psExSetPc=psExSetPc,
     optFormalTest=optFormalTest,
   ).setName("cIfArea")
   val cIdArea = FlareCpuPipeStageId(
     params=params,
     cId=cId,
+    pModExt=pModExt,
+    //pId=pId,
     io=io,
     regFile=None,
     psIdHaltIt=psIdHaltIt,
+    psExSetPc=psExSetPc,
     optFormalTest=optFormalTest,
   ).setName("cIdArea")
   //val rSIdDownReadyCnt = Reg(UInt(8 bits)) init(0x0)
@@ -147,6 +170,7 @@ case class FlareCpuFormalTestIoIbus(
   //  //}
   //  //anyseq(sId.down.cancel)
   //}
+  cIf.up.valid := True
   anyseq(sId.down.ready)
   //val rSIdDownReadyDelayStopAnyseq = (params.formal) generate (
   //  FlareCpuFormal.delayStopAnyseq(

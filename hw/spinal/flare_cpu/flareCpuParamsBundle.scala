@@ -142,6 +142,7 @@ object FlareCpuParams {
   //--------
   def mkRegFileModType(
     params: FlareCpuParams,
+    optFormalTest: Int,
   ) = (
     FlareCpuPipeMemModType(
       params=params,
@@ -151,7 +152,10 @@ object FlareCpuParams {
       modRdPortCnt=params.regFileModRdPortCnt,
       modStageCnt=params.regFileModStageCnt,
       optModHazardKind=params.regFileOptModHazardKind,
-      modExtType=FlareCpuPipeMemModExtType(params=params),
+      modExtType=FlareCpuPipeMemModExtType(
+        params=params,
+        optFormalTest=optFormalTest,
+      ),
     )
   )
   //--------
