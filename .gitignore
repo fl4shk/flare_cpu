@@ -50,3 +50,4 @@ hw/gen/*.vhdl
 hw/gen/*.vhd
 hw/gen/*.bin
 
+.nvim

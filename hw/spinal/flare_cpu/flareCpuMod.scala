@@ -287,7 +287,7 @@ case class FlareCpuDcachePipePayload(
 case class FlareCpuPipeStageIf(
   params: FlareCpuParams,
   cIf: CtrlLink,
-  pModExt: Payload[FlareCpuPipeMemModExtType],
+  pIf: Payload[FlareCpuPipeMemModExtType],
   io: FlareCpuIo,
   psIdHaltIt: Bool,
   psExSetPc: Flow[UInt],
@@ -313,7 +313,7 @@ case class FlareCpuPipeStageIf(
   def myFormal = (
     optFormalTest != FlareCpuParams.enumFormalTestNone
   )
-  def myFormalIoIbus = (
+  def myFormalMain = (
     optFormalTest == FlareCpuParams.enumFormalTestIoIbus
   )
   //--------
@@ -321,7 +321,7 @@ case class FlareCpuPipeStageIf(
     params=params,
     optFormalTest=optFormalTest,
   )
-  up(pModExt) := upModExt
+  up(pIf) := upModExt
   upModExt := (
     RegNext(upModExt)
     init(upModExt.getZero)
@@ -370,16 +370,22 @@ case class FlareCpuPipeStageIf(
     }
     //--------
     when (psExSetPc.fire) {
-      upModExt.instrCnt.jmp := rPrevInstrCnt.jmp + 1
+      if (myFormal) {
+        upModExt.instrCnt.jmp := rPrevInstrCnt.jmp + 1
+      }
       nextRegPc := psExSetPc.payload //+ (params.instrMainWidth / 8)
     } elsewhen (rSavedExSetPc.fire) {
       nextRegPc := (
         rSavedExSetPc.payload //+ (params.instrMainWidth / 8)
       )
-      upModExt.instrCnt.jmp := rPrevInstrCnt.jmp + 1
+      if (myFormal) {
+        upModExt.instrCnt.jmp := rPrevInstrCnt.jmp + 1
+      }
     } otherwise {
       nextRegPc := rPrevRegPc + (params.instrMainWidth / 8)
-      upModExt.instrCnt.fwd := rPrevInstrCnt.fwd + 1
+      if (myFormal) {
+        upModExt.instrCnt.fwd := rPrevInstrCnt.fwd + 1
+      }
     }
   }
   //--------
@@ -422,7 +428,7 @@ case class FlareCpuPipeStageIf(
   //--------
   //if (params.formal()) {
   //println("testificate")
-  if (myFormalIoIbus) {
+  if (myFormalMain) {
     //when (!psExSetPc.fire) {
     //  assert(
     //    upModExt.regPc === psExSetPc.payload
@@ -443,6 +449,22 @@ case class FlareCpuPipeStageIf(
         )
         assert(
           myDoHaltIt
+        )
+      }
+      when (pastValidAfterReset) {
+        when (!io.ibus.ready) {
+          assert(
+            stable(io.ibus.addr)
+          )
+        }
+      }
+      when (psIdHaltIt) {
+        assert(
+          !io.ibus.valid
+        )
+      } otherwise {
+        assert(
+          io.ibus.valid
         )
       }
     //}
@@ -485,62 +507,113 @@ case class FlareCpuPipeStageIf(
         up.isFiring
       ) {
         when (
-          RegNextWhen(True, up.isFiring) init(False)
+          !psExSetPc.fire
+          && !rSavedExSetPc.fire
         ) {
-          when (
-            !psExSetPc.fire
-            && !rSavedExSetPc.fire
-          ) {
-            assert(
-              nextRegPc
-              === rPrevRegPc + (params.instrMainWidth / 8)
-            )
-            assert(
-              upModExt.instrCnt.fwd
-              === rPrevInstrCnt.fwd + 1
-            )
-            cover(
-              !past(up.isFiring)
-              && stable(psExSetPc.fire)
-            )
-            cover(
-              !past(up.isFiring)
-              && stable(rSavedExSetPc.fire)
-            )
-            when (!past(up.isFiring)) {
-              assert(
-                stable(psExSetPc.fire)
-              )
-              assert(
-                stable(rSavedExSetPc.fire)
-              )
-            }
-          } elsewhen (
-            psExSetPc.fire
-          ) {
-            assert(
-              nextRegPc === psExSetPc.payload
-            )
-            assert(
-              upModExt.instrCnt.jmp
-              === rPrevInstrCnt.jmp + 1
-            )
-          } otherwise {
-            //assert(
-            //  rSavedExSetPc.fire
-            //)
-            assert(
-              nextRegPc === rSavedExSetPc.payload
-            )
-            assert(
-              upModExt.instrCnt.jmp
-              === rPrevInstrCnt.jmp + 1
-            )
-          }
+          assert(
+            nextRegPc
+            === rPrevRegPc + (params.instrMainWidth / 8)
+          )
+          assert(
+            upModExt.instrCnt.fwd
+            === rPrevInstrCnt.fwd + 1
+          )
+          assert(
+            stable(upModExt.instrCnt.jmp)
+          )
+          //when (!past(up.isFiring)) {
+          //  assert(
+          //    stable(psExSetPc.fire)
+          //  )
+          //  //assert(
+          //  //  stable(rSavedExSetPc.fire)
+          //  //)
+          //}
+          //cover(
+          //  !past(up.isFiring)
+          //  && stable(psExSetPc.fire)
+          //)
+          ////cover(
+          ////  !past(up.isFiring)
+          ////  && stable(rSavedExSetPc.fire)
+          ////)
+        } elsewhen (
+          psExSetPc.fire
+        ) {
+          assert(
+            nextRegPc === psExSetPc.payload
+          )
+          assert(
+            stable(upModExt.instrCnt.fwd)
+          )
+          assert(
+            upModExt.instrCnt.jmp
+            === rPrevInstrCnt.jmp + 1
+          )
+        } otherwise { // when (rSavedExSetPc.fire)
+          //assert(
+          //  rSavedExSetPc.fire
+          //)
+          assert(
+            nextRegPc === rSavedExSetPc.payload
+          )
+          assert(
+            stable(upModExt.instrCnt.fwd)
+          )
+          assert(
+            upModExt.instrCnt.jmp
+            === rPrevInstrCnt.jmp + 1
+          )
         }
+        //when (
+        //  RegNextWhen(True, up.isFiring) init(False)
+        //) {
+        //  when (
+        //    !psExSetPc.fire
+        //    && !rSavedExSetPc.fire
+        //  ) {
+        //    //assert(
+        //    //  nextRegPc
+        //    //  === rPrevRegPc + (params.instrMainWidth / 8)
+        //    //)
+        //    //assert(
+        //    //  upModExt.instrCnt.fwd
+        //    //  === rPrevInstrCnt.fwd + 1
+        //    //)
+        //    cover(
+        //      !past(up.isFiring)
+        //      && stable(psExSetPc.fire)
+        //    )
+        //    cover(
+        //      !past(up.isFiring)
+        //      && stable(rSavedExSetPc.fire)
+        //    )
+        //    when (!past(up.isFiring)) {
+        //      assert(
+        //        stable(psExSetPc.fire)
+        //      )
+        //      assert(
+        //        stable(rSavedExSetPc.fire)
+        //      )
+        //    }
+        //  }
+        //}
         assert(
           upModExt.instrCnt.any
           === rPrevInstrCnt.any + 1
+        )
+      } otherwise {
+        assert(
+          stable(nextRegPc)
+        )
+        assert(
+          stable(upModExt.instrCnt.fwd)
+        )
+        assert(
+          stable(upModExt.instrCnt.jmp)
+        )
+        assert(
+          stable(upModExt.instrCnt.any)
         )
       }
     }
@@ -580,8 +653,9 @@ case class FlareCpuPipeStageIf(
 case class FlareCpuPipeStageId(
   params: FlareCpuParams,
   cId: CtrlLink,
-  pModExt: Payload[FlareCpuPipeMemModExtType],
+  pIf: Payload[FlareCpuPipeMemModExtType],
   //pId: Payload[FlareCpuPipeMemModExtType],
+  ////pId: Payload[FlareCpuPipeMemModExtType],
   io: FlareCpuIo,
   regFile: Option[PipeMemRmw[
     UInt,
@@ -641,7 +715,7 @@ case class FlareCpuPipeStageId(
   def myFormal = (
     optFormalTest != FlareCpuParams.enumFormalTestNone
   )
-  def myFormalIoIbus = (
+  def myFormalMain = (
     optFormalTest == FlareCpuParams.enumFormalTestIoIbus
   )
   val upModExt = FlareCpuPipeMemModExtType(
@@ -655,9 +729,9 @@ case class FlareCpuPipeStageId(
   )
   upModExt.allowOverride
   when (up.isValid) {
-    upModExt.regPc := cId.up(pModExt).regPc
+    upModExt.regPc := cId.up(pIf).regPc
   }
-  cId.bypass(pModExt) := upModExt
+  //cId.bypass(pIf) := upModExt
   //--------
   def upInstrEnc = upModExt.instrEnc
   def upInstrDecEtc = upModExt.instrDecEtc
@@ -759,6 +833,7 @@ case class FlareCpuPipeStageId(
     }
   }
 
+  //up(pId) := upModExt
   when (
     up.isFiring
     //up.isValid
@@ -787,9 +862,9 @@ case class FlareCpuPipeStageId(
     )
     //--------
     myFrontPayloadGprFp.modExt := upModExt
-    myFrontPayloadGprFp.myExt.modMemWordValid := (
-      upInstrDecEtc.gprFpRaIdx.valid
-    )
+    //myFrontPayloadGprFp.myExt.modMemWordValid := (
+    //  upInstrDecEtc.gprFpRaIdx.valid
+    //)
     myFrontPayloadGprFp.myExt.memAddr(0) := (
       upInstrDecEtc.gprFpRaIdx.payload(
         myFrontPayloadGprFp.myExt.memAddr(0).bitsRange
@@ -2526,7 +2601,7 @@ case class FlareCpuPipeStageId(
   //myDidReset := rDidReset
   //GenerationFlags.formal {
     //println("testificate\n")
-  if (myFormalIoIbus) {
+  if (myFormalMain) {
     //when (!pastValid) {
     //  //assume(!myDidReset)
     //  myDidReset := False
@@ -2700,6 +2775,10 @@ case class FlareCpuPipeStageId(
   //}
   //}
 }
+//case class FlareCpuExSetRegExtFuncArgs(
+//  someIdx: Int,
+//) {
+//}
 case class FlareCpuPipeStageEx(
   params: FlareCpuParams,
   io: FlareCpuIo,
@@ -2768,31 +2847,32 @@ case class FlareCpuPipeStageEx(
     }
     val nextHaltItState = KeepAttribute(
       FlareCpuPsExHaltItState()
-    ).setName("psEx_nextHaltItState")
+    )//.setName("psEx_nextHaltItState")
     val rHaltItState = KeepAttribute(
       RegNext(nextHaltItState)
       init(FlareCpuPsExHaltItState.IDLE)
-    ).setName("psEx_rHaltItState")
+    )//.setName("psEx_rHaltItState")
     nextHaltItState := rHaltItState
 
-    val rSavedInpVec = Reg(Flow(cloneOf(inpVec)))
-    rSavedInpVec.init(rSavedInpVec.getZero)
-    //val rSavedInpModExt = Reg(Flow(cloneOf(inpVec(0).modExt)))
-    //rSavedInpModExt.init(rSavedInpModExt.getZero)
-    val myInpVec = cloneOf(inpVec)
-    //def inpModExt = inpVec(0).modExt
-    //def inpInstrDecEtc = inpModExt.instrDecEtc
-    //val nextHaltItState = KeepAttribute(
-    //)
-    val inpModExt = cloneOf(inpVec(0).modExt)
-    val inpInstrDecEtc = inpModExt.instrDecEtc
-    when (cMid0Front.up.isValid) {
-      rSavedInpVec.valid := True
-      //rSavedInpVec.payload := 
-    }
-    when (cMid0Front.up.isFiring) {
-      rSavedInpVec := rSavedInpVec.getZero
-    }
+    //val rSavedInpVec = Reg(Flow(cloneOf(inpVec)))
+    //rSavedInpVec.init(rSavedInpVec.getZero)
+    //when (cMid0Front.up.isValid) {
+    //  rSavedInpVec.valid := True
+    //  //rSavedInpVec.payload := 
+    //}
+    //when (cMid0Front.up.isFiring) {
+    //  rSavedInpVec := rSavedInpVec.getZero
+    //}
+    ////val rSavedInpModExt = Reg(Flow(cloneOf(inpVec(0).modExt)))
+    ////rSavedInpModExt.init(rSavedInpModExt.getZero)
+    //val myInpVec = cloneOf(inpVec)
+    ////def inpModExt = inpVec(0).modExt
+    ////def inpInstrDecEtc = inpModExt.instrDecEtc
+    ////val nextHaltItState = KeepAttribute(
+    ////)
+    //val inpModExt = cloneOf(inpVec(0).modExt)
+    //val inpInstrDecEtc = inpModExt.instrDecEtc
+
     //object MultiCycleState
     //extends SpinalEnum(defaultEncoding=binarySequential) {
     //  val
@@ -2808,64 +2888,84 @@ case class FlareCpuPipeStageEx(
     //    init(MultiCycleState.PRIMARY)
     //  )
     //)
+    def myInpModExt = inpVec(0).modExt
+    def myInstrDecEtc = myInpModExt.instrDecEtc
     def setGprRa32(
       value: UInt,
       //retYdx: UInt,
+      optExtraFunc: Option[(Int) => Unit]=None,
     ): Unit = {
-      switch (inpInstrDecEtc.gprRaSel) {
+      //--------
+      //var ret = new ArrayBuffer[UInt]()
+      //--------
+      switch (
+        //inpInstrDecEtc.gprRaSel
+        myInstrDecEtc.gprRaSel
+      ) {
         for (ydx <- enumRegFileGprEvenNonFp until enumRegFileGprSp) {
           //def myModMemWord = upExt(idx=1, regFileSlice=ydx).modMemWord
-          def myOutpValid = outpVec(ydx).myExt.valid
+          def myOutpModMemWordValid = outpVec(ydx).myExt.modMemWordValid
           def myModMemWord = outpVec(ydx).myExt.modMemWord
           val myZero = U(s"${params.mainWidth}'d0")
           is (FlareCpuGprSelect.gprEvenNonFp) {
             if (ydx == enumRegFileGprEvenNonFp) {
-              myOutpValid := True
+              myOutpModMemWordValid := True
               myModMemWord := value
+              //ret += ydx
             } else {
-              myOutpValid := False
+              myOutpModMemWordValid := False
               myModMemWord := myZero
             }
             //retYdx := enumRegFileGprEvenNonFp
           }
           is (FlareCpuGprSelect.gprFp) {
             if (ydx == enumRegFileGprFp) {
-              myOutpValid := True
+              myOutpModMemWordValid := True
               myModMemWord := value
+              //ret += ydx
             } else {
-              myOutpValid := False
+              myOutpModMemWordValid := False
               myModMemWord := myZero
             }
             //retYdx := enumRegFileGprFp
           }
           is (FlareCpuGprSelect.gprOddNonSp) {
             if (ydx == enumRegFileGprOddNonSp) {
-              myOutpValid := True
+              myOutpModMemWordValid := True
               myModMemWord := value
+              //ret += ydx
             } else {
-              myOutpValid := False
+              myOutpModMemWordValid := False
               myModMemWord := myZero
             }
             //retYdx := enumRegFileGprOddNonSp
           }
           is (FlareCpuGprSelect.gprSp) {
             if (ydx == enumRegFileGprSp) {
-              myOutpValid := True
+              myOutpModMemWordValid := True
               myModMemWord := value
+              //ret += ydx
             } else {
-              myOutpValid := False
+              myOutpModMemWordValid := False
               myModMemWord := myZero
             }
             //retYdx := enumRegFileGprSp
           }
         }
       }
+      //--------
+      //ret
+      //--------
     }
     def setGprRa64(
       valueHi: UInt,
       valueLo: UInt,
+      optExtraFunc: Option[(Int) => Unit]=None,
     ): Unit = {
-      switch (inpInstrDecEtc.gprRa64IsNonFpSp) {
+      //--------
+      //var ret = new ArrayBuffer[Int]()
+      //--------
+      switch (myInstrDecEtc.gprRa64IsNonFpSp) {
         //for (ydx <- enumRegFileGprEvenNonFp until enumRegFileGprSp) {
         //  def myModMemWord = upExt(idx=1, regFileSlice=ydx).modMemWord
           def myOutpExt(
@@ -2882,8 +2982,28 @@ case class FlareCpuPipeStageEx(
           val myZero = U(s"${params.mainWidth}'d0")
           is (False) { // {non-fp, non-sp} 64-bit register pair
             
-            myOutpExt(enumRegFileGprEvenNonFp).valid := True
-            myOutpExt(enumRegFileGprOddNonSp).valid := True
+            for (
+              zdx <- List[Int](
+                enumRegFileGprEvenNonFp,
+                enumRegFileGprOddNonSp,
+              )
+            ) {
+              //myOutpExt(enumRegFileGprEvenNonFp).valid := True
+              //myOutpExt(enumRegFileGprOddNonSp).valid := True
+              myOutpExt(zdx).modMemWordValid := True
+            }
+            for (
+              zdx <- List[Int](
+                enumRegFileGprFp,
+                enumRegFileGprSp,
+              )
+            ) {
+              //myOutpExt(zdx).modMemWordValid := 
+            }
+            //ret ++= List[Int](
+            //  enumRegFileGprEvenNonFp,
+            //  enumRegFileGprOddNonSp
+            //)
             //outpVec(enumRegFileGprFp).myExt.modMemWordValid := (
             //  False
             //)
@@ -2908,6 +3028,10 @@ case class FlareCpuPipeStageEx(
             //myOutpExt(enumRegFileGprOddNonSp).modMemWordValid := False
             myOutpExt(enumRegFileGprFp).valid := True
             myOutpExt(enumRegFileGprSp).valid := True
+            //ret ++= List[Int](
+            //  enumRegFileGprFp,
+            //  enumRegFileGprSp
+            //)
             myModMemWord(ydx=enumRegFileGprEvenNonFp) := 0x0
             myModMemWord(ydx=enumRegFileGprOddNonSp) := 0x0
             myModMemWord(ydx=enumRegFileGprFp) := valueHi
@@ -2915,12 +3039,19 @@ case class FlareCpuPipeStageEx(
           }
         //}
       }
+      //--------
+      //ret
+      //--------
     }
 
     def setSprSa32(
-      value: UInt
+      value: UInt,
+      optExtraFunc: Option[(Int) => Unit]=None,
     ): Unit = {
-      switch (inpInstrDecEtc.sprSaSel) {
+      //--------
+      //var ret = new ArrayBuffer[Int]()
+      //--------
+      switch (myInstrDecEtc.sprSaSel) {
         for (ydx <- enumRegFileSprEven until enumRegFileSprOdd) {
           //def myModMemWord = upExt(idx=1, regFileSlice=ydx).modMemWord
 
@@ -2932,31 +3063,48 @@ case class FlareCpuPipeStageEx(
           val myZero = U(s"${params.mainWidth}'d0")
           is (FlareCpuSprSelect.sprEven) {
             outpVec(ydx).myExt.modMemWordValid := True
-            myModMemWord := (
-              if (ydx == enumRegFileSprEven) (
-                value
-              ) else (
-                myZero
-              )
-            )
+            if (ydx == enumRegFileSprEven) {
+              myModMemWord := value
+              optExtraFunc match {
+                case Some(myExtraFunc) => {
+                  myExtraFunc(ydx)
+                }
+                case None => {
+                }
+              }
+            } else {
+              myModMemWord := myZero
+            }
           }
           is (FlareCpuSprSelect.sprOdd) {
             outpVec(ydx).myExt.modMemWordValid := True
-            myModMemWord := (
-              if (ydx == enumRegFileSprOdd) (
-                value
-              ) else (
-                myZero
-              )
-            )
+            if (ydx == enumRegFileSprOdd) {
+              myModMemWord := value
+              optExtraFunc match {
+                case Some(myExtraFunc) => {
+                  myExtraFunc(ydx)
+                }
+                case None => {
+                }
+              }
+            } else {
+              myModMemWord := myZero
+            }
           }
         }
       }
+      //--------
+      //ret
+      //--------
     }
     def setSprSa64(
       valueHi: UInt,
       valueLo: UInt,
+      optExtraFunc: Option[(Int) => Unit]=None,
     ): Unit = {
+      //--------
+      //var ret = new ArrayBuffer[Int]()
+      //--------
       def myModMemWord(
         ydx: Int,
       ) = (
@@ -2964,11 +3112,26 @@ case class FlareCpuPipeStageEx(
         outpVec(ydx).myExt.modMemWord
       )
       for (ydx <- enumRegFileSprEven until enumRegFileSprOdd) {
+        //--------
         outpVec(ydx).myExt.modMemWordValid := True
         //outpVec(ydx).myExt.valid := True
+        //--------
+        optExtraFunc match {
+          case Some(myExtraFunc) => {
+            myExtraFunc(ydx)
+          }
+          case None => {
+          }
+        }
+        //--------
       }
       myModMemWord(ydx=enumRegFileSprEven) := valueHi
       myModMemWord(ydx=enumRegFileSprOdd) := valueLo
+      //--------
+      //ret += enumRegFileSprEven
+      //ret += enumRegFileSprOdd
+      //ret
+      //--------
     }
     //--------
     for (ydx <- 0 until outpVec.size) {
@@ -2976,113 +3139,52 @@ case class FlareCpuPipeStageEx(
       outpVec(ydx).myExt.valid := False
     }
     when (rPrevTxnWasHazardAny) {
-      myMainFunc(doCheckHazard=true)
+      doTestModOpMain(doCheckHazard=true)
     } elsewhen (cMid0Front.up.isValid) {
-      myMainFunc(doCheckHazard=false)
+      doTestModOpMain(doCheckHazard=false)
     }
-    def myMainFunc(
+    def doTestModOpMain(
       doCheckHazard: Boolean
     ): Unit = {
       def setOutpModMemWord(
+        someModMemWordArr: Seq[(() => Unit, Int)],
       ): Unit = {
+        for (zdx <- 0 until someModMemWordArr.size) {
+          def someModMemWord = someModMemWordArr(zdx)._1
+          def someIdx = someModMemWordArr(zdx)._2
+        }
       }
       def doHandleHazardWithDcacheMiss(
         haveCurrLoad: Boolean,
       ): Unit = {
         def handleCurrFire(
+          someModMemWordArr: Seq[(() => Unit, Int)],
         ): Unit = {
-        }
-        //def handleCurrFireGprRa32(
-        //  someModMemWord: UInt,//=myModMemWord
-        //  //ydx: Int,
-        //): Unit = {
-        //  //val myYdx = UInt(2 bits)
-        //  //outp.myExt.valid := True
-        //  //nextPrevTxnWasHazard := False
-        //  //setOutpModMemWord(
-        //  //  someModMemWord=someModMemWord
-        //  //)
-        //}
-        //def handleDuplicateIt(
-        //  actuallyDuplicateIt: Boolean=true
-        //): Unit = {
-        //  outp := (
-        //    RegNext(outp) init(outp.getZero)
-        //  )
-        //  outp.myExt.valid := False
-        //  outp.myExt.modMemWordValid := (
-        //    False
-        //  )
-        //  if (actuallyDuplicateIt) {
-        //    cMid0Front.duplicateIt()
-        //  }
-        //}
-        //val rState = KeepAttribute(
-        //  Reg(Bool())
-        //  init(False)
-        //)
-        //  .setName(
-        //    s"doHandleHazardWithDcacheMiss"
-        //    + s"_${doCheckHazard}_${haveCurrLoad}"
-        //    + s"_rState"
-        //  )
-        //val rSavedModMemWord1 = (
-        //  Reg(cloneOf(myModMemWord))
-        //  init(myModMemWord.getZero)
-        //  .setName(
-        //    s"doModInModFrontFunc"
-        //    + s"_${doCheckHazard}_${haveCurrLoad}"
-        //    + s"_rSavedModMemWord1"
-        //  )
-        //)
-        //  
-        //switch (rState) {
-        //  is (False) {
-        //    when (
-        //      !tempModFrontPayload.dcacheHit
-        //    ) {
-        //      when (
-        //        modFront.isValid
-        //      ) {
-        //        if (haveCurrLoad) {
-        //          //cMid0Front.duplicateIt()
-        //          handleDuplicateIt()
-        //          rSavedModMemWord1 := myModMemWord
-        //          rState := True
-        //        } else {  // if (!haveCurrLoad)
-        //          when (modFront.isFiring) {
-        //            handleCurrFire()
-        //          }
-        //        }
-        //      } otherwise { // when (!modFront.isFiring)
-        //        handleDuplicateIt()
-        //      }
-        //    } otherwise {
-        //      when (cMid0Front.up.isFiring) {
-        //        handleCurrFire()
-        //      }
-        //    }
-        //  }
-        //  is (True) {
-        //    when (cMid0Front.up.isFiring) {
-        //      handleCurrFire(
-        //        someModMemWord=rSavedModMemWord1
-        //      )
-        //    } otherwise {
-        //      handleDuplicateIt(actuallyDuplicateIt=false)
-        //    }
-        //  }
-        //}
-      }
-      object MyState
-      extends SpinalEnum(defaultEncoding=binarySequential)
-      {
-        //val 
-      }
-      when (cMid0Front.up.isValid) {
-        switch (inpInstrDecEtc.decOp) {
+          for (zdx <- 0 until someModMemWordArr.size) {
+            //--------
+            //def someModMemWord = someModMemWordArr(zdx)._1
+            def someIdx = someModMemWordArr(zdx)._2
+            //--------
+            outpVec(someIdx).myExt.valid := True
+            nextPrevTxnWasHazardVec(someIdx) := False
+            setOutpModMemWord(
+              someModMemWordArr=someModMemWordArr
+            )
+            //--------
+          }
+          //outpVec(0).myExt.valid := True
+          //nextPrevTxnWasHazardVec
         }
       }
+      //object MyState
+      //extends SpinalEnum(defaultEncoding=binarySequential)
+      //{
+      //  //val 
+      //}
+      //when (cMid0Front.up.isValid) {
+      //  switch (inpInstrDecEtc.decOp) {
+      //  }
+      //}
     }
   }
 }
@@ -3389,92 +3491,6 @@ case class FlareCpu(
   //def enumPipeMemLim = 6
 
   val linkArr = PipeHelper.mkLinkArr()
-  //def mkRegFilePipeMemDoModInModFrontFunc(
-  //  regFileKind: Int
-  //): (
-  //  Bool, // nextPrevTxnWasHazard
-  //  Bool, // rPrevTxnWasHazard,
-  //  FlareCpuPipeMemModType[ // outp
-  //    UInt,
-  //    Bool,
-  //    FlareCpuPipeMemModExtType,
-  //  ],
-  //  FlareCpuPipeMemModType[ // inp
-  //    UInt,
-  //    Bool,
-  //    FlareCpuPipeMemModExtType,
-  //  ],
-  //  CtrlLink,   // mod.front.cMid0Front
-  //  Node,       // io.modFront
-  //  FlareCpuPipeMemModType[ // io.tempModFrontPayload
-  //    UInt,
-  //    Bool,
-  //    FlareCpuPipeMemModExtType,
-  //  ],
-  //  UInt,                 // myModMemWord
-  //) => Unit = {
-  //  val retFunc = (
-  //    nextPrevTxnWasHazard: Bool,
-  //    rPrevTxnWasHazard: Bool,
-  //    outp: FlareCpuPipeMemModType[
-  //      UInt,
-  //      Bool,
-  //      FlareCpuPipeMemModExtType,
-  //    ],
-  //    inp: FlareCpuPipeMemModType[
-  //      UInt,
-  //      Bool,
-  //      FlareCpuPipeMemModExtType,
-  //    ],
-  //    cMid0Front: CtrlLink,
-  //    modFront: Node,
-  //    tempModFrontPayload: FlareCpuPipeMemModType[
-  //      UInt,
-  //      Bool,
-  //      FlareCpuPipeMemModExtType,
-  //    ],
-  //    myModMemWord: UInt,
-  //  ) => {
-  //    //nextPrevTxnWasHazard := False
-
-  //    outp := inp
-  //    outp.allowOverride
-
-  //    def instrDecEtc = inp.modExt.instrDecEtc
-
-  //    if (regFileKind == enumRegFileGprEven) {
-  //      outp.myExt.modMemWordValid := (
-  //        //!instrDecEtc.raIdx.fire
-  //        //|| instrDecEtc.raIdx.payload(0)
-  //        instrDecEtc.regFileGprEvenModMemWordValid
-  //      )
-  //    } else if (regFileKind == enumRegFileGprOddNonSp) {
-  //      outp.myExt.modMemWordValid := (
-  //        //!instrDecEtc.raIdx.fire
-  //        //|| !instrDecEtc.raIdx.payload(0)
-  //        instrDecEtc.regFileGprOddNonSpModMemWordValid
-  //      )
-  //    } else if (regFileKind == enumRegFileGprSp) {
-  //      outp.myExt.modMemWordValid := (
-  //        //!instrDecEtc.raIdx.fire
-  //        //|| (
-  //        //  instrDecEtc.raIdx.payload
-  //        //  === FlareCpuInstrEncConst.gprSpIdx
-  //        //)
-  //        instrDecEtc.regFileGprSpModMemWordValid
-  //      )
-  //    } else { // if (regFileKind == enumRegFileSpr)
-  //      outp.myExt.modMemWordValid := (
-  //        //!instrDecEtc.raIdx.fire
-  //        instrDecEtc.regFileSprModMemWordValid
-  //      )
-  //    }
-  //    val fakeRet = Bool()
-  //    fakeRet := True // needed for the `Unit` Scala type to be inferred as
-  //                    // the return value of this function
-  //  }
-  //  retFunc
-  //}
 
   //case class FlareCpuPipeMemModExtType(
   //) extends Bundle {
@@ -3692,7 +3708,7 @@ case class FlareCpu(
   )
   //--------
   //--------
-  val pModExt = Payload(FlareCpuPipeMemModExtType(
+  val pIf = Payload(FlareCpuPipeMemModExtType(
     params=params,
     optFormalTest=optFormalTest,
   ))
@@ -3714,6 +3730,10 @@ case class FlareCpu(
   //--------
   //val pId = Payload(FlareCpuPipeMemModExtType())
   //val pId = Payload(FlareCpuPipeMemModExtType(params=params))
+  //val pId = Payload(FlareCpuPipeMemModExtType(
+  //  params=params,
+  //  optFormalTest=optFormalTest,
+  //))
   val cId = CtrlLink(
     up=sIf.down,
     down=(
@@ -3752,7 +3772,7 @@ case class FlareCpu(
   val cIfArea = FlareCpuPipeStageIf(
     params=params,
     cIf=cIf,
-    pModExt=pModExt,
+    pIf=pIf,
     io=io,
     psIdHaltIt=psIdHaltIt,
     psExSetPc=psExSetPc,
@@ -3768,7 +3788,7 @@ case class FlareCpu(
   val cIdArea = FlareCpuPipeStageId(
     params=params,
     cId=cId,
-    pModExt=pModExt,
+    pIf=pIf,
     //pId=pId,
     io=io,
     regFile=Some(regFile),
@@ -3817,8 +3837,8 @@ case class FlareCpu(
         FlareCpuPipeMemModExtType,
       ],
     ]
-  ): Unit = {
-    val cExArea = FlareCpuPipeStageEx(
+  ): Area = {
+    FlareCpuPipeStageEx(
       params=params,
       io=io,
       psExSetPc=psExSetPc,

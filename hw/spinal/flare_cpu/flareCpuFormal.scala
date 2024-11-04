@@ -91,7 +91,7 @@ case class FlareCpuFormalTestIoIbus(
   //--------
   val linkArr = PipeHelper.mkLinkArr()
   //--------
-  val pModExt = Payload(FlareCpuPipeMemModExtType(
+  val pIf = Payload(FlareCpuPipeMemModExtType(
     params=params,
     optFormalTest=optFormalTest,
   ))
@@ -108,6 +108,10 @@ case class FlareCpuFormalTestIoIbus(
   linkArr += sIf
   //--------
   //val pId = Payload(FlareCpuPipeMemModExtType(params=params))
+  //val pId = Payload(FlareCpuPipeMemModExtType(
+  //  params=params,
+  //  optFormalTest=optFormalTest,
+  //))
   val cId = CtrlLink(
     up=sIf.down,
     down=Node(),
@@ -143,7 +147,7 @@ case class FlareCpuFormalTestIoIbus(
   val cIfArea = FlareCpuPipeStageIf(
     params=params,
     cIf=cIf,
-    pModExt=pModExt,
+    pIf=pIf,
     io=io,
     psIdHaltIt=psIdHaltIt,
     psExSetPc=psExSetPc,
@@ -152,7 +156,8 @@ case class FlareCpuFormalTestIoIbus(
   val cIdArea = FlareCpuPipeStageId(
     params=params,
     cId=cId,
-    pModExt=pModExt,
+    pIf=pIf,
+    //pId=pId,
     //pId=pId,
     io=io,
     regFile=None,
