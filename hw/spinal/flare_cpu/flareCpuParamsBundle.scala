@@ -160,9 +160,9 @@ object FlareCpuParams {
   )
   //--------
   def enumFormalTestNone = 0
-  def enumFormalTestIoIbus = 1
-  def enumFormalTestPipeMain = 2
-  //def enumFormalTestIoIbus = 2
+  def enumFormalTestMain = 1
+  //def enumFormalTestPipeMain = 2
+  //def enumFormalTestMain = 2
   //--------
 }
 

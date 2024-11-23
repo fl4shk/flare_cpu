@@ -80,14 +80,15 @@ object FlareCpuFormal {
 case class FlareCpuFormalTestIoIbus(
   params: FlareCpuParams,
 ) extends Component {
-  //assert(params.optFormalTest == FlareCpuParams.enumFormalTestIoIbus)
+  //assert(params.optFormalTest == FlareCpuParams.enumFormalTestMain)
   //--------
   val io = FlareCpuIo(
     params=params,
     haveDbus=false,
   )
   //--------
-  def optFormalTest = FlareCpuParams.enumFormalTestIoIbus
+  def optFormalTestNoJumps = true
+  def optFormalTest = FlareCpuParams.enumFormalTestMain
   //--------
   val linkArr = PipeHelper.mkLinkArr()
   //--------
@@ -130,11 +131,14 @@ case class FlareCpuFormalTestIoIbus(
     //  optFormalTest=optFormalTest,
     //)
   )
-  //psExSetPc := (
-  //  RegNext(psExSetPc)
-  //  init(psExSetPc.getZero)
-  //)
-  anyseq(psExSetPc)
+  if (optFormalTestNoJumps) {
+    psExSetPc := (
+      RegNext(psExSetPc)
+      init(psExSetPc.getZero)
+    )
+  } else { // if (!optFormalTestNoJumps)
+    anyseq(psExSetPc)
+  }
   //when (
   //  psExSetPc.fire
   //) {
@@ -144,6 +148,7 @@ case class FlareCpuFormalTestIoIbus(
   //}
   val psIdHaltIt = Bool()
   psIdHaltIt := False
+  cIf.up.valid := True
   val cIfArea = FlareCpuPipeStageIf(
     params=params,
     cIf=cIf,
@@ -151,6 +156,7 @@ case class FlareCpuFormalTestIoIbus(
     io=io,
     psIdHaltIt=psIdHaltIt,
     psExSetPc=psExSetPc,
+    optFormalTestNoJumps=optFormalTestNoJumps,
     optFormalTest=optFormalTest,
   ).setName("cIfArea")
   val cIdArea = FlareCpuPipeStageId(
@@ -175,7 +181,6 @@ case class FlareCpuFormalTestIoIbus(
   //  //}
   //  //anyseq(sId.down.cancel)
   //}
-  cIf.up.valid := True
   anyseq(sId.down.ready)
   //val rSIdDownReadyDelayStopAnyseq = (params.formal) generate (
   //  FlareCpuFormal.delayStopAnyseq(
@@ -190,7 +195,7 @@ case class FlareCpuFormalTestIoIbus(
 }
 object FlareCpuFormalTestIoIbus extends App {
   //val params = new FlareCpuParams(
-  //  optFormalTest=FlareCpuParams.enumFormalTestIoIbus
+  //  optFormalTest=FlareCpuParams.enumFormalTestMain
   //)
   val params = FlareCpuParams()
   case class FlareCpuTesterIoIbus() extends Component {
@@ -231,9 +236,9 @@ object FlareCpuFormalTestIoIbus extends App {
       ),
       _keepDebugInfo=true
     )
-    .withBMC(10)
+    //.withBMC(10)
     .withCover(10)
-    //.withProve(10)
+    .withProve(10)
     .doVerify({
       //val dut=FormalDut(FlareCpuFormalTestIoIbus(
       //  params=params,

@@ -19,6 +19,9 @@ import libcheesevoyage.general._
 import libcheesevoyage.general.PipeMemRmw
 import libcheesevoyage.general.PipeMemRmwSimDut
 import libcheesevoyage.math.LongDivMultiCycle
+import libcheesevoyage.bus.lcvStall.{
+  LcvStallIo, LcvStallHost, LcvStallHostSaved
+}
 
 object FlareCpuPsExHaltItState
 extends SpinalEnum(defaultEncoding=binarySequential) {
@@ -239,7 +242,7 @@ case class FlareCpuDcachePipePayload(
 //  def enumRegFileLim = FlareCpuParams.enumRegFileLim
 //  //--------
 //  def enumFormalTestNone = FlareCpuParams.enumFormalTestNone
-//  def enumFormalTestIoIbus = FlareCpuParams.enumFormalTestIoIbus
+//  def enumFormalTestMain = FlareCpuParams.enumFormalTestMain
 //  //--------
 //  val nextRegPc = UInt(params.mainWidth bits)
 //  nextRegPc := (
@@ -291,6 +294,9 @@ case class FlareCpuPipeStageIf(
   io: FlareCpuIo,
   psIdHaltIt: Bool,
   psExSetPc: Flow[UInt],
+  optFormalTestNoJumps: Boolean=(
+    false
+  ),
   optFormalTest: Int=(
     FlareCpuParams.enumFormalTestNone
   ),
@@ -308,13 +314,13 @@ case class FlareCpuPipeStageIf(
   def enumRegFileLim = FlareCpuParams.enumRegFileLim
   //--------
   def enumFormalTestNone = FlareCpuParams.enumFormalTestNone
-  def enumFormalTestIoIbus = FlareCpuParams.enumFormalTestIoIbus
+  def enumFormalTestMain = FlareCpuParams.enumFormalTestMain
   //--------
   def myFormal = (
     optFormalTest != FlareCpuParams.enumFormalTestNone
   )
   def myFormalMain = (
-    optFormalTest == FlareCpuParams.enumFormalTestIoIbus
+    optFormalTest == FlareCpuParams.enumFormalTestMain
   )
   //--------
   val upModExt = FlareCpuPipeMemModExtType(
@@ -343,8 +349,15 @@ case class FlareCpuPipeStageIf(
   )
   rSavedExSetPc.init(rSavedExSetPc.getZero)
 
-  when (psExSetPc.fire) {
-    rSavedExSetPc := psExSetPc
+  if (
+    myFormal
+    && optFormalTestNoJumps
+  ) {
+    rSavedExSetPc := rSavedExSetPc.getZero
+  } else {
+    when (psExSetPc.fire) {
+      rSavedExSetPc := psExSetPc
+    }
   }
   val rPrevRegPc = (
     RegNextWhen(
@@ -402,12 +415,20 @@ case class FlareCpuPipeStageIf(
   if (myFormal) {
     myDoHaltIt := False
   }
-  def doHaltItEtc(): Unit = {
-    //io.ibus.valid := False
+  def doStallMain(): Unit = {
     io.ibus.addr := (
       RegNext(io.ibus.addr)
       init(io.ibus.addr.getZero)
     )
+  }
+  def doHaltItEtc(): Unit = {
+    ////io.ibus.valid := False
+    //io.ibus.addr := (
+    //  RegNext(io.ibus.addr)
+    //  init(io.ibus.addr.getZero)
+    //)
+    io.ibus.valid := False
+    doStallMain()
     cIf.haltIt()
     if (myFormal) {
       myDoHaltIt := True
@@ -418,13 +439,14 @@ case class FlareCpuPipeStageIf(
     //&&
     !io.ibus.ready
   ) {
+    //cIf.duplicateIt()
     doHaltItEtc()
   }
-  when (psIdHaltIt) {
-    //haltIt()
-    io.ibus.valid := False
-    doHaltItEtc()
-  }
+  //when (psIdHaltIt) {
+  //  //haltIt()
+  //  //io.ibus.valid := False
+  //  doHaltItEtc()
+  //}
   //--------
   //if (params.formal()) {
   //println("testificate")
@@ -440,7 +462,9 @@ case class FlareCpuPipeStageIf(
     //  //  RegNextWhen(True, !ClockDomain.isResetActive) init(False)
     //  //)
     //) {
-      when (!io.ibus.ready || psIdHaltIt) {
+      when (
+        !io.ibus.ready //|| psIdHaltIt
+      ) {
         assert(
           !cIf.up.isReady
         )
@@ -458,14 +482,33 @@ case class FlareCpuPipeStageIf(
           )
         }
       }
-      when (psIdHaltIt) {
-        assert(
-          !io.ibus.valid
-        )
-      } otherwise {
-        assert(
-          io.ibus.valid
-        )
+      //when (psIdHaltIt) {
+      //  assert(
+      //    !io.ibus.valid
+      //  )
+      //} otherwise {
+      //  assert(
+      //    io.ibus.valid
+      //  )
+      //}
+      when (pastValidAfterReset) {
+        //when (!past(io.ibus.valid)) {
+        //  assume(
+        //    !io.ibus.ready
+        //  )
+        //}
+        when (past(io.ibus.valid)) {
+          when (io.ibus.ready) {
+            when (!io.ibus.valid) {
+              assume(!RegNext(io.ibus.ready))
+            }
+          }
+        }
+        //when (past(io.ibus.valid)) {
+        //}
+        //cover(
+        //  io.ibus.ready
+        //)
       }
     //}
     //  when (past(up.isFiring)) {
@@ -710,13 +753,13 @@ case class FlareCpuPipeStageId(
   )
   //--------
   def enumFormalTestNone = FlareCpuParams.enumFormalTestNone
-  def enumFormalTestIoIbus = FlareCpuParams.enumFormalTestIoIbus
+  def enumFormalTestMain = FlareCpuParams.enumFormalTestMain
   //--------
   def myFormal = (
     optFormalTest != FlareCpuParams.enumFormalTestNone
   )
   def myFormalMain = (
-    optFormalTest == FlareCpuParams.enumFormalTestIoIbus
+    optFormalTest == FlareCpuParams.enumFormalTestMain
   )
   val upModExt = FlareCpuPipeMemModExtType(
     params=params,
@@ -730,6 +773,9 @@ case class FlareCpuPipeStageId(
   upModExt.allowOverride
   when (up.isValid) {
     upModExt.regPc := cId.up(pIf).regPc
+    if (myFormal) {
+      upModExt.instrCnt := cId.up(pIf).instrCnt
+    }
   }
   //cId.bypass(pIf) := upModExt
   //--------
@@ -816,6 +862,12 @@ case class FlareCpuPipeStageId(
     init(MultiCycleState.PRIMARY)
   )
   val rDidHandleG7SubDecode = Reg(Bool()) init(False)
+  def myDoHaltIt(): Unit = {
+    //psIdHaltIt := True
+    cId.haltIt()
+      // this `haltIt()` call prevents `up.isFiring` and prevents
+      // deassertion of `rDidHandleG7SubDecode`
+  }
   when (up.isValid) {
     // Take one extra cycle to decode group 7 instructions to help with
     // fmax
@@ -824,10 +876,7 @@ case class FlareCpuPipeStageId(
       && upInstrEnc.g0Pre.grp === FlareCpuInstrEncConst.g7Grp
       && !rDidHandleG7SubDecode
     ) {
-      psIdHaltIt := True
-      cId.haltIt()
-        // this `haltIt()` call prevents `up.isFiring` and prevents
-        // deassertion of `rDidHandleG7SubDecode`
+      myDoHaltIt()
       rMultiCycleState := MultiCycleState.G7_SUB_DECODE
       rDidHandleG7SubDecode := True
     }
@@ -1491,7 +1540,7 @@ case class FlareCpuPipeStageId(
     //def markInstrNotFull(): Unit = {
     //}
     //setRegsMain()
-    //if (optFormalTest == FlareCpuParams.enumFormalTestIoIbus) {
+    //if (optFormalTest == FlareCpuParams.enumFormalTestMain) {
     //  //when (pastValidAfterReset) {
     //    when (past(up.isFiring)) {
     //      cover(
@@ -2394,8 +2443,9 @@ case class FlareCpuPipeStageId(
             markInstrInvalid()
           }
           is (FlareCpuInstrEncConst.g7Grp) {
-            //psIdHaltIt := True
-            //cl.haltIt()
+            ////psIdHaltIt := True
+            //cId.haltIt()
+            //myDoHaltIt()
             //rMultiCycleState := MultiCycleState.G7_SUB_DECODE
           }
         }
@@ -2580,10 +2630,15 @@ case class FlareCpuPipeStageId(
     upInstrEnc.g7Sg01110.assignFromBits(io.ibus.devData.asBits)
   } otherwise { // when (!io.ibus.ready)
     //duplicateIt()
-    // `cl.haltIt()` could be wrong unless EX captures values when EX has
+    // `cId.haltIt()` could be wrong unless EX captures values when EX has
     // `up.isValid`. So I think that means EX needs to capture the
     // outputs of ID upon an `EX.up.isValid` if EX is going to stall.
-    cId.haltIt()
+    ////psIdHaltIt := True
+    //cId.haltIt()
+    myDoHaltIt()
+    //cId.haltIt()
+    //psIdHaltIt := True
+    //cId.terminateIt()
   }
   //when (psExSetPc.fire) {
   //}
@@ -2649,7 +2704,11 @@ case class FlareCpuPipeStageId(
     //)
     cover(rMultiCycleState === MultiCycleState.LPRE_SIMM_LO)
     when (
-      pastValidAfterReset
+      !pastValidAfterReset()
+    ) {
+      //assume(!rDidHandleG7SubDecode)
+    } elsewhen (
+      pastValidAfterReset()
       ////&& (
       ////  RegNextWhen(True, ClockDomain.isResetActive) init(False)
       ////)
@@ -2658,33 +2717,80 @@ case class FlareCpuPipeStageId(
       //myDidReset
       //&& !ClockDomain.isResetActive
     ) {
-      //cover(rMultiCycleState === MultiCycleState.LPRE_SIMM_LO)
-      cover(
-        up.isFiring
-        && io.ibus.ready
-      )
-      cover(
-        up.isFiring
-        && !psIdHaltIt
-      )
-      when (up.isFiring) {
+      ////cover(rMultiCycleState === MultiCycleState.LPRE_SIMM_LO)
+      //cover(
+      //  up.isFiring
+      //  && io.ibus.ready
+      //)
+      ////cover(
+      ////  up.isFiring
+      ////  && !psIdHaltIt
+      ////)
+      ////when (up.isFiring) {
+      ////  assume(
+      ////    io.ibus.ready
+      ////  )
+      ////  //assert(
+      ////  //  !psIdHaltIt
+      ////  //)
+      ////}
+      when (!io.ibus.ready) {
         assert(
-          io.ibus.ready
-        )
-        assert(
-          !psIdHaltIt
+          !up.isFiring
         )
       }
+      when (
+        //up.isValid
+        //&& 
+        !past(up.isFiring)
+        && io.ibus.ready
+      ) {
+        //assert(stable(io.ibus.ready))
+        assume(stable(io.ibus.ready))
+      }
+      assert(
+        rMultiCycleState.asBits.asUInt =/= 0x3
+      )
+      when (past(io.ibus.valid)) {
+        when (io.ibus.ready) {
+          //cover(
+          //  up.isValid
+          //)
+          cover(
+            up.isFiring
+          )
+          assert(
+            //up.isFiring
+            up.isValid
+          )
+          when (!io.ibus.valid) {
+            assume(!RegNext(io.ibus.ready))
+          }
+        }
+      }
+      when (
+        !past(up.isFiring)
+      ) {
+        //cover(io.ibus.ready)
+      }
+      //when (
+      //  up.isValid
+      //  && io.ibus.ready
+      //  //&& 
+      //) {
+      //  assert(
+      //  )
+      //}
       //otherwise { // when (!up.isFiring)
       //}
-      cover(
-        past(up.isFiring)
-        && (
-          past(rMultiCycleState) === MultiCycleState.G7_SUB_DECODE
-        ) && (
-          rMultiCycleState === MultiCycleState.PRIMARY
-        )
-      )
+      //cover(
+      //  past(up.isFiring)
+      //  && (
+      //    past(rMultiCycleState) === MultiCycleState.G7_SUB_DECODE
+      //  ) && (
+      //    rMultiCycleState === MultiCycleState.PRIMARY
+      //  )
+      //)
       when (
         //(
         //  RegNextWhen(True, up.isFiring) init(False)
@@ -2708,13 +2814,16 @@ case class FlareCpuPipeStageId(
       when (up.isValid) {
         switch (rMultiCycleState) {
           is (MultiCycleState.PRIMARY) {
+            assert(
+              !rDidHandleG7SubDecode
+            )
             when (
               upInstrEnc.g0Pre.grp === FlareCpuInstrEncConst.g7Grp
               && !rDidHandleG7SubDecode
             ) {
-              assert(
-                psIdHaltIt
-              )
+              //assert(
+              //  psIdHaltIt
+              //)
               assert(
                 !cId.up.isReady
               )
@@ -2724,29 +2833,29 @@ case class FlareCpuPipeStageId(
             }
           }
           is (MultiCycleState.LPRE_SIMM_LO) {
-            //when (RegNextWhen(True, up.isFiring) init(False)) {
+            when (RegNextWhen(True, up.isFiring) init(False)) {
               assert(
                 !rDidHandleG7SubDecode
               )
-            //}
+            }
           }
           is (MultiCycleState.G7_SUB_DECODE) {
-            //when (RegNextWhen(True, up.isFiring) init(False)) {
+            when (RegNextWhen(True, up.isFiring) init(False)) {
               assert(
                 rDidHandleG7SubDecode
               )
-            //}
+            }
           }
         }
       }
-      cover(
-        past(up.isFiring)
-        && (
-          rMultiCycleState === MultiCycleState.LPRE_SIMM_LO
-        ) && (
-          past(rMultiCycleState) === MultiCycleState.PRIMARY
-        )
-      )
+      //cover(
+      //  past(up.isFiring)
+      //  && (
+      //    rMultiCycleState === MultiCycleState.LPRE_SIMM_LO
+      //  ) && (
+      //    past(rMultiCycleState) === MultiCycleState.PRIMARY
+      //  )
+      //)
       when (
         past(up.isFiring)
         && (
@@ -2764,13 +2873,13 @@ case class FlareCpuPipeStageId(
     //  )
     //) {
     //}
-    cover (
-      upModExt.regPc
-      === (
-        RegNextWhen(upModExt.regPc, up.isFiring)
-        + (params.instrMainWidth / 8)
-      )
-    )
+    //cover (
+    //  upModExt.regPc
+    //  === (
+    //    RegNextWhen(upModExt.regPc, up.isFiring)
+    //    + (params.instrMainWidth / 8)
+    //  )
+    //)
   }
   //}
   //}
@@ -2829,21 +2938,48 @@ case class FlareCpuPipeStageEx(
   def enumRegFileLim = FlareCpuParams.enumRegFileLim
   //--------
   def enumFormalTestNone = FlareCpuParams.enumFormalTestNone
-  def enumFormalTestIoIbus = FlareCpuParams.enumFormalTestIoIbus
+  def enumFormalTestMain = FlareCpuParams.enumFormalTestMain
   //--------
-  def nextPrevTxnWasHazardVec = doModParams.nextPrevTxnWasHazardVec
-  def rPrevTxnWasHazardVec = doModParams.rPrevTxnWasHazardVec
-  def rPrevTxnWasHazardAny = doModParams.rPrevTxnWasHazardAny
+  //def nextPrevTxnWasHazardVec = doModParams.nextPrevTxnWasHazardVec
+  //def rPrevTxnWasHazardVec = doModParams.rPrevTxnWasHazardVec
+  def nextPrevTxnWasHazard = doModParams.nextPrevTxnWasHazardVec(0)
+  def rPrevTxnWasHazard = doModParams.rPrevTxnWasHazardVec(0)
+  //def rPrevTxnWasHazardAny = doModParams.rPrevTxnWasHazardAny
   def outpVec = doModParams.outpVec
   def inpVec = doModParams.inpVec
   def cMid0Front = doModParams.cMid0Front
   def modFront = doModParams.modFront
+  def getMyRdMemWord(ydx: Int) = (
+    doModParams.getMyRdMemWordFunc(ydx)
+  )
   //--------
+  def myFormal = (
+    optFormalTest != FlareCpuParams.enumFormalTestNone
+  )
+  //def myFormalPipeMain = (
+  //  optFormalTest == FlareCpuParams.enumFormalTestPipeMain
+  //)
   if (doModParams.ydx == 0) {
     def memArrSize = regFileWordCountArr.size
     for (ydx <- 0 until memArrSize) {
+      //--------
       outpVec(ydx) := inpVec(ydx)
       outpVec(ydx).allowOverride
+      //--------
+      // Set every `modMemWordValid` to `False` so that it can be set back
+      // to `True` upon a register being written.
+      //--------
+      // TODO: In `PipeMemRmw`, right before the call to
+      // `doModInModFrontFunc()`, `modMemWordValid` is set to `True`, which
+      // is what we're working around here.
+      // We need to verify that we can do things this way!
+      // I suppose I'll find out with help from the formal verification 
+      // tools.
+      //--------
+      // NOTE: DON'T default to setting `outpVec(ydx).myExt.valid := False`
+      //--------
+      outpVec(ydx).myExt.modMemWordValid := False
+      //--------
     }
     val nextHaltItState = KeepAttribute(
       FlareCpuPsExHaltItState()
@@ -2889,11 +3025,13 @@ case class FlareCpuPipeStageEx(
     //  )
     //)
     def myInpModExt = inpVec(0).modExt
+    def myInstrEnc = myInpModExt.instrEnc
     def myInstrDecEtc = myInpModExt.instrDecEtc
     def setGprRa32(
       value: UInt,
+      doAssertValid: Boolean,
       //retYdx: UInt,
-      optExtraFunc: Option[(Int) => Unit]=None,
+      //optExtraFunc: Option[(Int) => Unit],
     ): Unit = {
       //--------
       //var ret = new ArrayBuffer[UInt]()
@@ -2902,55 +3040,97 @@ case class FlareCpuPipeStageEx(
         //inpInstrDecEtc.gprRaSel
         myInstrDecEtc.gprRaSel
       ) {
-        for (ydx <- enumRegFileGprEvenNonFp until enumRegFileGprSp) {
-          //def myModMemWord = upExt(idx=1, regFileSlice=ydx).modMemWord
-          def myOutpModMemWordValid = outpVec(ydx).myExt.modMemWordValid
-          def myModMemWord = outpVec(ydx).myExt.modMemWord
-          val myZero = U(s"${params.mainWidth}'d0")
-          is (FlareCpuGprSelect.gprEvenNonFp) {
+        //def outerMyModMemWord(ydx: Int) = (
+        //  upExt(idx=1, regFileSlice=ydx).modMemWord
+        //)
+        def outerMyValid(ydx: Int) = (
+          outpVec(ydx).myExt.valid
+        )
+        def outerMyModMemWordValid(ydx: Int) = (
+          outpVec(ydx).myExt.modMemWordValid
+        )
+        def outerMyModMemWord(ydx: Int) = (
+          outpVec(ydx).myExt.modMemWord
+        )
+        val myZero = U(s"${params.mainWidth}'d0")
+        is (FlareCpuGprSelect.gprEvenNonFp) {
+          for (ydx <- enumRegFileGprEvenNonFp until enumRegFileGprSp) {
+            //def myModMemWord = upExt(idx=1, regFileSlice=ydx).modMemWord
+            def myValid = outerMyValid(ydx=ydx)
+            def myModMemWordValid = outerMyModMemWordValid(ydx=ydx)
+            def myModMemWord = outerMyModMemWord(ydx=ydx)
             if (ydx == enumRegFileGprEvenNonFp) {
-              myOutpModMemWordValid := True
+              if (doAssertValid) {
+                myValid := True
+              }
+              myModMemWordValid := True
               myModMemWord := value
               //ret += ydx
             } else {
-              myOutpModMemWordValid := False
+              //myModMemWordValid := False
               myModMemWord := myZero
             }
-            //retYdx := enumRegFileGprEvenNonFp
           }
-          is (FlareCpuGprSelect.gprFp) {
+          //retYdx := enumRegFileGprEvenNonFp
+        }
+        is (FlareCpuGprSelect.gprFp) {
+          for (ydx <- enumRegFileGprEvenNonFp until enumRegFileGprSp) {
+            //def myModMemWord = upExt(idx=1, regFileSlice=ydx).modMemWord
+            def myValid = outerMyValid(ydx=ydx)
+            def myModMemWordValid = outerMyModMemWordValid(ydx=ydx)
+            def myModMemWord = outerMyModMemWord(ydx=ydx)
             if (ydx == enumRegFileGprFp) {
-              myOutpModMemWordValid := True
+              if (doAssertValid) {
+                myValid := True
+              }
+              myModMemWordValid := True
               myModMemWord := value
               //ret += ydx
             } else {
-              myOutpModMemWordValid := False
+              //myModMemWordValid := False
               myModMemWord := myZero
             }
-            //retYdx := enumRegFileGprFp
           }
-          is (FlareCpuGprSelect.gprOddNonSp) {
+          //retYdx := enumRegFileGprFp
+        }
+        is (FlareCpuGprSelect.gprOddNonSp) {
+          for (ydx <- enumRegFileGprEvenNonFp until enumRegFileGprSp) {
+            //def myModMemWord = upExt(idx=1, regFileSlice=ydx).modMemWord
+            def myValid = outerMyValid(ydx=ydx)
+            def myModMemWordValid = outerMyModMemWordValid(ydx=ydx)
+            def myModMemWord = outerMyModMemWord(ydx=ydx)
             if (ydx == enumRegFileGprOddNonSp) {
-              myOutpModMemWordValid := True
+              if (doAssertValid) {
+                myValid := True
+              }
+              myModMemWordValid := True
               myModMemWord := value
               //ret += ydx
             } else {
-              myOutpModMemWordValid := False
+              //myModMemWordValid := False
               myModMemWord := myZero
             }
-            //retYdx := enumRegFileGprOddNonSp
           }
-          is (FlareCpuGprSelect.gprSp) {
+          //retYdx := enumRegFileGprOddNonSp
+        }
+        is (FlareCpuGprSelect.gprSp) {
+          for (ydx <- enumRegFileGprEvenNonFp until enumRegFileGprSp) {
+            def myValid = outerMyValid(ydx=ydx)
+            def myModMemWordValid = outerMyModMemWordValid(ydx=ydx)
+            def myModMemWord = outerMyModMemWord(ydx=ydx)
             if (ydx == enumRegFileGprSp) {
-              myOutpModMemWordValid := True
+              if (doAssertValid) {
+                myValid := True
+              }
+              myModMemWordValid := True
               myModMemWord := value
               //ret += ydx
             } else {
-              myOutpModMemWordValid := False
+              //myModMemWordValid := False
               myModMemWord := myZero
             }
-            //retYdx := enumRegFileGprSp
           }
+          //retYdx := enumRegFileGprSp
         }
       }
       //--------
@@ -2960,7 +3140,8 @@ case class FlareCpuPipeStageEx(
     def setGprRa64(
       valueHi: UInt,
       valueLo: UInt,
-      optExtraFunc: Option[(Int) => Unit]=None,
+      doAssertValid: Boolean,
+      //optExtraFunc: Option[(Int) => Unit],
     ): Unit = {
       //--------
       //var ret = new ArrayBuffer[Int]()
@@ -2980,8 +3161,8 @@ case class FlareCpuPipeStageEx(
             myOutpExt(ydx=ydx).modMemWord
           )
           val myZero = U(s"${params.mainWidth}'d0")
+
           is (False) { // {non-fp, non-sp} 64-bit register pair
-            
             for (
               zdx <- List[Int](
                 enumRegFileGprEvenNonFp,
@@ -2990,15 +3171,10 @@ case class FlareCpuPipeStageEx(
             ) {
               //myOutpExt(enumRegFileGprEvenNonFp).valid := True
               //myOutpExt(enumRegFileGprOddNonSp).valid := True
+              if (doAssertValid) {
+                myOutpExt(zdx).valid := True
+              }
               myOutpExt(zdx).modMemWordValid := True
-            }
-            for (
-              zdx <- List[Int](
-                enumRegFileGprFp,
-                enumRegFileGprSp,
-              )
-            ) {
-              //myOutpExt(zdx).modMemWordValid := 
             }
             //ret ++= List[Int](
             //  enumRegFileGprEvenNonFp,
@@ -3016,22 +3192,33 @@ case class FlareCpuPipeStageEx(
             myModMemWord(ydx=enumRegFileGprSp) := 0x0
           }
           is (True) { // {fp, sp} 64-bit register pair
-            //outpVec(enumRegFileGprEvenNonFp).myExt.modMemWordValid := (
-            //  False
-            //)
-            //outpVec(enumRegFileGprOddNonSp).myExt.modMemWordValid := (
-            //  False
-            //)
-            //myOutpExt(enumRegFileGprEvenNonFp).valid := False
-            //myOutpExt(enumRegFileGprEvenNonFp).modMemWordValid := False
-            //myOutpExt(enumRegFileGprOddNonSp).valid := False
-            //myOutpExt(enumRegFileGprOddNonSp).modMemWordValid := False
-            myOutpExt(enumRegFileGprFp).valid := True
-            myOutpExt(enumRegFileGprSp).valid := True
-            //ret ++= List[Int](
-            //  enumRegFileGprFp,
-            //  enumRegFileGprSp
-            //)
+            ////outpVec(enumRegFileGprEvenNonFp).myExt.modMemWordValid := (
+            ////  False
+            ////)
+            ////outpVec(enumRegFileGprOddNonSp).myExt.modMemWordValid := (
+            ////  False
+            ////)
+            ////myOutpExt(enumRegFileGprEvenNonFp).valid := False
+            ////myOutpExt(enumRegFileGprEvenNonFp).modMemWordValid := False
+            ////myOutpExt(enumRegFileGprOddNonSp).valid := False
+            ////myOutpExt(enumRegFileGprOddNonSp).modMemWordValid := False
+            //myOutpExt(enumRegFileGprFp).valid := True
+            //myOutpExt(enumRegFileGprSp).valid := True
+            ////ret ++= List[Int](
+            ////  enumRegFileGprFp,
+            ////  enumRegFileGprSp
+            ////)
+            for (
+              zdx <- List[Int](
+                enumRegFileGprFp,
+                enumRegFileGprSp,
+              )
+            ) {
+              if (doAssertValid) {
+                myOutpExt(zdx).valid := True
+              }
+              myOutpExt(zdx).modMemWordValid := True
+            }
             myModMemWord(ydx=enumRegFileGprEvenNonFp) := 0x0
             myModMemWord(ydx=enumRegFileGprOddNonSp) := 0x0
             myModMemWord(ydx=enumRegFileGprFp) := valueHi
@@ -3046,49 +3233,75 @@ case class FlareCpuPipeStageEx(
 
     def setSprSa32(
       value: UInt,
-      optExtraFunc: Option[(Int) => Unit]=None,
+      doAssertValid: Boolean,
+      //optExtraFunc: Option[(Int) => Unit],
     ): Unit = {
       //--------
       //var ret = new ArrayBuffer[Int]()
       //--------
       switch (myInstrDecEtc.sprSaSel) {
-        for (ydx <- enumRegFileSprEven until enumRegFileSprOdd) {
-          //def myModMemWord = upExt(idx=1, regFileSlice=ydx).modMemWord
+        def outerMyModMemWord(ydx: Int) = (
+          //upExt(idx=1, regFileSlice=ydx).modMemWord
+          outpVec(ydx).myExt.modMemWord
+        )
+        val myZero = U(s"${params.mainWidth}'d0")
+        is (FlareCpuSprSelect.sprEven) {
+          for (ydx <- enumRegFileSprEven until enumRegFileSprOdd) {
+            //def myModMemWord = upExt(idx=1, regFileSlice=ydx).modMemWord
 
-
-          def myModMemWord = (
-            //upExt(idx=1, regFileSlice=ydx).modMemWord
-            outpVec(ydx).myExt.modMemWord
-          )
-          val myZero = U(s"${params.mainWidth}'d0")
-          is (FlareCpuSprSelect.sprEven) {
-            outpVec(ydx).myExt.modMemWordValid := True
+            def myModMemWord = (
+              outerMyModMemWord(ydx=ydx)
+              ////upExt(idx=1, regFileSlice=ydx).modMemWord
+              //outpVec(ydx).myExt.modMemWord
+            )
+            //val myZero = U(s"${params.mainWidth}'d0")
             if (ydx == enumRegFileSprEven) {
               myModMemWord := value
-              optExtraFunc match {
-                case Some(myExtraFunc) => {
-                  myExtraFunc(ydx)
-                }
-                case None => {
-                }
+              outpVec(ydx).myExt.modMemWordValid := True
+              if (doAssertValid) {
+                outpVec(ydx).myExt.valid := True
               }
+              //optExtraFunc match {
+              //  case Some(myExtraFunc) => {
+              //    myExtraFunc(ydx)
+              //  }
+              //  case None => {
+              //  }
+              //}
             } else {
-              myModMemWord := myZero
+              if (myFormal) {
+                myModMemWord := myZero
+              }
             }
           }
-          is (FlareCpuSprSelect.sprOdd) {
-            outpVec(ydx).myExt.modMemWordValid := True
+        }
+        is (FlareCpuSprSelect.sprOdd) {
+          for (ydx <- enumRegFileSprEven until enumRegFileSprOdd) {
+            //def myModMemWord = upExt(idx=1, regFileSlice=ydx).modMemWord
+
+            def myModMemWord = (
+              outerMyModMemWord(ydx=ydx)
+              ////upExt(idx=1, regFileSlice=ydx).modMemWord
+              //outpVec(ydx).myExt.modMemWord
+            )
+            //val myZero = U(s"${params.mainWidth}'d0")
             if (ydx == enumRegFileSprOdd) {
               myModMemWord := value
-              optExtraFunc match {
-                case Some(myExtraFunc) => {
-                  myExtraFunc(ydx)
-                }
-                case None => {
-                }
+              outpVec(ydx).myExt.modMemWordValid := True
+              if (doAssertValid) {
+                outpVec(ydx).myExt.valid := True
               }
+              //optExtraFunc match {
+              //  case Some(myExtraFunc) => {
+              //    myExtraFunc(ydx)
+              //  }
+              //  case None => {
+              //  }
+              //}
             } else {
-              myModMemWord := myZero
+              if (myFormal) {
+                myModMemWord := myZero
+              }
             }
           }
         }
@@ -3100,29 +3313,31 @@ case class FlareCpuPipeStageEx(
     def setSprSa64(
       valueHi: UInt,
       valueLo: UInt,
-      optExtraFunc: Option[(Int) => Unit]=None,
+      doAssertValid: Boolean,
+      //optExtraFunc: Option[(Int) => Unit],
     ): Unit = {
       //--------
       //var ret = new ArrayBuffer[Int]()
       //--------
-      def myModMemWord(
-        ydx: Int,
-      ) = (
+      def myModMemWord(ydx: Int) = (
         //upExt(idx=1, regFileSlice=ydx).modMemWord
         outpVec(ydx).myExt.modMemWord
       )
       for (ydx <- enumRegFileSprEven until enumRegFileSprOdd) {
         //--------
         outpVec(ydx).myExt.modMemWordValid := True
+        if (doAssertValid) {
+          outpVec(ydx).myExt.valid := True
+        }
         //outpVec(ydx).myExt.valid := True
         //--------
-        optExtraFunc match {
-          case Some(myExtraFunc) => {
-            myExtraFunc(ydx)
-          }
-          case None => {
-          }
-        }
+        //optExtraFunc match {
+        //  case Some(myExtraFunc) => {
+        //    myExtraFunc(ydx)
+        //  }
+        //  case None => {
+        //  }
+        //}
         //--------
       }
       myModMemWord(ydx=enumRegFileSprEven) := valueHi
@@ -3134,46 +3349,250 @@ case class FlareCpuPipeStageEx(
       //--------
     }
     //--------
-    for (ydx <- 0 until outpVec.size) {
-      //outpVec(ydx).myExt.modMemWordValid := False
-      outpVec(ydx).myExt.valid := False
-    }
-    when (rPrevTxnWasHazardAny) {
+    //for (ydx <- 0 until outpVec.size) {
+    //  //outpVec(ydx).myExt.modMemWordValid := False
+    //  outpVec(ydx).myExt.valid := False
+    //}
+    when (
+      //rPrevTxnWasHazardAny
+      //rPrevTxnWasHazardVec(0)
+      rPrevTxnWasHazard
+    ) {
       doTestModOpMain(doCheckHazard=true)
     } elsewhen (cMid0Front.up.isValid) {
       doTestModOpMain(doCheckHazard=false)
     }
+    //object MyDcacheMissState
+    //extends SpinalEnum(defaultEncoding=binarySequential) {
+    //  val
+    //    
+    //}
     def doTestModOpMain(
       doCheckHazard: Boolean
     ): Unit = {
-      def setOutpModMemWord(
-        someModMemWordArr: Seq[(() => Unit, Int)],
-      ): Unit = {
-        for (zdx <- 0 until someModMemWordArr.size) {
-          def someModMemWord = someModMemWordArr(zdx)._1
-          def someIdx = someModMemWordArr(zdx)._2
-        }
-      }
       def doHandleHazardWithDcacheMiss(
         haveCurrLoad: Boolean,
+        //someSetModMemWordFuncArr: Seq[((UInt) => Unit, Int)],
+        setModMemWordFunc: (
+          //Seq[UInt]
+          //--------
+          (
+            Int,
+          ) => UInt, // someGetMyRdMemWordFunc
+          Boolean,   // doAssertValid
+          //--------
+        ) => Unit
       ): Unit = {
+        def myNonCurrFireSetModMemWord(
+          someGetMyRdMemWordFunc: (Int) => UInt
+        ) = (
+          setModMemWordFunc(
+            someGetMyRdMemWordFunc, // someGetMyRdMemWordFunc
+            false, // doAssertValid
+          )
+        )
         def handleCurrFire(
-          someModMemWordArr: Seq[(() => Unit, Int)],
+          //someSetModMemWordFuncArr: Seq[(() => Unit, Int)],
+          someGetMyRdMemWordFunc: (Int) => UInt=getMyRdMemWord
         ): Unit = {
-          for (zdx <- 0 until someModMemWordArr.size) {
-            //--------
-            //def someModMemWord = someModMemWordArr(zdx)._1
-            def someIdx = someModMemWordArr(zdx)._2
-            //--------
-            outpVec(someIdx).myExt.valid := True
-            nextPrevTxnWasHazardVec(someIdx) := False
-            setOutpModMemWord(
-              someModMemWordArr=someModMemWordArr
+          //--------
+          //outp.myExt.valid := True
+          nextPrevTxnWasHazard := False
+          //--------
+          setModMemWordFunc(
+            someGetMyRdMemWordFunc, // someGetMyRdMemWordFunc
+            true,                   // doAssertValid
+          )
+          //--------
+        }
+        def handleDuplicateIt(
+          actuallyDuplicateIt: Boolean,
+        ): Unit = {
+          for (zdx <- 0 until outpVec.size) {
+            def outp = outpVec(zdx)
+            outp := (
+              RegNext(outp) init(outp.getZero)
             )
-            //--------
+            outp.myExt.valid := False
+            outp.myExt.modMemWordValid := (
+              False
+            )
           }
-          //outpVec(0).myExt.valid := True
-          //nextPrevTxnWasHazardVec
+          if (actuallyDuplicateIt) {
+            cMid0Front.duplicateIt()
+          }
+        }
+        val rState = KeepAttribute(
+          Reg(Bool())
+          init(False)
+        )
+          .setName(
+            s"doHandleHazardWithDcacheMiss"
+            + s"_${doCheckHazard}_${haveCurrLoad}"
+            + s"_rState"
+          )
+        val rSavedRdMemWord1Valid = (
+          KeepAttribute(
+            Reg(Bool())
+            init(False)
+          )
+          .setName(
+            s"doModInModFrontFunc"
+            + s"_${doCheckHazard}_${haveCurrLoad}"
+            + s"_rSavedModMemWord1Valid"
+          )
+        )
+        val rSavedRdMemWord1 = (
+          KeepAttribute(
+            Reg(
+              Vec.fill(enumRegFileLim)(
+              //cloneOf(myRdMemWord))
+                UInt(params.mainWidth bits)
+              )
+            )
+            //init(0x0)
+            .setName(
+              s"doModInModFrontFunc"
+              + s"_${doCheckHazard}_${haveCurrLoad}"
+              + s"_rSavedModMemWord1"
+            )
+          )
+        )
+        for (ydx <- 0 until rSavedRdMemWord1.size) {
+          rSavedRdMemWord1(ydx).init(
+            rSavedRdMemWord1(ydx).getZero
+          )
+        }
+          
+        switch (rState) {
+          is (False) {
+            //when (
+            //  //!tempModFrontPayload.dcacheHit
+            //  //!io.dbus.valid
+            //  //|| (
+            //    !io.dbus.fire
+            //  //)
+            //) {
+            //  when (
+            //    modFront.isValid
+            //  ) {
+            //    if (haveCurrLoad) {
+            //      handleDuplicateIt(actuallyDuplicateIt=true)
+            //      //rSavedRdMemWord1 := myRdMemWord
+            //      for (ydx <- 0 until rSavedRdMemWord1.size) {
+            //        rSavedRdMemWord1(ydx) := getMyRdMemWord(ydx=ydx)
+            //      }
+            //      rState := True
+            //    } else {  // if (!haveCurrLoad)
+            //      when (modFront.isFiring) {
+            //        handleCurrFire()
+            //      }
+            //    }
+            //  } otherwise { // when (!modFront.isFiring)
+            //    handleDuplicateIt(actuallyDuplicateIt=true)
+            //  }
+            //} otherwise {
+            //  when (cMid0Front.up.isFiring) {
+            //    handleCurrFire()
+            //  }
+            //}
+            when (
+              //!tempModFrontPayload.dcacheHit
+              !io.dbus.fire
+            ) {
+              when (
+                modFront.isValid
+              ) {
+                //when (
+                //   rTempPrevOp
+                //   === (
+                //    PipeMemRmwSimDut.ModOp.LDR_RA_RB
+                //  )
+                //) {
+                if (haveCurrLoad) {
+                  //cMid0Front.duplicateIt()
+                  handleDuplicateIt(actuallyDuplicateIt=true)
+
+                  GenerationFlags.formal {
+                    assert(!rSavedRdMemWord1Valid)
+                  }
+                  rSavedRdMemWord1Valid := False
+                  for (ydx <- 0 until rSavedRdMemWord1.size) {
+                    rSavedRdMemWord1(ydx) := (
+                      getMyRdMemWord(ydx=ydx)
+                    )
+                  }
+                  rState := True
+                } else {  // if (!haveCurrLoad)
+                //} otherwise {
+                  when (modFront.isFiring) {
+                    handleCurrFire()
+                  }
+                }
+              } otherwise { // when (!modFront.isFiring)
+                handleDuplicateIt(actuallyDuplicateIt=true)
+              }
+            } otherwise {
+              when (cMid0Front.up.isFiring) {
+                //when (
+                //  (
+                //    (
+                //      RegNext(rState) init(False)
+                //    ) === False
+                //  ) && (
+                //    rTempPrevOp
+                //    === PipeMemRmwSimDut.ModOp.LDR_RA_RB
+                //  )
+                //) {
+                //  handleCurrFire()
+                //} otherwise {
+                //  handleCurrFire(
+                //  )
+                //}
+                when (rSavedRdMemWord1Valid) {
+                  rSavedRdMemWord1Valid := False
+                  handleCurrFire(
+                    //someRdMemWord=rSavedRdMemWord1
+                    someGetMyRdMemWordFunc=(
+                      (ydx: Int) => (rSavedRdMemWord1(ydx))
+                    ),
+                  )
+                } otherwise {
+                  handleCurrFire()
+                }
+              }
+            }
+            GenerationFlags.formal {
+              when (pastValidAfterReset) {
+                when (past(rState) === True) {
+                  for (ydx <- 0 until rSavedRdMemWord1.size) {
+                    assert(stable(rSavedRdMemWord1(ydx)))
+                  }
+                }
+              }
+            }
+          }
+          is (True) {
+            //when (cMid0Front.up.isFiring) {
+            //  //handleCurrFire(
+            //  //  someModMemWord=rSavedRdMemWord1
+            //  //)
+            //} otherwise {
+            //  handleDuplicateIt(actuallyDuplicateIt=false)
+            //}
+            GenerationFlags.formal {
+              when (pastValidAfterReset) {
+                when (past(rState) === False) {
+                  assert(!past(tempModFrontPayload.dcacheHit))
+                  assert(!rSavedRdMemWord1.valid)
+                } otherwise {
+                  assert(
+                    stable(rSavedRdMemWord)
+                  )
+                }
+              }
+            }
+          }
         }
       }
       //object MyState
@@ -3587,16 +4006,18 @@ case class FlareCpu(
   //  Flow(UInt(params.mainWidth bits))
   //)
 
-  val regFileWordCountArr = {
-    val myArr = ArrayBuffer[Int]()
-    myArr += params.gprFileEvenNonFpWordCount
-    myArr += params.gprFileFpWordCount
-    myArr += params.gprFileOddNonSpWordCount
-    myArr += params.gprFileSpWordCount
-    //myArr += params.sprFileWordCount
-    myArr += params.sprFileEvenWordCount
-    myArr += params.sprFileOddWordCount
-    myArr//.toSeq
+  val regFileWordCountArr: ArrayBuffer[Int] = {
+    val tempArr = (new ArrayBuffer[Int]()) ++ List[Int](
+      params.gprFileEvenNonFpWordCount,
+      params.gprFileFpWordCount,
+      params.gprFileOddNonSpWordCount,
+      params.gprFileSpWordCount,
+      //params.sprFileWordCount,
+      params.sprFileEvenWordCount,
+      params.sprFileOddWordCount,
+    )
+    //println(s"tempArr.size: ${tempArr.size}")
+    tempArr
   }
 
   val regFile = PipeMemRmw[
