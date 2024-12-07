@@ -45,6 +45,7 @@ target
 tmp
 gtkwave
 
+hw/gen/*.sv
 hw/gen/*.v
 hw/gen/*.vhdl
 hw/gen/*.vhd

@@ -16,8 +16,9 @@ import libcheesevoyage.general._
 //import libcheesevoyage.general.PipeSkidBufIo
 ////import libcheesevoyage.general.PipeSimpleDualPortMem
 //import libcheesevoyage.general.FpgacpuRamSimpleDualPort
-import libcheesevoyage.general.PipeMemRmw
-import libcheesevoyage.general.PipeMemRmwSimDut
+import libcheesevoyage.general.{
+  PipeMemRmw, PipeMemRmwSimDut, PipeMemRmwFormal
+}
 import libcheesevoyage.math.LongDivMultiCycle
 import libcheesevoyage.formal.LcvFormal
 

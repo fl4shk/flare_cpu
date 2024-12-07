@@ -16,8 +16,9 @@ import libcheesevoyage.general._
 //import libcheesevoyage.general.PipeSkidBufIo
 ////import libcheesevoyage.general.PipeSimpleDualPortMem
 //import libcheesevoyage.general.FpgacpuRamSimpleDualPort
-import libcheesevoyage.general.PipeMemRmw
-import libcheesevoyage.general.PipeMemRmwSimDut
+import libcheesevoyage.general.{
+  PipeMemRmwConfig, PipeMemRmw, PipeMemRmwSimDut
+}
 import libcheesevoyage.math.LongDivMultiCycle
 import libcheesevoyage.bus.lcvStall.{
   LcvStallIo, LcvStallHost, LcvStallHostSaved
@@ -203,90 +204,7 @@ case class FlareCpuDcachePipePayload(
   val valid = Bool()
   val dirty = Bool()
 }
-//case class FlareCpuPsExSetPcPayload(
-//  params: FlareCpuParams,
-//  optFormalTest: Int=(
-//    FlareCpuParams.enumFormalTestNone
-//  ),
-//) extends Bundle {
-//  //--------
-//  val regPc = UInt(params.mainWidth bits)
-//  //--------
-//  val instrCnt = (
-//    optFormalTest != FlareCpuParams.enumFormalTestNone
-//  ) generate (
-//    UInt(8 bits)
-//  )
-//  //--------
-//}
-//case class FlareCpuCalcNextPc(
-//  params: FlareCpuParams,
-//  cl: CtrlLink,
-//  //io: FlareCpuIo,
-//  psExSetPc: Flow[FlareCpuPsExSetPcPayload],
-//  psIdHaltIt: Bool,
-//  optFormalTest: Int=(
-//    FlareCpuParams.enumFormalTestNone
-//  ),
-//) extends Area {
-//  //--------
-//  val up = cl.up
-//  val down = cl.down
-//  //--------
-//  def enumRegFileGprEvenNonFp = FlareCpuParams.enumRegFileGprEvenNonFp
-//  def enumRegFileGprFp = FlareCpuParams.enumRegFileGprFp
-//  def enumRegFileGprOddNonSp = FlareCpuParams.enumRegFileGprOddNonSp
-//  def enumRegFileGprSp = FlareCpuParams.enumRegFileGprSp
-//  def enumRegFileSprEven = FlareCpuParams.enumRegFileSprEven
-//  def enumRegFileSprOdd = FlareCpuParams.enumRegFileSprOdd
-//  def enumRegFileLim = FlareCpuParams.enumRegFileLim
-//  //--------
-//  def enumFormalTestNone = FlareCpuParams.enumFormalTestNone
-//  def enumFormalTestMain = FlareCpuParams.enumFormalTestMain
-//  //--------
-//  val nextRegPc = UInt(params.mainWidth bits)
-//  nextRegPc := (
-//    RegNext(nextRegPc)
-//    init(nextRegPc.getZero)
-//  )
-//  val rSavedExSetPc = (
-//    //Reg(Flow(UInt(params.mainWidth bits)))
-//    Reg(
-//      Flow(FlareCpuPsExSetPcPayload(
-//        params=params,
-//        optFormalTest=optFormalTest,
-//      ))
-//    )
-//  )
-//  rSavedExSetPc.init(rSavedExSetPc.getZero)
-//
-//  when (psExSetPc.fire) {
-//    rSavedExSetPc := psExSetPc
-//  }
-//  val rPrevRegPc = (
-//    RegNextWhen(
-//      //upModExt.regPc,
-//      nextRegPc,
-//      up.isFiring,
-//    )
-//    init(nextRegPc.getZero)
-//  )
-//
-//  when (up.isFiring) {
-//    //--------
-//    rSavedExSetPc := rSavedExSetPc.getZero
-//    //--------
-//    when (psExSetPc.fire) {
-//      nextRegPc := psExSetPc.regPc //+ (params.instrMainWidth / 8)
-//    } elsewhen (rSavedExSetPc.fire) {
-//      nextRegPc := (
-//        rSavedExSetPc.regPc //+ (params.instrMainWidth / 8)
-//      )
-//    } otherwise {
-//      nextRegPc := rPrevRegPc + (params.instrMainWidth / 8)
-//    }
-//  }
-//}
+//--------
 case class FlareCpuPipeStageIf(
   params: FlareCpuParams,
   cIf: CtrlLink,
@@ -2950,7 +2868,10 @@ case class FlareCpuPipeStageEx(
   def cMid0Front = doModParams.cMid0Front
   def modFront = doModParams.modFront
   def getMyRdMemWord(ydx: Int) = (
-    doModParams.getMyRdMemWordFunc(ydx)
+    doModParams.getMyRdMemWordFunc(
+      U(s"2'd1").resized,
+      ydx
+    )
   )
   //--------
   def myFormal = (
@@ -3353,258 +3274,260 @@ case class FlareCpuPipeStageEx(
     //  //outpVec(ydx).myExt.modMemWordValid := False
     //  outpVec(ydx).myExt.valid := False
     //}
-    when (
-      //rPrevTxnWasHazardAny
-      //rPrevTxnWasHazardVec(0)
-      rPrevTxnWasHazard
-    ) {
-      doTestModOpMain(doCheckHazard=true)
-    } elsewhen (cMid0Front.up.isValid) {
-      doTestModOpMain(doCheckHazard=false)
-    }
+    //--------
+    //when (
+    //  //rPrevTxnWasHazardAny
+    //  //rPrevTxnWasHazardVec(0)
+    //  rPrevTxnWasHazard
+    //) {
+    //  doTestModOpMain(doCheckHazard=true)
+    //} elsewhen (cMid0Front.up.isValid) {
+    //  doTestModOpMain(doCheckHazard=false)
+    //}
     //object MyDcacheMissState
     //extends SpinalEnum(defaultEncoding=binarySequential) {
     //  val
     //    
     //}
-    def doTestModOpMain(
-      doCheckHazard: Boolean
-    ): Unit = {
-      def doHandleHazardWithDcacheMiss(
-        haveCurrLoad: Boolean,
-        //someSetModMemWordFuncArr: Seq[((UInt) => Unit, Int)],
-        setModMemWordFunc: (
-          //Seq[UInt]
-          //--------
-          (
-            Int,
-          ) => UInt, // someGetMyRdMemWordFunc
-          Boolean,   // doAssertValid
-          //--------
-        ) => Unit
-      ): Unit = {
-        def myNonCurrFireSetModMemWord(
-          someGetMyRdMemWordFunc: (Int) => UInt
-        ) = (
-          setModMemWordFunc(
-            someGetMyRdMemWordFunc, // someGetMyRdMemWordFunc
-            false, // doAssertValid
-          )
-        )
-        def handleCurrFire(
-          //someSetModMemWordFuncArr: Seq[(() => Unit, Int)],
-          someGetMyRdMemWordFunc: (Int) => UInt=getMyRdMemWord
-        ): Unit = {
-          //--------
-          //outp.myExt.valid := True
-          nextPrevTxnWasHazard := False
-          //--------
-          setModMemWordFunc(
-            someGetMyRdMemWordFunc, // someGetMyRdMemWordFunc
-            true,                   // doAssertValid
-          )
-          //--------
-        }
-        def handleDuplicateIt(
-          actuallyDuplicateIt: Boolean,
-        ): Unit = {
-          for (zdx <- 0 until outpVec.size) {
-            def outp = outpVec(zdx)
-            outp := (
-              RegNext(outp) init(outp.getZero)
-            )
-            outp.myExt.valid := False
-            outp.myExt.modMemWordValid := (
-              False
-            )
-          }
-          if (actuallyDuplicateIt) {
-            cMid0Front.duplicateIt()
-          }
-        }
-        val rState = KeepAttribute(
-          Reg(Bool())
-          init(False)
-        )
-          .setName(
-            s"doHandleHazardWithDcacheMiss"
-            + s"_${doCheckHazard}_${haveCurrLoad}"
-            + s"_rState"
-          )
-        val rSavedRdMemWord1Valid = (
-          KeepAttribute(
-            Reg(Bool())
-            init(False)
-          )
-          .setName(
-            s"doModInModFrontFunc"
-            + s"_${doCheckHazard}_${haveCurrLoad}"
-            + s"_rSavedModMemWord1Valid"
-          )
-        )
-        val rSavedRdMemWord1 = (
-          KeepAttribute(
-            Reg(
-              Vec.fill(enumRegFileLim)(
-              //cloneOf(myRdMemWord))
-                UInt(params.mainWidth bits)
-              )
-            )
-            //init(0x0)
-            .setName(
-              s"doModInModFrontFunc"
-              + s"_${doCheckHazard}_${haveCurrLoad}"
-              + s"_rSavedModMemWord1"
-            )
-          )
-        )
-        for (ydx <- 0 until rSavedRdMemWord1.size) {
-          rSavedRdMemWord1(ydx).init(
-            rSavedRdMemWord1(ydx).getZero
-          )
-        }
-          
-        switch (rState) {
-          is (False) {
-            //when (
-            //  //!tempModFrontPayload.dcacheHit
-            //  //!io.dbus.valid
-            //  //|| (
-            //    !io.dbus.fire
-            //  //)
-            //) {
-            //  when (
-            //    modFront.isValid
-            //  ) {
-            //    if (haveCurrLoad) {
-            //      handleDuplicateIt(actuallyDuplicateIt=true)
-            //      //rSavedRdMemWord1 := myRdMemWord
-            //      for (ydx <- 0 until rSavedRdMemWord1.size) {
-            //        rSavedRdMemWord1(ydx) := getMyRdMemWord(ydx=ydx)
-            //      }
-            //      rState := True
-            //    } else {  // if (!haveCurrLoad)
-            //      when (modFront.isFiring) {
-            //        handleCurrFire()
-            //      }
-            //    }
-            //  } otherwise { // when (!modFront.isFiring)
-            //    handleDuplicateIt(actuallyDuplicateIt=true)
-            //  }
-            //} otherwise {
-            //  when (cMid0Front.up.isFiring) {
-            //    handleCurrFire()
-            //  }
-            //}
-            when (
-              //!tempModFrontPayload.dcacheHit
-              !io.dbus.fire
-            ) {
-              when (
-                modFront.isValid
-              ) {
-                //when (
-                //   rTempPrevOp
-                //   === (
-                //    PipeMemRmwSimDut.ModOp.LDR_RA_RB
-                //  )
-                //) {
-                if (haveCurrLoad) {
-                  //cMid0Front.duplicateIt()
-                  handleDuplicateIt(actuallyDuplicateIt=true)
+    //def doTestModOpMain(
+    //  doCheckHazard: Boolean
+    //): Unit = {
+    //  def doHandleHazardWithDcacheMiss(
+    //    haveCurrLoad: Boolean,
+    //    //someSetModMemWordFuncArr: Seq[((UInt) => Unit, Int)],
+    //    setModMemWordFunc: (
+    //      //Seq[UInt]
+    //      //--------
+    //      (
+    //        Int,
+    //      ) => UInt, // someGetMyRdMemWordFunc
+    //      Boolean,   // doAssertValid
+    //      //--------
+    //    ) => Unit
+    //  ): Unit = {
+    //    def myNonCurrFireSetModMemWord(
+    //      someGetMyRdMemWordFunc: (Int) => UInt
+    //    ) = (
+    //      setModMemWordFunc(
+    //        someGetMyRdMemWordFunc, // someGetMyRdMemWordFunc
+    //        false, // doAssertValid
+    //      )
+    //    )
+    //    def handleCurrFire(
+    //      //someSetModMemWordFuncArr: Seq[(() => Unit, Int)],
+    //      someGetMyRdMemWordFunc: (Int) => UInt=getMyRdMemWord
+    //    ): Unit = {
+    //      //--------
+    //      //outp.myExt.valid := True
+    //      nextPrevTxnWasHazard := False
+    //      //--------
+    //      setModMemWordFunc(
+    //        someGetMyRdMemWordFunc, // someGetMyRdMemWordFunc
+    //        true,                   // doAssertValid
+    //      )
+    //      //--------
+    //    }
+    //    def handleDuplicateIt(
+    //      actuallyDuplicateIt: Boolean,
+    //    ): Unit = {
+    //      for (zdx <- 0 until outpVec.size) {
+    //        def outp = outpVec(zdx)
+    //        outp := (
+    //          RegNext(outp) init(outp.getZero)
+    //        )
+    //        outp.myExt.valid := False
+    //        outp.myExt.modMemWordValid := (
+    //          False
+    //        )
+    //      }
+    //      if (actuallyDuplicateIt) {
+    //        cMid0Front.duplicateIt()
+    //      }
+    //    }
+    //    val rState = KeepAttribute(
+    //      Reg(Bool())
+    //      init(False)
+    //    )
+    //      .setName(
+    //        s"doHandleHazardWithDcacheMiss"
+    //        + s"_${doCheckHazard}_${haveCurrLoad}"
+    //        + s"_rState"
+    //      )
+    //    val rSavedRdMemWord1Valid = (
+    //      KeepAttribute(
+    //        Reg(Bool())
+    //        init(False)
+    //      )
+    //      .setName(
+    //        s"doModInModFrontFunc"
+    //        + s"_${doCheckHazard}_${haveCurrLoad}"
+    //        + s"_rSavedModMemWord1Valid"
+    //      )
+    //    )
+    //    val rSavedRdMemWord1 = (
+    //      KeepAttribute(
+    //        Reg(
+    //          Vec.fill(enumRegFileLim)(
+    //          //cloneOf(myRdMemWord))
+    //            UInt(params.mainWidth bits)
+    //          )
+    //        )
+    //        //init(0x0)
+    //        .setName(
+    //          s"doModInModFrontFunc"
+    //          + s"_${doCheckHazard}_${haveCurrLoad}"
+    //          + s"_rSavedModMemWord1"
+    //        )
+    //      )
+    //    )
+    //    for (ydx <- 0 until rSavedRdMemWord1.size) {
+    //      rSavedRdMemWord1(ydx).init(
+    //        rSavedRdMemWord1(ydx).getZero
+    //      )
+    //    }
+    //      
+    //    switch (rState) {
+    //      is (False) {
+    //        //when (
+    //        //  //!tempModFrontPayload.dcacheHit
+    //        //  //!io.dbus.valid
+    //        //  //|| (
+    //        //    !io.dbus.fire
+    //        //  //)
+    //        //) {
+    //        //  when (
+    //        //    modFront.isValid
+    //        //  ) {
+    //        //    if (haveCurrLoad) {
+    //        //      handleDuplicateIt(actuallyDuplicateIt=true)
+    //        //      //rSavedRdMemWord1 := myRdMemWord
+    //        //      for (ydx <- 0 until rSavedRdMemWord1.size) {
+    //        //        rSavedRdMemWord1(ydx) := getMyRdMemWord(ydx=ydx)
+    //        //      }
+    //        //      rState := True
+    //        //    } else {  // if (!haveCurrLoad)
+    //        //      when (modFront.isFiring) {
+    //        //        handleCurrFire()
+    //        //      }
+    //        //    }
+    //        //  } otherwise { // when (!modFront.isFiring)
+    //        //    handleDuplicateIt(actuallyDuplicateIt=true)
+    //        //  }
+    //        //} otherwise {
+    //        //  when (cMid0Front.up.isFiring) {
+    //        //    handleCurrFire()
+    //        //  }
+    //        //}
+    //        when (
+    //          //!tempModFrontPayload.dcacheHit
+    //          !io.dbus.fire
+    //        ) {
+    //          when (
+    //            modFront.isValid
+    //          ) {
+    //            //when (
+    //            //   rTempPrevOp
+    //            //   === (
+    //            //    PipeMemRmwSimDut.ModOp.LDR_RA_RB
+    //            //  )
+    //            //) {
+    //            if (haveCurrLoad) {
+    //              //cMid0Front.duplicateIt()
+    //              handleDuplicateIt(actuallyDuplicateIt=true)
 
-                  GenerationFlags.formal {
-                    assert(!rSavedRdMemWord1Valid)
-                  }
-                  rSavedRdMemWord1Valid := False
-                  for (ydx <- 0 until rSavedRdMemWord1.size) {
-                    rSavedRdMemWord1(ydx) := (
-                      getMyRdMemWord(ydx=ydx)
-                    )
-                  }
-                  rState := True
-                } else {  // if (!haveCurrLoad)
-                //} otherwise {
-                  when (modFront.isFiring) {
-                    handleCurrFire()
-                  }
-                }
-              } otherwise { // when (!modFront.isFiring)
-                handleDuplicateIt(actuallyDuplicateIt=true)
-              }
-            } otherwise {
-              when (cMid0Front.up.isFiring) {
-                //when (
-                //  (
-                //    (
-                //      RegNext(rState) init(False)
-                //    ) === False
-                //  ) && (
-                //    rTempPrevOp
-                //    === PipeMemRmwSimDut.ModOp.LDR_RA_RB
-                //  )
-                //) {
-                //  handleCurrFire()
-                //} otherwise {
-                //  handleCurrFire(
-                //  )
-                //}
-                when (rSavedRdMemWord1Valid) {
-                  rSavedRdMemWord1Valid := False
-                  handleCurrFire(
-                    //someRdMemWord=rSavedRdMemWord1
-                    someGetMyRdMemWordFunc=(
-                      (ydx: Int) => (rSavedRdMemWord1(ydx))
-                    ),
-                  )
-                } otherwise {
-                  handleCurrFire()
-                }
-              }
-            }
-            GenerationFlags.formal {
-              when (pastValidAfterReset) {
-                when (past(rState) === True) {
-                  for (ydx <- 0 until rSavedRdMemWord1.size) {
-                    assert(stable(rSavedRdMemWord1(ydx)))
-                  }
-                }
-              }
-            }
-          }
-          is (True) {
-            //when (cMid0Front.up.isFiring) {
-            //  //handleCurrFire(
-            //  //  someModMemWord=rSavedRdMemWord1
-            //  //)
-            //} otherwise {
-            //  handleDuplicateIt(actuallyDuplicateIt=false)
-            //}
-            GenerationFlags.formal {
-              when (pastValidAfterReset) {
-                when (past(rState) === False) {
-                  assert(!past(tempModFrontPayload.dcacheHit))
-                  assert(!rSavedRdMemWord1.valid)
-                } otherwise {
-                  assert(
-                    stable(rSavedRdMemWord)
-                  )
-                }
-              }
-            }
-          }
-        }
-      }
-      //object MyState
-      //extends SpinalEnum(defaultEncoding=binarySequential)
-      //{
-      //  //val 
-      //}
-      //when (cMid0Front.up.isValid) {
-      //  switch (inpInstrDecEtc.decOp) {
-      //  }
-      //}
-    }
+    //              GenerationFlags.formal {
+    //                assert(!rSavedRdMemWord1Valid)
+    //              }
+    //              rSavedRdMemWord1Valid := False
+    //              for (ydx <- 0 until rSavedRdMemWord1.size) {
+    //                rSavedRdMemWord1(ydx) := (
+    //                  getMyRdMemWord(ydx=ydx)
+    //                )
+    //              }
+    //              rState := True
+    //            } else {  // if (!haveCurrLoad)
+    //            //} otherwise {
+    //              when (modFront.isFiring) {
+    //                handleCurrFire()
+    //              }
+    //            }
+    //          } otherwise { // when (!modFront.isFiring)
+    //            handleDuplicateIt(actuallyDuplicateIt=true)
+    //          }
+    //        } otherwise {
+    //          when (cMid0Front.up.isFiring) {
+    //            //when (
+    //            //  (
+    //            //    (
+    //            //      RegNext(rState) init(False)
+    //            //    ) === False
+    //            //  ) && (
+    //            //    rTempPrevOp
+    //            //    === PipeMemRmwSimDut.ModOp.LDR_RA_RB
+    //            //  )
+    //            //) {
+    //            //  handleCurrFire()
+    //            //} otherwise {
+    //            //  handleCurrFire(
+    //            //  )
+    //            //}
+    //            when (rSavedRdMemWord1Valid) {
+    //              rSavedRdMemWord1Valid := False
+    //              handleCurrFire(
+    //                //someRdMemWord=rSavedRdMemWord1
+    //                someGetMyRdMemWordFunc=(
+    //                  (ydx: Int) => (rSavedRdMemWord1(ydx))
+    //                ),
+    //              )
+    //            } otherwise {
+    //              handleCurrFire()
+    //            }
+    //          }
+    //        }
+    //        GenerationFlags.formal {
+    //          when (pastValidAfterReset) {
+    //            when (past(rState) === True) {
+    //              for (ydx <- 0 until rSavedRdMemWord1.size) {
+    //                assert(stable(rSavedRdMemWord1(ydx)))
+    //              }
+    //            }
+    //          }
+    //        }
+    //      }
+    //      is (True) {
+    //        //when (cMid0Front.up.isFiring) {
+    //        //  //handleCurrFire(
+    //        //  //  someModMemWord=rSavedRdMemWord1
+    //        //  //)
+    //        //} otherwise {
+    //        //  handleDuplicateIt(actuallyDuplicateIt=false)
+    //        //}
+    //        GenerationFlags.formal {
+    //          when (pastValidAfterReset) {
+    //            when (past(rState) === False) {
+    //              assert(!past(tempModFrontPayload.dcacheHit))
+    //              assert(!rSavedRdMemWord1.valid)
+    //            } otherwise {
+    //              assert(
+    //                stable(rSavedRdMemWord)
+    //              )
+    //            }
+    //          }
+    //        }
+    //      }
+    //    }
+    //  }
+    //  //object MyState
+    //  //extends SpinalEnum(defaultEncoding=binarySequential)
+    //  //{
+    //  //  //val 
+    //  //}
+    //  //when (cMid0Front.up.isValid) {
+    //  //  switch (inpInstrDecEtc.decOp) {
+    //  //  }
+    //  //}
+    //}
+    //--------
   }
 }
 
@@ -4227,28 +4150,6 @@ case class FlareCpu(
   //  )
   //}
   def psExDoModInModFrontFunc(
-    //nextPrevTxnWasHazardVec: Vec[Bool], // nextPrevTxnWasHazardVec
-    //rPrevTxnWasHazardVec: Vec[Bool],  // rPrevTxnWasHazardVec
-    //rPrevTxnWasHazardAny: Bool,       // rPrevTxnWasHazardAny
-    //outpVec: Vec[FlareCpuPipeMemModType[
-    //  UInt,
-    //  Bool,
-    //  FlareCpuPipeMemModExtType,
-    //]], // outp
-    //inpVec: Vec[FlareCpuPipeMemModType[
-    //  UInt,
-    //  Bool,
-    //  FlareCpuPipeMemModExtType,
-    //]], // inp
-    //cMid0Front: CtrlLink, // mod.front.cMid0Front
-    //modFront: Node,     // io.modFront
-    //tempModFrontPayloadVec: Vec[FlareCpuPipeMemModType[
-    //  UInt,
-    //  Bool,
-    //  FlareCpuPipeMemModExtType,
-    //]], // io.tempModFrontPayload
-    //getMyModMemWordFunc: (Int) => UInt,
-    //ydxArg: Int,    // ydx
     doModParams: PipeMemRmwDoModInModFrontFuncParams[
       UInt,
       Bool,
@@ -4264,1017 +4165,9 @@ case class FlareCpu(
       io=io,
       psExSetPc=psExSetPc,
       regFileWordCountArr=regFileWordCountArr,
-      //nextPrevTxnWasHazardVec=nextPrevTxnWasHazardVec,
-      //rPrevTxnWasHazardVec=rPrevTxnWasHazardVec,
-      //rPrevTxnWasHazardAny=rPrevTxnWasHazardAny,
-      //outpVec=outpVec,
-      //inpVec=inpVec,
-      //cMid0Front=cMid0Front,
-      //modFront=modFront,
-      //tempModFrontPayloadVec=tempModFrontPayloadVec,
-      //getMyModMemWordFunc=getMyModMemWordFunc,
-      //ydxArg=ydxArg,
       doModParams=doModParams,
     ).setName("cExArea")
   }
-  //val cExArea = new cEx.Area {
-  //  val upMod = Vec.fill(2)(Vec.fill(enumRegFileLim)(mkRegFileModType()))
-  //  for (ydx <- 0 until enumRegFileLim) {
-  //    upMod(0)(ydx) := up(regFile.io.modFrontPayload(ydx))
-  //    when (up.isFiring) {
-  //      up(pEx)(ydx) := upMod(1)(ydx)
-  //    }
-  //  }
-  //  def upExt(
-  //    idx: Int,
-  //    regFileSlice: Int,
-  //  ) = (
-  //    upMod(idx)(regFileSlice).myExt
-  //  )
-  //  def upModExt(idx: Int) = (
-  //    upMod(idx)(0).modExt
-  //  )
-  //  def upInstrDecEtc(idx: Int) = (
-  //    upModExt(idx=idx).instrDecEtc
-  //  )
-  //  object MultiCycleState
-  //  extends SpinalEnum(defaultEncoding=binarySequential) {
-  //    val
-  //      PRIMARY,
-  //      PREV_INSTR_MEM_ACCESS
-  //      = newElement();
-  //  }
-  //  val rMultiCycleState = (
-  //    KeepAttribute(
-  //      //Reg(Bool())
-  //      //init(False)
-  //      Reg(MultiCycleState())
-  //      init(MultiCycleState.PRIMARY)
-  //    )
-  //  )
-  //  def setGprRa32(
-  //    value: UInt
-  //  ): Unit = {
-  //    switch (upInstrDecEtc(0).gprRaSel) {
-  //      for (ydx <- enumRegFileGprEvenNonFp until enumRegFileGprSp) {
-  //        def myModMemWord = upExt(idx=1, regFileSlice=ydx).modMemWord
-  //        val myZero = U(s"${params.mainWidth}'d0")
-  //        is (FlareCpuGprSelect.gprEvenNonFp) {
-  //          myModMemWord := (
-  //            if (ydx == enumRegFileGprEvenNonFp) (
-  //              value
-  //            ) else (
-  //              myZero
-  //            )
-  //          )
-  //        }
-  //        is (FlareCpuGprSelect.gprFp) {
-  //          myModMemWord := (
-  //            if (ydx == enumRegFileGprFp) (
-  //              value
-  //            ) else (
-  //              myZero
-  //            )
-  //          )
-  //        }
-  //        is (FlareCpuGprSelect.gprOddNonSp) {
-  //          myModMemWord := (
-  //            if (ydx == enumRegFileGprOddNonSp) (
-  //              value
-  //            ) else (
-  //              myZero
-  //            )
-  //          )
-  //        }
-  //        is (FlareCpuGprSelect.gprSp) {
-  //          myModMemWord := (
-  //            if (ydx == enumRegFileGprSp) (
-  //              value
-  //            ) else (
-  //              myZero
-  //            )
-  //          )
-  //        }
-  //      }
-  //    }
-  //  }
-  //  def setGprRa64(
-  //    valueHi: UInt,
-  //    valueLo: UInt,
-  //  ): Unit = {
-  //    switch (upInstrDecEtc(0).gprRa64IsNonFpSp) {
-  //      //for (ydx <- enumRegFileGprEvenNonFp until enumRegFileGprSp) {
-  //      //  def myModMemWord = upExt(idx=1, regFileSlice=ydx).modMemWord
-  //        def myModMemWord(
-  //          ydx: Int,
-  //        ) = (
-  //          upExt(idx=1, regFileSlice=ydx).modMemWord
-  //        )
-  //        val myZero = U(s"${params.mainWidth}'d0")
-  //        is (False) { // {non-fp, non-sp} 64-bit register pair
-  //          myModMemWord(ydx=enumRegFileGprEvenNonFp) := valueHi
-  //          myModMemWord(ydx=enumRegFileGprOddNonSp) := valueLo
-  //          myModMemWord(ydx=enumRegFileGprFp) := 0x0
-  //          myModMemWord(ydx=enumRegFileGprSp) := 0x0
-  //        }
-  //        is (True) { // {fp, sp} 64-bit register pair
-  //          myModMemWord(ydx=enumRegFileGprEvenNonFp) := 0x0
-  //          myModMemWord(ydx=enumRegFileGprOddNonSp) := 0x0
-  //          myModMemWord(ydx=enumRegFileGprFp) := valueHi
-  //          myModMemWord(ydx=enumRegFileGprSp) := valueLo
-  //        }
-  //      //}
-  //    }
-  //    //for (ydx <- enumRegFileGprEvenNonFp until enumRegFileGprSp) {
-  //    //  def myModMemWord = upExt(idx=1, regFileSlice=ydx).modMemWord
-  //    //  val myZero = U(s"${params.mainWidth}'d0")
-  //    //  switch (upInstrDecEtc(0).gprRaSel) {
-  //    //    is (FlareCpuGprSelect.gprEvenNonFp) {
-  //    //      myModMemWord := (
-  //    //        if (ydx == enumRegFileGprEvenNonFp) (
-  //    //          value
-  //    //        ) else (
-  //    //          myZero
-  //    //        )
-  //    //      )
-  //    //    }
-  //    //    is (FlareCpuGprSelect.gprFp) {
-  //    //      myModMemWord := (
-  //    //        if (ydx == enumRegFileGprFp) (
-  //    //          value
-  //    //        ) else (
-  //    //          myZero
-  //    //        )
-  //    //      )
-  //    //    }
-  //    //    is (FlareCpuGprSelect.gprOddNonSp) {
-  //    //      myModMemWord := (
-  //    //        if (ydx == enumRegFileGprOddNonSp) (
-  //    //          value
-  //    //        ) else (
-  //    //          myZero
-  //    //        )
-  //    //      )
-  //    //    }
-  //    //    is (FlareCpuGprSelect.gprSp) {
-  //    //      myModMemWord := (
-  //    //        if (ydx == enumRegFileGprSp) (
-  //    //          value
-  //    //        ) else (
-  //    //          myZero
-  //    //        )
-  //    //      )
-  //    //    }
-  //    //  }
-  //    //}
-  //  }
-
-  //  def setSprSa32(
-  //    value: UInt
-  //  ): Unit = {
-  //    switch (upInstrDecEtc(0).sprSaSel) {
-  //      for (ydx <- enumRegFileSprEven until enumRegFileSprOdd) {
-  //        def myModMemWord = upExt(idx=1, regFileSlice=ydx).modMemWord
-  //        val myZero = U(s"${params.mainWidth}'d0")
-  //        is (FlareCpuSprSelect.sprEven) {
-  //          myModMemWord := (
-  //            if (ydx == enumRegFileSprEven) (
-  //              value
-  //            ) else (
-  //              myZero
-  //            )
-  //          )
-  //        }
-  //        is (FlareCpuSprSelect.sprOdd) {
-  //          myModMemWord := (
-  //            if (ydx == enumRegFileSprOdd) (
-  //              value
-  //            ) else (
-  //              myZero
-  //            )
-  //          )
-  //        }
-  //      }
-  //    }
-  //  }
-  //  def setSprSa64(
-  //    valueHi: UInt,
-  //    valueLo: UInt,
-  //  ): Unit = {
-  //  }
-  //  val rPreSimm = (
-  //    Reg(UInt(params.preWidth bits))
-  //    init(0x0)
-  //  )
-  //  val rLpreSimm = (
-  //    Reg(UInt(params.lpreWidth bits))
-  //    init(0x0)
-  //  )
-  //  when (up.isValid) {
-  //    switch (rMultiCycleState) {
-  //      is (MultiCycleState.PRIMARY) {
-  //        //when (
-  //        //  regFile.io.tempModFrontPayload(0).dcacheHit
-  //        //) {
-  //        //}
-  //        switch (upInstrDecEtc(0).decOp) {
-  //          // decoded instruction opcode
-  //          //--------
-  //          is (FlareCpuInstrDecOp.bubble) {
-  //            // fake instruction, acts as a NOP and prevents forwarding in
-  //            // the `PipeMemRmw`s
-  //            // used, for example, for `index`, `lpre`'s low immediate bits
-  //          }
-  //          is (FlareCpuInstrDecOp.lpreSimmHi) {
-  //          }
-  //          is (FlareCpuInstrDecOp.lpreSimmLo) {
-  //            // fake instruction, acts as a bubble
-  //          }
-  //          is (FlareCpuInstrDecOp.preSimm) {
-  //          }
-  //          //--------
-  //          is (FlareCpuInstrDecOp.cmpxchg) { // without lock
-  //          }
-  //          is (FlareCpuInstrDecOp.cmpxchgLock) { // with lock
-  //          }
-  //          is (FlareCpuInstrDecOp.xchg) {     // without lock
-  //          }
-  //          is (FlareCpuInstrDecOp.xchgLock) {   // with lock
-  //          }
-  //          //--------
-  //          //addRaRbSimm, // only `fp`, `sp`, or `pc` can be `rB`
-  //          is (FlareCpuInstrDecOp.addRaSimm) {
-  //          }
-  //          is (FlareCpuInstrDecOp.addRaPcSimm) {
-  //          }
-  //          is (FlareCpuInstrDecOp.addRaSpSimm) {
-  //          }
-  //          is (FlareCpuInstrDecOp.addRaFpSimm) {
-  //          }
-
-  //          is (FlareCpuInstrDecOp.cmpRaSimm) {
-  //          }
-  //          is (FlareCpuInstrDecOp.cpyRaSimm) {
-  //          }
-  //          is (FlareCpuInstrDecOp.lslRaImm) {
-  //          }
-  //          is (FlareCpuInstrDecOp.lsrRaImm) {
-  //          }
-
-  //          is (FlareCpuInstrDecOp.asrRaImm) {
-  //          }
-  //          is (FlareCpuInstrDecOp.andRaSimm) {
-  //          }
-  //          is (FlareCpuInstrDecOp.orrRaSimm) {
-  //          }
-  //          is (FlareCpuInstrDecOp.xorRaSimm) {
-  //          }
-
-  //          is (FlareCpuInstrDecOp.zeRaImm) {
-  //          }
-  //          is (FlareCpuInstrDecOp.seRaImm) {
-  //          }
-  //          is (FlareCpuInstrDecOp.swiRaSimm) {
-  //          }
-  //          is (FlareCpuInstrDecOp.swiImm) {
-  //          }
-  //          //--------
-  //          is (FlareCpuInstrDecOp.addRaRb) {
-  //          }
-  //          is (FlareCpuInstrDecOp.subRaRb) {
-  //          }
-  //          is (FlareCpuInstrDecOp.addRaSpRb) {
-  //          }
-  //          is (FlareCpuInstrDecOp.addRaFpRb) {
-  //          }
-  //          //--------
-  //          is (FlareCpuInstrDecOp.cmpRaRb) {
-  //          }
-  //          is (FlareCpuInstrDecOp.cpyRaRb) {
-  //          }
-  //          is (FlareCpuInstrDecOp.lslRaRb) {
-  //          }
-  //          is (FlareCpuInstrDecOp.lsrRaRb) {
-  //          }
-  //          is (FlareCpuInstrDecOp.asrRaRb) {
-  //          }
-  //          is (FlareCpuInstrDecOp.andRaRb) {
-  //          }
-  //          is (FlareCpuInstrDecOp.orrRaRb) {
-  //          }
-  //          is (FlareCpuInstrDecOp.xorRaRb) {
-  //          }
-  //          //--------
-  //          is (FlareCpuInstrDecOp.adcRaRb) {
-  //          }
-  //          is (FlareCpuInstrDecOp.sbcRaRb) {
-  //          }
-  //          is (FlareCpuInstrDecOp.cmpbcRaRb) {
-  //          }
-  //          //--------
-  //          //addRaRbFlags,
-  //          //subRaRbFlags,
-  //          //addRaSpRbFlags,
-  //          //addRaFpRbFlags,
-  //          ////--------
-  //          ////cmpRaRbFlags,
-  //          //cpyRaRbFlags,
-  //          //lslRaRbFlags,
-  //          //lsrRaRbFlags,
-  //          //asrRaRbFlags,
-  //          //andRaRbFlags,
-  //          //orrRaRbFlags,
-  //          //xorRaRbFlags,
-  //          ////--------
-  //          //adcRaRbFlags,
-  //          //sbcRaRbFlags,
-  //          //cmpbcRaRbFlags,
-  //          //--------
-  //          is (FlareCpuInstrDecOp.blSimm) {
-  //          }
-  //          is (FlareCpuInstrDecOp.braSimm) {
-  //          }
-  //          is (FlareCpuInstrDecOp.beqSimm) {
-  //          }
-  //          is (FlareCpuInstrDecOp.bneSimm) {
-  //          }
-  //          is (FlareCpuInstrDecOp.bmiSimm) {
-  //          }
-  //          is (FlareCpuInstrDecOp.bplSimm) {
-  //          }
-  //          is (FlareCpuInstrDecOp.bvsSimm) {
-  //          }
-  //          is (FlareCpuInstrDecOp.bvcSimm) {
-  //          }
-  //          is (FlareCpuInstrDecOp.bgeuSimm) {
-  //          }
-  //          is (FlareCpuInstrDecOp.bltuSimm) {
-  //          }
-  //          is (FlareCpuInstrDecOp.bgtuSimm) {
-  //          }
-  //          is (FlareCpuInstrDecOp.bleuSimm) {
-  //          }
-  //          is (FlareCpuInstrDecOp.bgesSimm) {
-  //          }
-  //          is (FlareCpuInstrDecOp.bltsSimm) {
-  //          }
-  //          is (FlareCpuInstrDecOp.bgtsSimm) {
-  //          }
-  //          is (FlareCpuInstrDecOp.blesSimm) {
-  //          }
-  //          //--------
-  //          is (FlareCpuInstrDecOp.jlRa) {
-  //          }
-  //          is (FlareCpuInstrDecOp.jmpRa) {
-  //          }
-  //          is (FlareCpuInstrDecOp.jmpIra) {
-  //          }
-  //          is (FlareCpuInstrDecOp.reti) {
-  //          }
-  //          is (FlareCpuInstrDecOp.ei) {
-  //          }
-  //          is (FlareCpuInstrDecOp.di) {
-  //          }
-  //          //--------
-  //          is (FlareCpuInstrDecOp.pushRaRb) {
-  //          }
-  //          is (FlareCpuInstrDecOp.pushSaRb) {
-  //          }
-  //          is (FlareCpuInstrDecOp.popRaRb) {
-  //          }
-  //          is (FlareCpuInstrDecOp.popSaRb) {
-  //          }
-  //          is (FlareCpuInstrDecOp.popPcRb) {
-  //          }
-  //          //--------
-  //          is (FlareCpuInstrDecOp.mulRaRb) {
-  //          }
-  //          //--------
-  //          //udivRaRb,
-  //          //sdivRaRb,
-  //          //udivmodRaRbRc,
-  //          //sdivmodRaRbRc,
-  //          is (FlareCpuInstrDecOp.udivmodRaRb) {
-  //          }
-  //          is (FlareCpuInstrDecOp.sdivmodRaRb) {
-  //          }
-  //          //--------
-  //          //lumulRcRdRaRb,
-  //          //lsmulRcRdRaRb,
-  //          is (FlareCpuInstrDecOp.lumulRaRb) {
-  //          }
-  //          is (FlareCpuInstrDecOp.lsmulRaRb) {
-  //          }
-  //          //--------
-  //          //udiv64RaRb,
-  //          //sdiv64RaRb,
-  //          //udivmod64RaRbRcRd,
-  //          //sdivmod64RaRbRcRd,
-  //          is (FlareCpuInstrDecOp.udivmod64RaRb) {
-  //          }
-  //          is (FlareCpuInstrDecOp.sdivmod64RaRb) {
-  //          }
-  //          //--------
-  //          is (FlareCpuInstrDecOp.ldubRaRbLdst) {
-  //          }
-  //          is (FlareCpuInstrDecOp.ldsbRaRbLdst) {
-  //          }
-  //          is (FlareCpuInstrDecOp.lduhRaRbLdst) {
-  //          }
-  //          is (FlareCpuInstrDecOp.ldshRaRbLdst) {
-  //          }
-  //          is (FlareCpuInstrDecOp.ldrRaRbLdst) {
-  //          }
-  //          is (FlareCpuInstrDecOp.stbRaRbLdst) {
-  //          }
-  //          is (FlareCpuInstrDecOp.sthRaRbLdst) {
-  //          }
-  //          is (FlareCpuInstrDecOp.strRaRbLdst) {
-  //          }
-  //          //--------
-  //          is (FlareCpuInstrDecOp.cpyRaSb) {
-  //          }
-  //          is (FlareCpuInstrDecOp.cpySaRb) {
-  //          }
-  //          is (FlareCpuInstrDecOp.cpySaSb) {
-  //          }
-  //          //--------
-  //          is (FlareCpuInstrDecOp.indexRaRb) {
-  //          }
-  //          is (FlareCpuInstrDecOp.indexRaSimm) {
-  //          }
-  //          //--------
-  //          //ldrRaRbSimmLdst,
-  //          //strRaRbSimmLdst,
-  //          //--------
-  //          is (FlareCpuInstrDecOp.ldrSaRbLdst) {
-  //          }
-  //          is (FlareCpuInstrDecOp.ldrSaSbLdst) {
-  //          }
-  //          is (FlareCpuInstrDecOp.strSaRbLdst) {
-  //          }
-  //          is (FlareCpuInstrDecOp.strSaSbLdst) {
-  //          }
-  //          //--------
-  //          is (FlareCpuInstrDecOp.cmpbRaRb) {
-  //          }
-  //          is (FlareCpuInstrDecOp.cmphRaRb) {
-  //          }
-  //          is (FlareCpuInstrDecOp.lsrbRaRb) {
-  //          }
-  //          is (FlareCpuInstrDecOp.lsrhRaRb) {
-  //          }
-  //          is (FlareCpuInstrDecOp.asrbRaRb) {
-  //          }
-  //          is (FlareCpuInstrDecOp.asrhRaRb) {
-  //          }
-  //          //--------
-  //          is (FlareCpuInstrDecOp.icreloadRaSimm) {
-  //          }
-  //          //--------
-  //          is (FlareCpuInstrDecOp.icflush) {
-  //          }
-  //          //--------
-  //        }
-  //      }
-  //      is (MultiCycleState.PREV_INSTR_MEM_ACCESS) {
-  //      }
-  //    }
-  //  }
-  //  //duplicateIt()
-  //  //when (up.isValid) {
-  //  //  //val upModExt = Vec.fill(2)(FlareCpuPipeMemModExtType())
-  //  //  //upModExt(0) := up(regFile.io.modFrontPayload(0)).modExt
-  //  //  //upMod(0) := 
-  //  //  //up(pEx) := upMod(1)
-  //  //  //when (up.isFiring) {
-  //  //    switch (upInstrDecEtc(0).decOp) {
-  //  //      //--------
-  //  //      is (FlareCpuInstrDecOp.bubble) {
-  //  //        // fake instruction, acts as a NOP and prevents forwarding in
-  //  //        // the `PipeMemRmw`s
-  //  //        // used, for example, for `index`, `lpre`'s low immediate bits
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.lpreSimmHi) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.lpreSimmLo) {
-  //  //        // fake instruction, acts as a bubble
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.preSimm) {
-  //  //      }
-  //  //      //--------
-  //  //      is (FlareCpuInstrDecOp.cmpxchg) { // without lock
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.cmpxchgLock) { // with lock
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.xchg) {     // without lock
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.xchgLock) {   // with lock
-  //  //      }
-  //  //      //--------
-  //  //      //addRaRbSimm, // only `fp`, `sp`, or `pc` can be `rB`
-  //  //      is (FlareCpuInstrDecOp.addRaSimm) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.addRaPcSimm) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.addRaSpSimm) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.addRaFpSimm) {
-  //  //      }
-
-  //  //      is (FlareCpuInstrDecOp.cmpRaSimm) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.cpyRaSimm) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.lslRaImm) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.lsrRaImm) {
-  //  //      }
-
-  //  //      is (FlareCpuInstrDecOp.asrRaImm) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.andRaSimm) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.orrRaSimm) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.xorRaSimm) {
-  //  //      }
-
-  //  //      is (FlareCpuInstrDecOp.zeRaImm) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.seRaImm) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.swiRaSimm) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.swiImm) {
-  //  //      }
-  //  //      //--------
-  //  //      is (FlareCpuInstrDecOp.addRaRb) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.subRaRb) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.addRaSpRb) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.addRaFpRb) {
-  //  //      }
-  //  //      //--------
-  //  //      is (FlareCpuInstrDecOp.cmpRaRb) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.cpyRaRb) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.lslRaRb) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.lsrRaRb) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.asrRaRb) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.andRaRb) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.orrRaRb) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.xorRaRb) {
-  //  //      }
-  //  //      //--------
-  //  //      is (FlareCpuInstrDecOp.adcRaRb) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.sbcRaRb) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.cmpbcRaRb) {
-  //  //      }
-  //  //      //--------
-  //  //      is (FlareCpuInstrDecOp.blSimm) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.braSimm) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.beqSimm) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.bneSimm) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.bmiSimm) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.bplSimm) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.bvsSimm) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.bvcSimm) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.bgeuSimm) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.bltuSimm) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.bgtuSimm) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.bleuSimm) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.bgesSimm) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.bltsSimm) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.bgtsSimm) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.blesSimm) {
-  //  //      }
-  //  //      //--------
-  //  //      is (FlareCpuInstrDecOp.jlRa) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.jmpRa) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.jmpIra) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.reti) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.ei) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.di) {
-  //  //      }
-  //  //      //--------
-  //  //      is (FlareCpuInstrDecOp.pushRaRb) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.pushSaRb) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.popRaRb) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.popSaRb) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.popPcRb) {
-  //  //      }
-  //  //      //--------
-  //  //      is (FlareCpuInstrDecOp.mulRaRb) {
-  //  //      }
-  //  //      //--------
-  //  //      is (FlareCpuInstrDecOp.udivmodRaRb) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.sdivmodRaRb) {
-  //  //      }
-  //  //      //--------
-  //  //      is (FlareCpuInstrDecOp.lumulRaRb) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.lsmulRaRb) {
-  //  //      }
-  //  //      //--------
-  //  //      is (FlareCpuInstrDecOp.udivmod64RaRb) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.sdivmod64RaRb) {
-  //  //      }
-  //  //      //--------
-  //  //      is (FlareCpuInstrDecOp.ldubRaRbLdst) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.ldsbRaRbLdst) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.lduhRaRbLdst) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.ldshRaRbLdst) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.ldrRaRbLdst) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.stbRaRbLdst) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.sthRaRbLdst) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.strRaRbLdst) {
-  //  //      }
-  //  //      //--------
-  //  //      is (FlareCpuInstrDecOp.cpyRaSb) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.cpySaRb) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.cpySaSb) {
-  //  //      }
-  //  //      //--------
-  //  //      is (FlareCpuInstrDecOp.indexRaRb) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.indexRaSimm) {
-  //  //      }
-  //  //      //--------
-  //  //      is (FlareCpuInstrDecOp.ldrSaRbLdst) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.ldrSaSbLdst) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.strSaRbLdst) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.strSaSbLdst) {
-  //  //      }
-  //  //      //--------
-  //  //      is (FlareCpuInstrDecOp.cmpbRaRb) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.cmphRaRb) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.lsrbRaRb) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.lsrhRaRb) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.asrbRaRb) {
-  //  //      }
-  //  //      is (FlareCpuInstrDecOp.asrhRaRb) {
-  //  //      }
-  //  //      //--------
-  //  //      is (FlareCpuInstrDecOp.icreloadRaSimm) {
-  //  //      }
-  //  //      //--------
-  //  //      is (FlareCpuInstrDecOp.icflush) {
-  //  //      }
-  //  //      //--------
-  //  //      //default {
-  //  //      //  haltIt()
-  //  //      //}
-  //  //      //--------
-  //  //    }
-  //  //  //}
-  //  //}
-
-  //  //exSetPc.valid := True
-  //  //exSetPc.payload := 0x0
-  //  //outp := inp
-  //  //outp.allowOverride
-  //  //val nextHaltItState = KeepAttribute(
-  //  //  Bool()
-  //  //).setName(s"FlareCpu_doModInModFrontFunc_nextHaltItState_${ydx}")
-  //  //val rHaltItState = KeepAttribute(
-  //  //  RegNext(nextHaltItState)
-  //  //  init(nextHaltItState.getZero)
-  //  //).setName(s"FlareCpu_doModInModFrontFunc_rHaltItState_${ydx}")
-  //  //////val nextMulHaltItCnt = KeepAttribute(
-  //  //////  SInt(4 bits)
-  //  //////).setName("FlareCpu_doModInModFrontFunc_nextMulHaltItCnt")
-  //  //val nextMulHaltItCnt = SInt(4 bits)
-  //  //  .setName(s"FlareCpu_doModInModFrontFunc_nextMulHaltItCnt_${ydx}")
-  //  //val rMulHaltItCnt = (
-  //  //  RegNext(nextMulHaltItCnt)
-  //  //  init(-1)
-  //  //)
-  //  //  .setName(s"FlareCpu_doModInModFrontFunc_rMulHaltItCnt_${ydx}")
-  //  //nextHaltItState := rHaltItState
-  //  //nextMulHaltItCnt := rMulHaltItCnt
-  //  //def setOutpModMemWord(
-  //  //  someModMemWord: UInt=myModMemWord
-  //  //): Unit = {
-  //  //  //outp.myExt.modMemWord := (
-  //  //  //  someModMemWord + 0x1
-  //  //  //)
-  //  //  outp.myExt.modMemWordValid := True
-  //  //}
-  //  //val rSavedModMemWord = (
-  //  //  Reg(cloneOf(myModMemWord))
-  //  //  init(myModMemWord.getZero)
-  //  //)
-  //  //  .setName(s"FlareCpu_doModInModFrontFunc_rSavedModMemWord_${ydx}")
-  //  //val rPrevOutp = KeepAttribute(
-  //  //  RegNextWhen(
-  //  //    outp,
-  //  //    cMid0Front.up.isFiring
-  //  //  )
-  //  //  init(outp.getZero)
-  //  //)
-  //  //  .setName(s"FlareCpu_doModInModFrontFunc_rPrevOutp_${ydx}")
-  //  //def doMulHaltItFsmIdleInnards(
-  //  //  doDuplicateIt: Boolean
-  //  //): Unit = {
-  //  //  if (PipeMemRmwSimDut.doTestModOp) {
-  //  //    def myInitMulHaltItCnt = 0x1
-  //  //    cMid0Front.duplicateIt()
-  //  //    when (
-  //  //      //cMid0Front.down.isFiring
-  //  //      modFront.isFiring
-  //  //    ) {
-  //  //      nextHaltItState := (
-  //  //        //PipeMemRmwSimDutHaltItState.HALT_IT
-  //  //        True
-  //  //      )
-  //  //      nextMulHaltItCnt := myInitMulHaltItCnt
-  //  //    }
-  //  //    outp.myExt.modMemWordValid := False
-  //  //    rSavedModMemWord := myModMemWord
-  //  //  }
-  //  //}
-  //  //def doMulHaltItFsmHaltItInnards(): Unit = {
-  //  //  if (PipeMemRmwSimDut.doTestModOp) {
-  //  //    outp := (
-  //  //      RegNext(outp)
-  //  //      init(outp.getZero)
-  //  //    )
-  //  //    when ((rMulHaltItCnt - 1).msb) {
-  //  //      when (
-  //  //        //cMid0Front.down.isFiring
-  //  //        modFront.isFiring
-  //  //      ) {
-  //  //        setOutpModMemWord(rSavedModMemWord)
-  //  //        nextHaltItState := False//PipeMemRmwSimDutHaltItState.IDLE
-  //  //      }
-  //  //    } otherwise {
-  //  //      nextMulHaltItCnt := rMulHaltItCnt - 1
-  //  //      //cMid0Front.haltIt()
-  //  //      cMid0Front.duplicateIt()
-  //  //      outp.myExt.modMemWordValid := False
-  //  //    }
-  //  //  }
-  //  //}
-  //  //def doTestModOpMain(
-  //  //  doCheckHazard: Boolean=false
-  //  //): Unit = {
-  //  //  val myFindFirstHazardAddr = (doCheckHazard) generate (
-  //  //    KeepAttribute(
-  //  //      inp.myExt.memAddr.sFindFirst(
-  //  //        _ === rPrevOutp.myExt.memAddr(PipeMemRmw.modWrIdx)
-  //  //      )
-  //  //      //(
-  //  //      //  // Only check one register.
-  //  //      //  // This will work fine for testing the different
-  //  //      //  // categories of stalls, but the real CPU will need to
-  //  //      //  /// be tested for *all* registers
-  //  //      //  inp.myExt.memAddr(PipeMemRmw.modWrIdx)
-  //  //      //  === rPrevOutp.myExt.memAddr(PipeMemRmw.modWrIdx)
-  //  //      //)
-  //  //      .setName(s"myFindFirstHazardAddr_${ydx}")
-  //  //    )
-  //  //  )
-  //  //  def doHandleHazardWithDcacheMiss(
-  //  //    haveCurrLoad: Boolean,
-  //  //  ): Unit = {
-  //  //    def handleCurrFire(
-  //  //      someModMemWord: UInt=myModMemWord
-  //  //    ): Unit = {
-  //  //      outp.myExt.valid := True
-  //  //      nextPrevTxnWasHazard := False
-  //  //      setOutpModMemWord(
-  //  //        someModMemWord=someModMemWord
-  //  //      )
-  //  //    }
-  //  //    def handleDuplicateIt(
-  //  //      actuallyDuplicateIt: Boolean=true
-  //  //    ): Unit = {
-  //  //      outp := (
-  //  //        RegNext(outp) init(outp.getZero)
-  //  //      )
-  //  //      outp.myExt.valid := False
-  //  //      outp.myExt.modMemWordValid := (
-  //  //        False
-  //  //      )
-  //  //      if (actuallyDuplicateIt) {
-  //  //        cMid0Front.duplicateIt()
-  //  //      }
-  //  //    }
-  //  //    val rState = KeepAttribute(
-  //  //      Reg(Bool())
-  //  //      init(False)
-  //  //    )
-  //  //      .setName(
-  //  //        s"doHandleHazardWithDcacheMiss"
-  //  //        + s"_${doCheckHazard}_${haveCurrLoad}"
-  //  //        + s"_rState"
-  //  //        + s"${ydx}"
-  //  //      )
-  //  //    val rSavedModMemWord1 = (
-  //  //      Reg(cloneOf(myModMemWord))
-  //  //      init(myModMemWord.getZero)
-  //  //      .setName(
-  //  //        s"FlareCpu_doModInModFrontFunc"
-  //  //        + s"_${doCheckHazard}_${haveCurrLoad}"
-  //  //        + s"_rSavedModMemWord1"
-  //  //        + s"${ydx}"
-  //  //      )
-  //  //    )
-  //  //      
-  //  //    switch (rState) {
-  //  //      //is (False) {
-  //  //      //  when (
-  //  //      //    !tempModFrontPayload.dcacheHit
-  //  //      //  ) {
-  //  //      //    when (
-  //  //      //      modFront.isValid
-  //  //      //    ) {
-  //  //      //      if (haveCurrLoad) {
-  //  //      //        //cMid0Front.duplicateIt()
-  //  //      //        handleDuplicateIt()
-  //  //      //        rSavedModMemWord1 := myModMemWord
-  //  //      //        rState := True
-  //  //      //      } else {  // if (!haveCurrLoad)
-  //  //      //        when (modFront.isFiring) {
-  //  //      //          handleCurrFire()
-  //  //      //        }
-  //  //      //      }
-  //  //      //    } otherwise { // when (!modFront.isFiring)
-  //  //      //      handleDuplicateIt()
-  //  //      //    }
-  //  //      //  } otherwise {
-  //  //      //    when (cMid0Front.up.isFiring) {
-  //  //      //      handleCurrFire()
-  //  //      //    }
-  //  //      //  }
-  //  //      //}
-  //  //      //is (True) {
-  //  //      //  when (cMid0Front.up.isFiring) {
-  //  //      //    handleCurrFire(
-  //  //      //      someModMemWord=rSavedModMemWord1
-  //  //      //    )
-  //  //      //  } otherwise {
-  //  //      //    handleDuplicateIt(actuallyDuplicateIt=false)
-  //  //      //  }
-  //  //      //}
-  //  //    }
-  //  //  }
-  //  //  when (cMid0Front.up.isValid) {
-  //  //    //switch (inp.op) {
-  //  //    //  is (PipeMemRmwSimDut.ModOp.ADD_RA_RB) {
-  //  //    //    if (!doCheckHazard) {
-  //  //    //      setOutpModMemWord()
-  //  //    //    } else { // if (doCheckHazard)
-  //  //    //      doHandleHazardWithDcacheMiss(
-  //  //    //        haveCurrLoad=false,
-  //  //    //      )
-  //  //    //    }
-  //  //    //  }
-  //  //    //  is (PipeMemRmwSimDut.ModOp.LDR_RA_RB) {
-  //  //    //    if (!doCheckHazard) {
-  //  //    //      when (cMid0Front.up.isFiring) {
-  //  //    //        setOutpModMemWord()
-  //  //    //        nextPrevTxnWasHazard := True
-  //  //    //      }
-  //  //    //    } else { // if (doCheckHazard)
-  //  //    //      nextPrevTxnWasHazard := True
-  //  //    //      doHandleHazardWithDcacheMiss(
-  //  //    //        haveCurrLoad=true,
-  //  //    //      )
-  //  //    //    }
-  //  //    //  }
-  //  //    //  is (PipeMemRmwSimDut.ModOp.MUL_RA_RB) {
-  //  //    //    // we should stall `EX` in this case until the
-  //  //    //    // calculation is done. The same stalling logic
-  //  //    //    // will be used for `divmod`, etc.
-  //  //    //    switch (rHaltItState) {
-  //  //    //      is (
-  //  //    //        False//PipeMemRmwSimDutHaltItState.IDLE
-  //  //    //      ) {
-  //  //    //        doMulHaltItFsmIdleInnards(
-  //  //    //          doDuplicateIt=(
-  //  //    //            //true
-  //  //    //            doCheckHazard
-  //  //    //          )
-  //  //    //        )
-  //  //    //      }
-  //  //    //      is (
-  //  //    //        //PipeMemRmwSimDutHaltItState.HALT_IT
-  //  //    //        True
-  //  //    //      ) {
-  //  //    //        doMulHaltItFsmHaltItInnards()
-  //  //    //        when (
-  //  //    //          nextHaltItState
-  //  //    //          //=== PipeMemRmwSimDutHaltItState.IDLE
-  //  //    //          === False
-  //  //    //        ) {
-  //  //    //          nextPrevTxnWasHazard := False
-  //  //    //        }
-  //  //    //      }
-  //  //    //    }
-  //  //    //  }
-  //  //    //}
-  //  //  }
-  //  //}
-  //  //when (
-  //  //  (
-  //  //    //if (
-  //  //    //  //PipeMemRmwSimDut.doAddrOneHaltIt
-  //  //    //  PipeMemRmwSimDut.doTestModOp
-  //  //    //) (
-  //  //      rPrevTxnWasHazard
-  //  //    //) else (
-  //  //    //  False
-  //  //    //)
-  //  //  ) 
-  //  //) {
-  //  //  assert(PipeMemRmwSimDut.modRdPortCnt == 1)
-  //  //  doTestModOpMain(
-  //  //    doCheckHazard=true
-  //  //  )
-  //  //} elsewhen (
-  //  //  cMid0Front.up.isValid
-  //  //) {
-  //  //  doTestModOpMain()
-  //  //  //when (
-  //  //  //  False
-  //  //  //) {
-  //  //  //  //cMid0Front.haltIt()
-  //  //  //} elsewhen (
-  //  //  //  //if (optModHazardKind == PipeMemRmw.modHazardKindDupl) (
-  //  //  //  //  outp.myExt.hazardId.msb
-  //  //  //  //) else (
-  //  //  //    True
-  //  //  //  //)
-  //  //  //) {
-  //  //  //  //if (
-  //  //  //  //  //PipeMemRmwSimDut.doAddrOneHaltIt
-  //  //  //  //  PipeMemRmwSimDut.doTestModOp
-  //  //  //  //) {
-  //  //  //    doTestModOpMain()
-  //  //  //  //} else {
-  //  //  //  //  setOutpModMemWord()
-  //  //  //  //}
-  //  //  //}
-  //  //}
-  //}
-  //val cMemArea = new cMem.Area {
-  //  //when (up.isFiring) {
-  //  //}
-  //}
   //--------
   Builder(linkArr.toSeq)
   //--------
