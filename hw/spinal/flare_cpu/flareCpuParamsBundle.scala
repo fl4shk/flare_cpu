@@ -307,12 +307,12 @@ object FlareCpuParams {
     )
   )
   //--------
-  def enumFormalTestNone: FlareCpuFormalTest = (
-    FlareCpuFormalTest.Dont
-  )
-  def enumFormalTestMain: FlareCpuFormalTest = (
-    FlareCpuFormalTest.Main
-  )
+  //def enumFormalTestNone: FlareCpuFormalTest = (
+  //  FlareCpuFormalTest.Dont
+  //)
+  //def enumFormalTestMain: FlareCpuFormalTest = (
+  //  FlareCpuFormalTest.Main
+  //)
   //def enumFormalTestPipeMain = 2
   //def enumFormalTestMain = 2
   //--------

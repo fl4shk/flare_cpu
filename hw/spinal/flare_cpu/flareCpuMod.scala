@@ -122,7 +122,7 @@ case class FlareCpuPipeMemModExtType(
 ) extends Bundle {
   val regPc = UInt(params.mainWidth bits)
   val instrCnt = (
-    optFormalTest != FlareCpuParams.enumFormalTestNone
+    optFormalTest != FlareCpuFormalTest.Dont
   ) generate (
     //UInt(8 bits)
     FlareCpuFormalInstrCnt(params=params)
@@ -262,7 +262,7 @@ case class FlareCpuPipeStageIf(
     false
   ),
   optFormalTest: FlareCpuFormalTest=(
-    FlareCpuParams.enumFormalTestNone
+    FlareCpuFormalTest.Dont
   ),
 ) extends Area {
   //--------
@@ -277,14 +277,14 @@ case class FlareCpuPipeStageIf(
   def enumRegFileSprOdd = FlareCpuParams.enumRegFileSprOdd
   def enumRegFileLim = FlareCpuParams.enumRegFileLim
   //--------
-  def enumFormalTestNone = FlareCpuParams.enumFormalTestNone
-  def enumFormalTestMain = FlareCpuParams.enumFormalTestMain
+  //def enumFormalTestNone = FlareCpuParams.enumFormalTestNone
+  //def enumFormalTestMain = FlareCpuParams.enumFormalTestMain
   //--------
   def myFormal = (
-    optFormalTest != FlareCpuParams.enumFormalTestNone
+    optFormalTest != FlareCpuFormalTest.Dont
   )
   def myFormalMain = (
-    optFormalTest == FlareCpuParams.enumFormalTestMain
+    optFormalTest == FlareCpuFormalTest.Main
   )
   //--------
   val upModExt = FlareCpuPipeMemModExtType(
@@ -688,7 +688,7 @@ case class FlareCpuPipeStageId(
   //up: NodeApi,
   //down: NodeApi,
   optFormalTest: FlareCpuFormalTest=(
-    FlareCpuParams.enumFormalTestNone
+    FlareCpuFormalTest.Dont
   ),
 ) extends Area {
   //--------
@@ -726,14 +726,14 @@ case class FlareCpuPipeStageId(
     //)
   )
   //--------
-  def enumFormalTestNone = FlareCpuParams.enumFormalTestNone
-  def enumFormalTestMain = FlareCpuParams.enumFormalTestMain
+  //def enumFormalTestNone = FlareCpuParams.enumFormalTestNone
+  //def enumFormalTestMain = FlareCpuParams.enumFormalTestMain
   //--------
   def myFormal = (
-    optFormalTest != FlareCpuParams.enumFormalTestNone
+    optFormalTest != FlareCpuFormalTest.Dont
   )
   def myFormalMain = (
-    optFormalTest == FlareCpuParams.enumFormalTestMain
+    optFormalTest == FlareCpuFormalTest.Main
   )
   val upModExt = FlareCpuPipeMemModExtType(
     params=params,
@@ -2900,7 +2900,7 @@ case class FlareCpuPipeStageEx(
     ],
   ],
   optFormalTest: FlareCpuFormalTest=(
-    FlareCpuParams.enumFormalTestNone
+    FlareCpuFormalTest.Dont
   ),
 ) extends Area {
   //--------
@@ -2912,8 +2912,8 @@ case class FlareCpuPipeStageEx(
   def enumRegFileSprOdd = FlareCpuParams.enumRegFileSprOdd
   def enumRegFileLim = FlareCpuParams.enumRegFileLim
   //--------
-  def enumFormalTestNone = FlareCpuParams.enumFormalTestNone
-  def enumFormalTestMain = FlareCpuParams.enumFormalTestMain
+  //def enumFormalTestNone = FlareCpuParams.enumFormalTestNone
+  //def enumFormalTestMain = FlareCpuParams.enumFormalTestMain
   //--------
   //def nextPrevTxnWasHazardVec = doModParams.nextPrevTxnWasHazardVec
   //def rPrevTxnWasHazardVec = doModParams.rPrevTxnWasHazardVec
@@ -2937,7 +2937,7 @@ case class FlareCpuPipeStageEx(
   )
   //--------
   def myFormal = (
-    optFormalTest != FlareCpuParams.enumFormalTestNone
+    optFormalTest != FlareCpuFormalTest.Dont
   )
   //def myFormalPipeMain = (
   //  optFormalTest == FlareCpuParams.enumFormalTestPipeMain
@@ -3599,7 +3599,7 @@ case class FlareCpuPipeStageEx(
 case class FlareCpu(
   params: FlareCpuParams,
   optFormalTest: FlareCpuFormalTest=(
-    FlareCpuParams.enumFormalTestNone
+    FlareCpuFormalTest.Dont
   ),
 ) extends Component {
   //--------
