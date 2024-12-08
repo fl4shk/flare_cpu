@@ -134,40 +134,83 @@ case class FlareCpuCacheParams(
 //  wordCount: Int,
 //) {
 //}
-sealed trait FlareCpuRegFileSliceCfg {
-  def idx: Int
-  def wordCount: Int
-}
-object FlareCpuRegFileSliceCfg {
-  case object GprEvenNonFfp extends FlareCpuRegFileSliceCfg {
-    def idx: Int = 0
-    def wordCount: Int = 7
+object FlareCpuRegFileInfo {
+  sealed trait SliceCfg {
+    def idx: Int
+    def wordCount: Int
   }
-  case object GprFp extends FlareCpuRegFileSliceCfg {
-    def idx: Int = 1
-    def wordCount: Int = 1
-  }
-  case object GprOddNonSp extends FlareCpuRegFileSliceCfg {
-    def idx: Int = 2
-    def wordCount: Int = 7
-  }
-  case object GprSp extends FlareCpuRegFileSliceCfg {
-    def idx: Int = 3
-    def wordCount: Int = 1
-  }
-  case object SprEven extends FlareCpuRegFileSliceCfg {
-    def idx: Int = 4
-    def wordCount: Int = 8
-  }
-  case object SprOdd extends FlareCpuRegFileSliceCfg {
-    def idx: Int = 5
-    def wordCount: Int = 8
+  object SliceCfg {
+    case object GprEvenNonFp extends SliceCfg {
+      def idx: Int = 0
+      def wordCount: Int = 7
+    }
+    case object GprFp extends SliceCfg {
+      def idx: Int = 1
+      def wordCount: Int = 1
+    }
+    case object GprOddNonSp extends SliceCfg {
+      def idx: Int = 2
+      def wordCount: Int = 7
+    }
+    case object GprSp extends SliceCfg {
+      def idx: Int = 3
+      def wordCount: Int = 1
+    }
+    case object SprEven extends SliceCfg {
+      def idx: Int = 4
+      def wordCount: Int = 8
+    }
+    case object SprOdd extends SliceCfg {
+      def idx: Int = 5
+      def wordCount: Int = 8
+    }
+    def lim = SprOdd.idx + 1
   }
   def modRdPortCnt: Int = 2
   def modStageCnt: Int = 1      // `MEM` is the only "modStage"
   def optModHazardKind: PipeMemRmw.ModHazardKind = (
     PipeMemRmw.ModHazardKind.Fwd
   )
+  //--------
+  def wordType(
+    params: FlareCpuParams
+  ) = (
+    UInt(params.mainWidth bits)
+  )
+  def hazardCmpType(
+    params: FlareCpuParams
+  ) = (
+    Bool()
+  )
+  //def gprFileEvenWordCount = 8
+  //def gprFileEvenNonFpWordCount = 7
+  //def gprFileFpWordCount = 1
+  //def gprFileOddNonSpWordCount = 7
+  //def gprFileSpWordCount = 1
+  ////def sprFileWordCount = numGprsSprs
+  //def sprFileEvenWordCount = 8
+  //def sprFileOddWordCount = 8
+  //def regFileNonSpModRdPortCnt = 2
+  //def gprFileSpModRdPortCnt = 1
+  //def regFileModRdPortCnt = 2
+  //def regFileModStageCnt = 1      // `MEM` is the only "modStage"
+  //def regFileOptModHazardKind: PipeMemRmw.ModHazardKind = (
+  //  PipeMemRmw.ModHazardKind.Fwd
+  //)
+  val pmRmwWordCountArr: ArrayBuffer[Int] = {
+    val tempArr = (new ArrayBuffer[Int]()) ++ List[Int](
+      FlareCpuRegFileInfo.SliceCfg.GprEvenNonFp.wordCount,
+      FlareCpuRegFileInfo.SliceCfg.GprFp.wordCount,
+      FlareCpuRegFileInfo.SliceCfg.GprOddNonSp.wordCount,
+      FlareCpuRegFileInfo.SliceCfg.GprSp.wordCount,
+      //params.sprFileWordCount,
+      FlareCpuRegFileInfo.SliceCfg.SprEven.wordCount,
+      FlareCpuRegFileInfo.SliceCfg.SprOdd.wordCount,
+    )
+    //println(s"tempArr.size: ${tempArr.size}")
+    tempArr
+  }
+  //--------
 }
 sealed trait FlareCpuFormalTest
 //  def enumFormalTestNone = 0
@@ -178,29 +221,52 @@ object FlareCpuFormalTest {
 }
 object FlareCpuParams {
   //--------
-  //def enumRegFileGprEven = 0
-  def enumRegFileGprEvenNonFp = 0
-  def enumRegFileGprFp = 1
-  def enumRegFileGprOddNonSp = 2
-  def enumRegFileGprSp = 3
-  def enumRegFileSprEven = 4
-  def enumRegFileSprOdd = 5
-  def enumRegFileLim = 6
+  def enumRegFileGprEvenNonFp: Int = (
+    //0
+    FlareCpuRegFileInfo.SliceCfg.GprEvenNonFp.idx
+  )
+  def enumRegFileGprFp: Int = (
+    FlareCpuRegFileInfo.SliceCfg.GprFp.idx
+    //1
+  )
+  def enumRegFileGprOddNonSp: Int = (
+    //2
+    FlareCpuRegFileInfo.SliceCfg.GprOddNonSp.idx
+  )
+  def enumRegFileGprSp: Int = (
+    //3
+    FlareCpuRegFileInfo.SliceCfg.GprSp.idx
+  )
+  def enumRegFileSprEven: Int = (
+    //4
+    FlareCpuRegFileInfo.SliceCfg.SprEven.idx
+  )
+  def enumRegFileSprOdd: Int = (
+    //5
+    FlareCpuRegFileInfo.SliceCfg.SprOdd.idx
+  )
+  def enumRegFileLim: Int = (
+    //6
+    FlareCpuRegFileInfo.SliceCfg.lim
+  )
   //--------
   //--------
   def mkRegFilePmRmwCfg(
     params: FlareCpuParams,
-    wordCountArr: Seq[Int],
+    //wordCountArr: Seq[Int],
     optFormalTest: FlareCpuFormalTest,
     pipeName: String,
     linkArr: Option[ArrayBuffer[Link]]=None,
   ) = (
     PipeMemRmwConfig(
-      wordType=params.regWordType(),
-      wordCountArr=wordCountArr,
-      hazardCmpType=params.regFileHazardCmpType(),
-      modRdPortCnt=params.regFileModRdPortCnt,
-      modStageCnt=params.regFileModStageCnt,
+      wordType=FlareCpuRegFileInfo.wordType(params=params),
+      wordCountArr=(
+        //wordCountArr
+        FlareCpuRegFileInfo.pmRmwWordCountArr
+      ),
+      hazardCmpType=FlareCpuRegFileInfo.hazardCmpType(params=params),
+      modRdPortCnt=FlareCpuRegFileInfo.modRdPortCnt,
+      modStageCnt=FlareCpuRegFileInfo.modStageCnt,
       pipeName=pipeName,
       linkArr=linkArr,
       optModHazardKind=PipeMemRmw.ModHazardKind.Fwd
@@ -284,23 +350,23 @@ case class FlareCpuParams(
   //  return false
   //}
   //--------
-  def regWordType() = UInt(mainWidth bits)
-  //def gprFileEvenWordCount = 8
-  def gprFileEvenNonFpWordCount = 7
-  def gprFileFpWordCount = 1
-  def gprFileOddNonSpWordCount = 7
-  def gprFileSpWordCount = 1
-  //def sprFileWordCount = numGprsSprs
-  def sprFileEvenWordCount = 8
-  def sprFileOddWordCount = 8
-  def regFileHazardCmpType() = Bool()
-  //def regFileNonSpModRdPortCnt = 2
-  //def gprFileSpModRdPortCnt = 1
-  def regFileModRdPortCnt = 2
-  def regFileModStageCnt = 1      // `MEM` is the only "modStage"
-  def regFileOptModHazardKind: PipeMemRmw.ModHazardKind = (
-    PipeMemRmw.ModHazardKind.Fwd
-  )
+  //def regWordType() = UInt(mainWidth bits)
+  ////def gprFileEvenWordCount = 8
+  //def gprFileEvenNonFpWordCount = 7
+  //def gprFileFpWordCount = 1
+  //def gprFileOddNonSpWordCount = 7
+  //def gprFileSpWordCount = 1
+  ////def sprFileWordCount = numGprsSprs
+  //def sprFileEvenWordCount = 8
+  //def sprFileOddWordCount = 8
+  //def regFileHazardCmpType() = Bool()
+  ////def regFileNonSpModRdPortCnt = 2
+  ////def gprFileSpModRdPortCnt = 1
+  //def regFileModRdPortCnt = 2
+  //def regFileModStageCnt = 1      // `MEM` is the only "modStage"
+  //def regFileOptModHazardKind: PipeMemRmw.ModHazardKind = (
+  //  PipeMemRmw.ModHazardKind.Fwd
+  //)
   def cacheOptModHazardKind: PipeMemRmw.ModHazardKind = (
     PipeMemRmw.ModHazardKind.Fwd
   )

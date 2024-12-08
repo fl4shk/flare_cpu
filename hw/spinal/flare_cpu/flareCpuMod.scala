@@ -2864,9 +2864,10 @@ case class FlareCpuPipeStageId(
 //}
 case class FlareCpuPipeStageEx(
   params: FlareCpuParams,
+  regFilePmRmwCfg: PipeMemRmwConfig[UInt, Bool],
   io: FlareCpuIo,
   psExSetPc: Flow[UInt],
-  regFileWordCountArr: ArrayBuffer[Int],
+  //regFileWordCountArr: ArrayBuffer[Int],
   //nextPrevTxnWasHazardVec: Vec[Bool], // nextPrevTxnWasHazardVec
   //rPrevTxnWasHazardVec: Vec[Bool],  // rPrevTxnWasHazardVec
   //rPrevTxnWasHazardAny: Bool,       // rPrevTxnWasHazardAny
@@ -3993,24 +3994,25 @@ case class FlareCpu(
   //  Flow(UInt(params.mainWidth bits))
   //)
 
-  val regFileWordCountArr: ArrayBuffer[Int] = {
-    val tempArr = (new ArrayBuffer[Int]()) ++ List[Int](
-      params.gprFileEvenNonFpWordCount,
-      params.gprFileFpWordCount,
-      params.gprFileOddNonSpWordCount,
-      params.gprFileSpWordCount,
-      //params.sprFileWordCount,
-      params.sprFileEvenWordCount,
-      params.sprFileOddWordCount,
-    )
-    //println(s"tempArr.size: ${tempArr.size}")
-    tempArr
-  }
+  //val regFileWordCountArr: ArrayBuffer[Int] = {
+  //  val tempArr = (new ArrayBuffer[Int]()) ++ List[Int](
+  //    FlareCpuRegFileInfo.SliceCfg.GprEvenNonFp.wordCount,
+  //    FlareCpuRegFileInfo.SliceCfg.GprFp.wordCount,
+  //    FlareCpuRegFileInfo.SliceCfg.GprOddNonSp.wordCount,
+  //    FlareCpuRegFileInfo.SliceCfg.GprSp.wordCount,
+  //    //params.sprFileWordCount,
+  //    FlareCpuRegFileInfo.SliceCfg.SprEven.wordCount,
+  //    FlareCpuRegFileInfo.SliceCfg.SprOdd.wordCount,
+  //  )
+  //  //println(s"tempArr.size: ${tempArr.size}")
+  //  tempArr
+  //}
+  val regFileWordCountArr = FlareCpuRegFileInfo.pmRmwWordCountArr
 
   val regFilePmRmwCfg = (
     FlareCpuParams.mkRegFilePmRmwCfg(
       params=params,
-      wordCountArr=regFileWordCountArr,
+      //wordCountArr=regFileWordCountArr,
       optFormalTest=optFormalTest,
       pipeName="FlareCpu_regFile",
       linkArr=Some(linkArr)
@@ -4238,9 +4240,10 @@ case class FlareCpu(
   ): Area = {
     FlareCpuPipeStageEx(
       params=params,
+      regFilePmRmwCfg=regFilePmRmwCfg,
       io=io,
       psExSetPc=psExSetPc,
-      regFileWordCountArr=regFileWordCountArr,
+      //regFileWordCountArr=regFileWordCountArr,
       doModParams=doModParams,
     ).setName("cExArea")
   }
