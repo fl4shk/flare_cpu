@@ -129,6 +129,53 @@ case class FlareCpuCacheParams(
   )
 }
 
+//case class FlareCpuRegFileParams(
+//  params: FlareCpuParams,
+//  wordCount: Int,
+//) {
+//}
+sealed trait FlareCpuRegFileSliceCfg {
+  def idx: Int
+  def wordCount: Int
+}
+object FlareCpuRegFileSliceCfg {
+  case object GprEvenNonFfp extends FlareCpuRegFileSliceCfg {
+    def idx: Int = 0
+    def wordCount: Int = 7
+  }
+  case object GprFp extends FlareCpuRegFileSliceCfg {
+    def idx: Int = 1
+    def wordCount: Int = 1
+  }
+  case object GprOddNonSp extends FlareCpuRegFileSliceCfg {
+    def idx: Int = 2
+    def wordCount: Int = 7
+  }
+  case object GprSp extends FlareCpuRegFileSliceCfg {
+    def idx: Int = 3
+    def wordCount: Int = 1
+  }
+  case object SprEven extends FlareCpuRegFileSliceCfg {
+    def idx: Int = 4
+    def wordCount: Int = 8
+  }
+  case object SprOdd extends FlareCpuRegFileSliceCfg {
+    def idx: Int = 5
+    def wordCount: Int = 8
+  }
+  def modRdPortCnt: Int = 2
+  def modStageCnt: Int = 1      // `MEM` is the only "modStage"
+  def optModHazardKind: PipeMemRmw.ModHazardKind = (
+    PipeMemRmw.ModHazardKind.Fwd
+  )
+}
+sealed trait FlareCpuFormalTest
+//  def enumFormalTestNone = 0
+//  def enumFormalTestMain = 1
+object FlareCpuFormalTest {
+  case object Dont extends FlareCpuFormalTest
+  case object Main extends FlareCpuFormalTest
+}
 object FlareCpuParams {
   //--------
   //def enumRegFileGprEven = 0
@@ -140,27 +187,66 @@ object FlareCpuParams {
   def enumRegFileSprOdd = 5
   def enumRegFileLim = 6
   //--------
-  def mkRegFileModType(
+  //--------
+  def mkRegFilePmRmwCfg(
     params: FlareCpuParams,
-    optFormalTest: Int,
+    wordCountArr: Seq[Int],
+    optFormalTest: FlareCpuFormalTest,
+    pipeName: String,
+    linkArr: Option[ArrayBuffer[Link]]=None,
   ) = (
-    FlareCpuPipeMemModType(
-      params=params,
+    PipeMemRmwConfig(
       wordType=params.regWordType(),
-      wordCountMax=params.sprFileEvenWordCount,
+      wordCountArr=wordCountArr,
       hazardCmpType=params.regFileHazardCmpType(),
       modRdPortCnt=params.regFileModRdPortCnt,
       modStageCnt=params.regFileModStageCnt,
-      optModHazardKind=params.regFileOptModHazardKind,
+      pipeName=pipeName,
+      linkArr=linkArr,
+      optModHazardKind=PipeMemRmw.ModHazardKind.Fwd
+    )
+  )
+  def mkRegFileModType(
+    params: FlareCpuParams,
+    //wordCountArr: Seq[Int],
+    pmRmwCfg: PipeMemRmwConfig[
+      UInt,
+      Bool,
+    ],
+    optFormalTest: FlareCpuFormalTest,
+    //pipeName: String,
+    //linkArr: Option[ArrayBuffer[Link]]=None,
+  ) = (
+    FlareCpuPipeMemModType(
+      params=params,
+      pmRmwCfg=pmRmwCfg,
+      //mkRegFilePmRmwCfg(
+      //  params=params,
+      //  wordCountArr=wordCountArr,
+      //  optFormalTest=optFormalTest,
+      //  pipeName=pipeName,
+      //  linkArr=linkArr,
+      //),
+      ////wordType=params.regWordType(),
+      //wordCountMax=params.sprFileEvenWordCount,
+      ////hazardCmpType=params.regFileHazardCmpType(),
+      ////modRdPortCnt=params.regFileModRdPortCnt,
+      ////modStageCnt=params.regFileModStageCnt,
+      ////optModHazardKind=params.regFileOptModHazardKind,
       modExtType=FlareCpuPipeMemModExtType(
         params=params,
         optFormalTest=optFormalTest,
       ),
+      optFormalTest=optFormalTest,
     )
   )
   //--------
-  def enumFormalTestNone = 0
-  def enumFormalTestMain = 1
+  def enumFormalTestNone: FlareCpuFormalTest = (
+    FlareCpuFormalTest.Dont
+  )
+  def enumFormalTestMain: FlareCpuFormalTest = (
+    FlareCpuFormalTest.Main
+  )
   //def enumFormalTestPipeMain = 2
   //def enumFormalTestMain = 2
   //--------
@@ -212,11 +298,11 @@ case class FlareCpuParams(
   //def gprFileSpModRdPortCnt = 1
   def regFileModRdPortCnt = 2
   def regFileModStageCnt = 1      // `MEM` is the only "modStage"
-  def regFileOptModHazardKind = (
-    PipeMemRmw.modHazardKindFwd
+  def regFileOptModHazardKind: PipeMemRmw.ModHazardKind = (
+    PipeMemRmw.ModHazardKind.Fwd
   )
-  def cacheOptModHazardKind = (
-    PipeMemRmw.modHazardKindFwd
+  def cacheOptModHazardKind: PipeMemRmw.ModHazardKind = (
+    PipeMemRmw.ModHazardKind.Fwd
   )
   //--------
   def flagIdxZ = 0
@@ -289,7 +375,9 @@ case class FlareCpuParams(
   def icacheLineMemWordType() = icacheParams.lineMemWordType()
   def icacheLineMemWordCount = icacheParams.lineMemWordCount
   def icacheModRdPortCnt = 1
-  def icacheOptModHazardKind = PipeMemRmw.modHazardKindFwd
+  def icacheOptModHazardKind: PipeMemRmw.ModHazardKind = (
+    PipeMemRmw.ModHazardKind.Fwd
+  )
   def icacheModStageCnt = 0
   //def icacheLineMemWordTypeWidth = instrMainWidth
   //def icacheLineMemWordCount = (
@@ -326,7 +414,9 @@ case class FlareCpuParams(
   def dcacheLineMemWordType() = dcacheParams.lineMemWordType()
   def dcacheLineMemWordCount = dcacheParams.lineMemWordCount
   def dcacheModRdPortCnt = 1
-  def dcacheOptModHazardKind = PipeMemRmw.modHazardKindFwd
+  def dcacheOptModHazardKind: PipeMemRmw.ModHazardKind = (
+    PipeMemRmw.ModHazardKind.Fwd
+  )
   def dcacheModStageCnt = 0
   //def dcacheLineMemWordTypeWidth = instrMainWidth
   //def dcacheLineMemWordCount = (

@@ -115,7 +115,7 @@ case class FlareCpuFormalInstrCnt(
 }
 case class FlareCpuPipeMemModExtType(
   params: FlareCpuParams,
-  optFormalTest: Int,
+  optFormalTest: FlareCpuFormalTest,
   //=(
   //  FlareCpuParams.enumFormalTestNone
   //),
@@ -139,41 +139,87 @@ case class FlareCpuPipeMemModType[
   ModExtT <: Data,
 ](
   params: FlareCpuParams,
-  wordType: HardType[WordT],
-  wordCountMax: Int,
-  hazardCmpType: HardType[HazardCmpT],
-  modRdPortCnt: Int,
-  modStageCnt: Int,
-  optModHazardKind: Int,
+  pmRmwCfg: PipeMemRmwConfig[
+    WordT,
+    HazardCmpT,
+  ],
+  //wordType: HardType[WordT],
+  //wordCountMax: Int,
+  //hazardCmpType: HardType[HazardCmpT],
+  //modRdPortCnt: Int,
+  //modStageCnt: Int,
+  //optModHazardKind: Int,
   modExtType: HardType[ModExtT],
+  optFormalTest: FlareCpuFormalTest,
 ) extends Bundle with PipeMemRmwPayloadBase[WordT, HazardCmpT] {
   //--------
   val modExt = modExtType()
   //--------
   //println(s"FlareCpuPipeMemModType: ${modRdPortCnt}")
   val myExt = PipeMemRmwPayloadExt(
-    wordType=wordType(),
-    wordCount=wordCountMax,
-    hazardCmpType=hazardCmpType(),
-    modRdPortCnt=modRdPortCnt,
-    modStageCnt=modStageCnt,
-    optModHazardKind=optModHazardKind,
-    optReorder=false,
+    cfg=pmRmwCfg,
+    //wordCount=wordCountMax,
+    wordCount=pmRmwCfg.wordCountMax,
+    //wordType=wordType(),
+    //wordCount=wordCountMax,
+    //hazardCmpType=hazardCmpType(),
+    //modRdPortCnt=modRdPortCnt,
+    //modStageCnt=modStageCnt,
+    //optModHazardKind=optModHazardKind,
+    //optReorder=false,
   )
   //--------
   def setPipeMemRmwExt(
     ext: PipeMemRmwPayloadExt[WordT, HazardCmpT],
+    ydx: Int,
     memArrIdx: Int,
   ): Unit = {
     myExt := ext
   }
   def getPipeMemRmwExt(
     ext: PipeMemRmwPayloadExt[WordT, HazardCmpT],
+    ydx: Int,
     memArrIdx: Int,
   ): Unit = {
     ext := myExt
   }
   //--------
+  val myFwd = (
+    optFormalTest != FlareCpuFormalTest.Dont
+  ) generate (
+    PipeMemRmwFwd[
+      WordT,
+      HazardCmpT,
+    ](
+      //wordType=PipeMemRmwSimDut.wordType(),
+      //wordCount=PipeMemRmwSimDut.wordCount,
+      //hazardCmpType=PipeMemRmwSimDut.hazardCmpType(),
+      //modRdPortCnt=PipeMemRmwSimDut.modRdPortCnt,
+      //modStageCnt=PipeMemRmwSimDut.modStageCnt,
+      //memArrSize=PipeMemRmwSimDut.memArrSize,
+      //optModHazardKind=PipeMemRmwSimDut.optModHazardKind,
+      //optReorder=PipeMemRmwSimDut.optReorder,
+      cfg=pmRmwCfg
+    )
+  )
+  def formalSetPipeMemRmwFwd(
+    inpFwd: PipeMemRmwFwd[WordT, HazardCmpT],
+    memArrIdx: Int,
+  ): Unit = {
+    assert(
+      optFormalTest != FlareCpuFormalTest.Dont
+    )
+    myFwd := inpFwd
+  }
+  def formalGetPipeMemRmwFwd(
+    outpFwd: PipeMemRmwFwd[WordT, HazardCmpT],
+    memArrIdx: Int,
+  ): Unit = {
+    assert(
+      optFormalTest != FlareCpuFormalTest.Dont
+    )
+    outpFwd := myFwd
+  }
 }
 case class FlareCpuIcacheWordType(
   params: FlareCpuParams
@@ -215,7 +261,7 @@ case class FlareCpuPipeStageIf(
   optFormalTestNoJumps: Boolean=(
     false
   ),
-  optFormalTest: Int=(
+  optFormalTest: FlareCpuFormalTest=(
     FlareCpuParams.enumFormalTestNone
   ),
 ) extends Area {
@@ -613,6 +659,10 @@ case class FlareCpuPipeStageIf(
 }
 case class FlareCpuPipeStageId(
   params: FlareCpuParams,
+  regFilePmRmwCfg: PipeMemRmwConfig[
+    UInt,
+    Bool,
+  ],
   cId: CtrlLink,
   pIf: Payload[FlareCpuPipeMemModExtType],
   //pId: Payload[FlareCpuPipeMemModExtType],
@@ -637,7 +687,7 @@ case class FlareCpuPipeStageId(
   psExSetPc: Flow[UInt],
   //up: NodeApi,
   //down: NodeApi,
-  optFormalTest: Int=(
+  optFormalTest: FlareCpuFormalTest=(
     FlareCpuParams.enumFormalTestNone
   ),
 ) extends Area {
@@ -653,9 +703,15 @@ case class FlareCpuPipeStageId(
   def enumRegFileSprOdd = FlareCpuParams.enumRegFileSprOdd
   def enumRegFileLim = FlareCpuParams.enumRegFileLim
   //--------
-  def mkRegFileModType() = (
+  def mkRegFileModType(
+    //pmRmwCfg: PipeMemRmwConfig[
+    //  UInt,
+    //  Bool,
+    //],
+  ) = (
     FlareCpuParams.mkRegFileModType(
       params=params,
+      pmRmwCfg=regFilePmRmwCfg,
       optFormalTest=optFormalTest,
     )
     //FlareCpuPipeMemModType(
@@ -742,30 +798,30 @@ case class FlareCpuPipeStageId(
     init(myFrontPayloadSprOdd.getZero)
   )
 
-  regFile match {
-    case Some(myRegFile) => {
-      up(myRegFile.io.frontPayloadArr(enumRegFileGprEvenNonFp)) := (
-        myFrontPayloadGprEvenNonFp
-      )
-      up(myRegFile.io.frontPayloadArr(enumRegFileGprFp)) := (
-        myFrontPayloadGprFp
-      )
-      up(myRegFile.io.frontPayloadArr(enumRegFileGprOddNonSp)) := (
-        myFrontPayloadGprOddNonSp
-      )
-      up(myRegFile.io.frontPayloadArr(enumRegFileGprSp)) := (
-        myFrontPayloadGprSp
-      )
-      up(myRegFile.io.frontPayloadArr(enumRegFileSprEven)) := (
-        myFrontPayloadSprEven
-      )
-      up(myRegFile.io.frontPayloadArr(enumRegFileSprOdd)) := (
-        myFrontPayloadSprOdd
-      )
-    }
-    case None => {
-    }
-  }
+  //regFile match {
+  //  case Some(myRegFile) => {
+  //    up(myRegFile.io.frontPayloadArr(enumRegFileGprEvenNonFp)) := (
+  //      myFrontPayloadGprEvenNonFp
+  //    )
+  //    up(myRegFile.io.frontPayloadArr(enumRegFileGprFp)) := (
+  //      myFrontPayloadGprFp
+  //    )
+  //    up(myRegFile.io.frontPayloadArr(enumRegFileGprOddNonSp)) := (
+  //      myFrontPayloadGprOddNonSp
+  //    )
+  //    up(myRegFile.io.frontPayloadArr(enumRegFileGprSp)) := (
+  //      myFrontPayloadGprSp
+  //    )
+  //    up(myRegFile.io.frontPayloadArr(enumRegFileSprEven)) := (
+  //      myFrontPayloadSprEven
+  //    )
+  //    up(myRegFile.io.frontPayloadArr(enumRegFileSprOdd)) := (
+  //      myFrontPayloadSprOdd
+  //    )
+  //  }
+  //  case None => {
+  //  }
+  //}
   object MultiCycleState
   extends SpinalEnum(defaultEncoding=binarySequential) {
     val
@@ -2842,7 +2898,7 @@ case class FlareCpuPipeStageEx(
       FlareCpuPipeMemModExtType,
     ],
   ],
-  optFormalTest: Int=(
+  optFormalTest: FlareCpuFormalTest=(
     FlareCpuParams.enumFormalTestNone
   ),
 ) extends Area {
@@ -2863,13 +2919,18 @@ case class FlareCpuPipeStageEx(
   def nextPrevTxnWasHazard = doModParams.nextPrevTxnWasHazardVec(0)
   def rPrevTxnWasHazard = doModParams.rPrevTxnWasHazardVec(0)
   //def rPrevTxnWasHazardAny = doModParams.rPrevTxnWasHazardAny
-  def outpVec = doModParams.outpVec
-  def inpVec = doModParams.inpVec
+  //def outpVec = doModParams.outpVec
+  //def inpVec = doModParams.inpVec
+  def outp = doModParams.outp
+  def inp = doModParams.inp
   def cMid0Front = doModParams.cMid0Front
   def modFront = doModParams.modFront
   def getMyRdMemWord(ydx: Int) = (
     doModParams.getMyRdMemWordFunc(
-      U(s"2'd1").resized,
+      (
+        //U(s"2'd1").resized
+        U(s"2'd2").resized
+      ),
       ydx
     )
   )
@@ -2880,660 +2941,663 @@ case class FlareCpuPipeStageEx(
   //def myFormalPipeMain = (
   //  optFormalTest == FlareCpuParams.enumFormalTestPipeMain
   //)
-  if (doModParams.ydx == 0) {
-    def memArrSize = regFileWordCountArr.size
-    for (ydx <- 0 until memArrSize) {
-      //--------
-      outpVec(ydx) := inpVec(ydx)
-      outpVec(ydx).allowOverride
-      //--------
-      // Set every `modMemWordValid` to `False` so that it can be set back
-      // to `True` upon a register being written.
-      //--------
-      // TODO: In `PipeMemRmw`, right before the call to
-      // `doModInModFrontFunc()`, `modMemWordValid` is set to `True`, which
-      // is what we're working around here.
-      // We need to verify that we can do things this way!
-      // I suppose I'll find out with help from the formal verification 
-      // tools.
-      //--------
-      // NOTE: DON'T default to setting `outpVec(ydx).myExt.valid := False`
-      //--------
-      outpVec(ydx).myExt.modMemWordValid := False
-      //--------
-    }
-    val nextHaltItState = KeepAttribute(
-      FlareCpuPsExHaltItState()
-    )//.setName("psEx_nextHaltItState")
-    val rHaltItState = KeepAttribute(
-      RegNext(nextHaltItState)
-      init(FlareCpuPsExHaltItState.IDLE)
-    )//.setName("psEx_rHaltItState")
-    nextHaltItState := rHaltItState
+  //if (doModParams.ydx == 0) {
+  //  def memArrSize = regFileWordCountArr.size
+  //  for (ydx <- 0 until memArrSize) {
+  //    //--------
+  //    outpVec(ydx) := inpVec(ydx)
+  //    outpVec(ydx).allowOverride
+  //    //--------
+  //    // Set every `modMemWordValid` to `False` so that it can be set back
+  //    // to `True` upon a register being written.
+  //    //--------
+  //    // TODO: In `PipeMemRmw`, right before the call to
+  //    // `doModInModFrontFunc()`, `modMemWordValid` is set to `True`, which
+  //    // is what we're working around here.
+  //    // We need to verify that we can do things this way!
+  //    // I suppose I'll find out with help from the formal verification 
+  //    // tools.
+  //    //--------
+  //    // NOTE: DON'T default to setting `outpVec(ydx).myExt.valid := False`
+  //    //--------
+  //    outpVec(ydx).myExt.modMemWordValid := False
+  //    //--------
+  //  }
+  //  val nextHaltItState = KeepAttribute(
+  //    FlareCpuPsExHaltItState()
+  //  )//.setName("psEx_nextHaltItState")
+  //  val rHaltItState = KeepAttribute(
+  //    RegNext(nextHaltItState)
+  //    init(FlareCpuPsExHaltItState.IDLE)
+  //  )//.setName("psEx_rHaltItState")
+  //  nextHaltItState := rHaltItState
 
-    //val rSavedInpVec = Reg(Flow(cloneOf(inpVec)))
-    //rSavedInpVec.init(rSavedInpVec.getZero)
-    //when (cMid0Front.up.isValid) {
-    //  rSavedInpVec.valid := True
-    //  //rSavedInpVec.payload := 
-    //}
-    //when (cMid0Front.up.isFiring) {
-    //  rSavedInpVec := rSavedInpVec.getZero
-    //}
-    ////val rSavedInpModExt = Reg(Flow(cloneOf(inpVec(0).modExt)))
-    ////rSavedInpModExt.init(rSavedInpModExt.getZero)
-    //val myInpVec = cloneOf(inpVec)
-    ////def inpModExt = inpVec(0).modExt
-    ////def inpInstrDecEtc = inpModExt.instrDecEtc
-    ////val nextHaltItState = KeepAttribute(
-    ////)
-    //val inpModExt = cloneOf(inpVec(0).modExt)
-    //val inpInstrDecEtc = inpModExt.instrDecEtc
+  //  //val rSavedInpVec = Reg(Flow(cloneOf(inpVec)))
+  //  //rSavedInpVec.init(rSavedInpVec.getZero)
+  //  //when (cMid0Front.up.isValid) {
+  //  //  rSavedInpVec.valid := True
+  //  //  //rSavedInpVec.payload := 
+  //  //}
+  //  //when (cMid0Front.up.isFiring) {
+  //  //  rSavedInpVec := rSavedInpVec.getZero
+  //  //}
+  //  ////val rSavedInpModExt = Reg(Flow(cloneOf(inpVec(0).modExt)))
+  //  ////rSavedInpModExt.init(rSavedInpModExt.getZero)
+  //  //val myInpVec = cloneOf(inpVec)
+  //  ////def inpModExt = inpVec(0).modExt
+  //  ////def inpInstrDecEtc = inpModExt.instrDecEtc
+  //  ////val nextHaltItState = KeepAttribute(
+  //  ////)
+  //  //val inpModExt = cloneOf(inpVec(0).modExt)
+  //  //val inpInstrDecEtc = inpModExt.instrDecEtc
 
-    //object MultiCycleState
-    //extends SpinalEnum(defaultEncoding=binarySequential) {
-    //  val
-    //    PRIMARY,
-    //    PREV_INSTR_MEM_ACCESS
-    //    = newElement();
-    //}
-    //val rMultiCycleState = (
-    //  KeepAttribute(
-    //    //Reg(Bool())
-    //    //init(False)
-    //    Reg(MultiCycleState())
-    //    init(MultiCycleState.PRIMARY)
-    //  )
-    //)
-    def myInpModExt = inpVec(0).modExt
-    def myInstrEnc = myInpModExt.instrEnc
-    def myInstrDecEtc = myInpModExt.instrDecEtc
-    def setGprRa32(
-      value: UInt,
-      doAssertValid: Boolean,
-      //retYdx: UInt,
-      //optExtraFunc: Option[(Int) => Unit],
-    ): Unit = {
-      //--------
-      //var ret = new ArrayBuffer[UInt]()
-      //--------
-      switch (
-        //inpInstrDecEtc.gprRaSel
-        myInstrDecEtc.gprRaSel
-      ) {
-        //def outerMyModMemWord(ydx: Int) = (
-        //  upExt(idx=1, regFileSlice=ydx).modMemWord
-        //)
-        def outerMyValid(ydx: Int) = (
-          outpVec(ydx).myExt.valid
-        )
-        def outerMyModMemWordValid(ydx: Int) = (
-          outpVec(ydx).myExt.modMemWordValid
-        )
-        def outerMyModMemWord(ydx: Int) = (
-          outpVec(ydx).myExt.modMemWord
-        )
-        val myZero = U(s"${params.mainWidth}'d0")
-        is (FlareCpuGprSelect.gprEvenNonFp) {
-          for (ydx <- enumRegFileGprEvenNonFp until enumRegFileGprSp) {
-            //def myModMemWord = upExt(idx=1, regFileSlice=ydx).modMemWord
-            def myValid = outerMyValid(ydx=ydx)
-            def myModMemWordValid = outerMyModMemWordValid(ydx=ydx)
-            def myModMemWord = outerMyModMemWord(ydx=ydx)
-            if (ydx == enumRegFileGprEvenNonFp) {
-              if (doAssertValid) {
-                myValid := True
-              }
-              myModMemWordValid := True
-              myModMemWord := value
-              //ret += ydx
-            } else {
-              //myModMemWordValid := False
-              myModMemWord := myZero
-            }
-          }
-          //retYdx := enumRegFileGprEvenNonFp
-        }
-        is (FlareCpuGprSelect.gprFp) {
-          for (ydx <- enumRegFileGprEvenNonFp until enumRegFileGprSp) {
-            //def myModMemWord = upExt(idx=1, regFileSlice=ydx).modMemWord
-            def myValid = outerMyValid(ydx=ydx)
-            def myModMemWordValid = outerMyModMemWordValid(ydx=ydx)
-            def myModMemWord = outerMyModMemWord(ydx=ydx)
-            if (ydx == enumRegFileGprFp) {
-              if (doAssertValid) {
-                myValid := True
-              }
-              myModMemWordValid := True
-              myModMemWord := value
-              //ret += ydx
-            } else {
-              //myModMemWordValid := False
-              myModMemWord := myZero
-            }
-          }
-          //retYdx := enumRegFileGprFp
-        }
-        is (FlareCpuGprSelect.gprOddNonSp) {
-          for (ydx <- enumRegFileGprEvenNonFp until enumRegFileGprSp) {
-            //def myModMemWord = upExt(idx=1, regFileSlice=ydx).modMemWord
-            def myValid = outerMyValid(ydx=ydx)
-            def myModMemWordValid = outerMyModMemWordValid(ydx=ydx)
-            def myModMemWord = outerMyModMemWord(ydx=ydx)
-            if (ydx == enumRegFileGprOddNonSp) {
-              if (doAssertValid) {
-                myValid := True
-              }
-              myModMemWordValid := True
-              myModMemWord := value
-              //ret += ydx
-            } else {
-              //myModMemWordValid := False
-              myModMemWord := myZero
-            }
-          }
-          //retYdx := enumRegFileGprOddNonSp
-        }
-        is (FlareCpuGprSelect.gprSp) {
-          for (ydx <- enumRegFileGprEvenNonFp until enumRegFileGprSp) {
-            def myValid = outerMyValid(ydx=ydx)
-            def myModMemWordValid = outerMyModMemWordValid(ydx=ydx)
-            def myModMemWord = outerMyModMemWord(ydx=ydx)
-            if (ydx == enumRegFileGprSp) {
-              if (doAssertValid) {
-                myValid := True
-              }
-              myModMemWordValid := True
-              myModMemWord := value
-              //ret += ydx
-            } else {
-              //myModMemWordValid := False
-              myModMemWord := myZero
-            }
-          }
-          //retYdx := enumRegFileGprSp
-        }
-      }
-      //--------
-      //ret
-      //--------
-    }
-    def setGprRa64(
-      valueHi: UInt,
-      valueLo: UInt,
-      doAssertValid: Boolean,
-      //optExtraFunc: Option[(Int) => Unit],
-    ): Unit = {
-      //--------
-      //var ret = new ArrayBuffer[Int]()
-      //--------
-      switch (myInstrDecEtc.gprRa64IsNonFpSp) {
-        //for (ydx <- enumRegFileGprEvenNonFp until enumRegFileGprSp) {
-        //  def myModMemWord = upExt(idx=1, regFileSlice=ydx).modMemWord
-          def myOutpExt(
-            ydx: Int
-          ) = (
-            outpVec(ydx).myExt
-          )
-          def myModMemWord(
-            ydx: Int,
-          ) = (
-            //upExt(idx=1, regFileSlice=ydx).modMemWord
-            myOutpExt(ydx=ydx).modMemWord
-          )
-          val myZero = U(s"${params.mainWidth}'d0")
+  //  //object MultiCycleState
+  //  //extends SpinalEnum(defaultEncoding=binarySequential) {
+  //  //  val
+  //  //    PRIMARY,
+  //  //    PREV_INSTR_MEM_ACCESS
+  //  //    = newElement();
+  //  //}
+  //  //val rMultiCycleState = (
+  //  //  KeepAttribute(
+  //  //    //Reg(Bool())
+  //  //    //init(False)
+  //  //    Reg(MultiCycleState())
+  //  //    init(MultiCycleState.PRIMARY)
+  //  //  )
+  //  //)
+  //  def myInpModExt = (
+  //    //inpVec(0).modExt
+  //    inp.modExt
+  //  )
+  //  def myInstrEnc = myInpModExt.instrEnc
+  //  def myInstrDecEtc = myInpModExt.instrDecEtc
+  //  def setGprRa32(
+  //    value: UInt,
+  //    doAssertValid: Boolean,
+  //    //retYdx: UInt,
+  //    //optExtraFunc: Option[(Int) => Unit],
+  //  ): Unit = {
+  //    //--------
+  //    //var ret = new ArrayBuffer[UInt]()
+  //    //--------
+  //    switch (
+  //      //inpInstrDecEtc.gprRaSel
+  //      myInstrDecEtc.gprRaSel
+  //    ) {
+  //      //def outerMyModMemWord(ydx: Int) = (
+  //      //  upExt(idx=1, regFileSlice=ydx).modMemWord
+  //      //)
+  //      def outerMyValid(ydx: Int) = (
+  //        outpVec(ydx).myExt.valid
+  //      )
+  //      def outerMyModMemWordValid(ydx: Int) = (
+  //        outpVec(ydx).myExt.modMemWordValid
+  //      )
+  //      def outerMyModMemWord(ydx: Int) = (
+  //        outpVec(ydx).myExt.modMemWord
+  //      )
+  //      val myZero = U(s"${params.mainWidth}'d0")
+  //      is (FlareCpuGprSelect.gprEvenNonFp) {
+  //        for (ydx <- enumRegFileGprEvenNonFp until enumRegFileGprSp) {
+  //          //def myModMemWord = upExt(idx=1, regFileSlice=ydx).modMemWord
+  //          def myValid = outerMyValid(ydx=ydx)
+  //          def myModMemWordValid = outerMyModMemWordValid(ydx=ydx)
+  //          def myModMemWord = outerMyModMemWord(ydx=ydx)
+  //          if (ydx == enumRegFileGprEvenNonFp) {
+  //            if (doAssertValid) {
+  //              myValid := True
+  //            }
+  //            myModMemWordValid := True
+  //            myModMemWord := value
+  //            //ret += ydx
+  //          } else {
+  //            //myModMemWordValid := False
+  //            myModMemWord := myZero
+  //          }
+  //        }
+  //        //retYdx := enumRegFileGprEvenNonFp
+  //      }
+  //      is (FlareCpuGprSelect.gprFp) {
+  //        for (ydx <- enumRegFileGprEvenNonFp until enumRegFileGprSp) {
+  //          //def myModMemWord = upExt(idx=1, regFileSlice=ydx).modMemWord
+  //          def myValid = outerMyValid(ydx=ydx)
+  //          def myModMemWordValid = outerMyModMemWordValid(ydx=ydx)
+  //          def myModMemWord = outerMyModMemWord(ydx=ydx)
+  //          if (ydx == enumRegFileGprFp) {
+  //            if (doAssertValid) {
+  //              myValid := True
+  //            }
+  //            myModMemWordValid := True
+  //            myModMemWord := value
+  //            //ret += ydx
+  //          } else {
+  //            //myModMemWordValid := False
+  //            myModMemWord := myZero
+  //          }
+  //        }
+  //        //retYdx := enumRegFileGprFp
+  //      }
+  //      is (FlareCpuGprSelect.gprOddNonSp) {
+  //        for (ydx <- enumRegFileGprEvenNonFp until enumRegFileGprSp) {
+  //          //def myModMemWord = upExt(idx=1, regFileSlice=ydx).modMemWord
+  //          def myValid = outerMyValid(ydx=ydx)
+  //          def myModMemWordValid = outerMyModMemWordValid(ydx=ydx)
+  //          def myModMemWord = outerMyModMemWord(ydx=ydx)
+  //          if (ydx == enumRegFileGprOddNonSp) {
+  //            if (doAssertValid) {
+  //              myValid := True
+  //            }
+  //            myModMemWordValid := True
+  //            myModMemWord := value
+  //            //ret += ydx
+  //          } else {
+  //            //myModMemWordValid := False
+  //            myModMemWord := myZero
+  //          }
+  //        }
+  //        //retYdx := enumRegFileGprOddNonSp
+  //      }
+  //      is (FlareCpuGprSelect.gprSp) {
+  //        for (ydx <- enumRegFileGprEvenNonFp until enumRegFileGprSp) {
+  //          def myValid = outerMyValid(ydx=ydx)
+  //          def myModMemWordValid = outerMyModMemWordValid(ydx=ydx)
+  //          def myModMemWord = outerMyModMemWord(ydx=ydx)
+  //          if (ydx == enumRegFileGprSp) {
+  //            if (doAssertValid) {
+  //              myValid := True
+  //            }
+  //            myModMemWordValid := True
+  //            myModMemWord := value
+  //            //ret += ydx
+  //          } else {
+  //            //myModMemWordValid := False
+  //            myModMemWord := myZero
+  //          }
+  //        }
+  //        //retYdx := enumRegFileGprSp
+  //      }
+  //    }
+  //    //--------
+  //    //ret
+  //    //--------
+  //  }
+  //  def setGprRa64(
+  //    valueHi: UInt,
+  //    valueLo: UInt,
+  //    doAssertValid: Boolean,
+  //    //optExtraFunc: Option[(Int) => Unit],
+  //  ): Unit = {
+  //    //--------
+  //    //var ret = new ArrayBuffer[Int]()
+  //    //--------
+  //    switch (myInstrDecEtc.gprRa64IsNonFpSp) {
+  //      //for (ydx <- enumRegFileGprEvenNonFp until enumRegFileGprSp) {
+  //      //  def myModMemWord = upExt(idx=1, regFileSlice=ydx).modMemWord
+  //        def myOutpExt(
+  //          ydx: Int
+  //        ) = (
+  //          outpVec(ydx).myExt
+  //        )
+  //        def myModMemWord(
+  //          ydx: Int,
+  //        ) = (
+  //          //upExt(idx=1, regFileSlice=ydx).modMemWord
+  //          myOutpExt(ydx=ydx).modMemWord
+  //        )
+  //        val myZero = U(s"${params.mainWidth}'d0")
 
-          is (False) { // {non-fp, non-sp} 64-bit register pair
-            for (
-              zdx <- List[Int](
-                enumRegFileGprEvenNonFp,
-                enumRegFileGprOddNonSp,
-              )
-            ) {
-              //myOutpExt(enumRegFileGprEvenNonFp).valid := True
-              //myOutpExt(enumRegFileGprOddNonSp).valid := True
-              if (doAssertValid) {
-                myOutpExt(zdx).valid := True
-              }
-              myOutpExt(zdx).modMemWordValid := True
-            }
-            //ret ++= List[Int](
-            //  enumRegFileGprEvenNonFp,
-            //  enumRegFileGprOddNonSp
-            //)
-            //outpVec(enumRegFileGprFp).myExt.modMemWordValid := (
-            //  False
-            //)
-            //outpVec(enumRegFileGprSp).myExt.modMemWordValid := (
-            //  False
-            //)
-            myModMemWord(ydx=enumRegFileGprEvenNonFp) := valueHi
-            myModMemWord(ydx=enumRegFileGprOddNonSp) := valueLo
-            myModMemWord(ydx=enumRegFileGprFp) := 0x0
-            myModMemWord(ydx=enumRegFileGprSp) := 0x0
-          }
-          is (True) { // {fp, sp} 64-bit register pair
-            ////outpVec(enumRegFileGprEvenNonFp).myExt.modMemWordValid := (
-            ////  False
-            ////)
-            ////outpVec(enumRegFileGprOddNonSp).myExt.modMemWordValid := (
-            ////  False
-            ////)
-            ////myOutpExt(enumRegFileGprEvenNonFp).valid := False
-            ////myOutpExt(enumRegFileGprEvenNonFp).modMemWordValid := False
-            ////myOutpExt(enumRegFileGprOddNonSp).valid := False
-            ////myOutpExt(enumRegFileGprOddNonSp).modMemWordValid := False
-            //myOutpExt(enumRegFileGprFp).valid := True
-            //myOutpExt(enumRegFileGprSp).valid := True
-            ////ret ++= List[Int](
-            ////  enumRegFileGprFp,
-            ////  enumRegFileGprSp
-            ////)
-            for (
-              zdx <- List[Int](
-                enumRegFileGprFp,
-                enumRegFileGprSp,
-              )
-            ) {
-              if (doAssertValid) {
-                myOutpExt(zdx).valid := True
-              }
-              myOutpExt(zdx).modMemWordValid := True
-            }
-            myModMemWord(ydx=enumRegFileGprEvenNonFp) := 0x0
-            myModMemWord(ydx=enumRegFileGprOddNonSp) := 0x0
-            myModMemWord(ydx=enumRegFileGprFp) := valueHi
-            myModMemWord(ydx=enumRegFileGprSp) := valueLo
-          }
-        //}
-      }
-      //--------
-      //ret
-      //--------
-    }
+  //        is (False) { // {non-fp, non-sp} 64-bit register pair
+  //          for (
+  //            zdx <- List[Int](
+  //              enumRegFileGprEvenNonFp,
+  //              enumRegFileGprOddNonSp,
+  //            )
+  //          ) {
+  //            //myOutpExt(enumRegFileGprEvenNonFp).valid := True
+  //            //myOutpExt(enumRegFileGprOddNonSp).valid := True
+  //            if (doAssertValid) {
+  //              myOutpExt(zdx).valid := True
+  //            }
+  //            myOutpExt(zdx).modMemWordValid := True
+  //          }
+  //          //ret ++= List[Int](
+  //          //  enumRegFileGprEvenNonFp,
+  //          //  enumRegFileGprOddNonSp
+  //          //)
+  //          //outpVec(enumRegFileGprFp).myExt.modMemWordValid := (
+  //          //  False
+  //          //)
+  //          //outpVec(enumRegFileGprSp).myExt.modMemWordValid := (
+  //          //  False
+  //          //)
+  //          myModMemWord(ydx=enumRegFileGprEvenNonFp) := valueHi
+  //          myModMemWord(ydx=enumRegFileGprOddNonSp) := valueLo
+  //          myModMemWord(ydx=enumRegFileGprFp) := 0x0
+  //          myModMemWord(ydx=enumRegFileGprSp) := 0x0
+  //        }
+  //        is (True) { // {fp, sp} 64-bit register pair
+  //          ////outpVec(enumRegFileGprEvenNonFp).myExt.modMemWordValid := (
+  //          ////  False
+  //          ////)
+  //          ////outpVec(enumRegFileGprOddNonSp).myExt.modMemWordValid := (
+  //          ////  False
+  //          ////)
+  //          ////myOutpExt(enumRegFileGprEvenNonFp).valid := False
+  //          ////myOutpExt(enumRegFileGprEvenNonFp).modMemWordValid := False
+  //          ////myOutpExt(enumRegFileGprOddNonSp).valid := False
+  //          ////myOutpExt(enumRegFileGprOddNonSp).modMemWordValid := False
+  //          //myOutpExt(enumRegFileGprFp).valid := True
+  //          //myOutpExt(enumRegFileGprSp).valid := True
+  //          ////ret ++= List[Int](
+  //          ////  enumRegFileGprFp,
+  //          ////  enumRegFileGprSp
+  //          ////)
+  //          for (
+  //            zdx <- List[Int](
+  //              enumRegFileGprFp,
+  //              enumRegFileGprSp,
+  //            )
+  //          ) {
+  //            if (doAssertValid) {
+  //              myOutpExt(zdx).valid := True
+  //            }
+  //            myOutpExt(zdx).modMemWordValid := True
+  //          }
+  //          myModMemWord(ydx=enumRegFileGprEvenNonFp) := 0x0
+  //          myModMemWord(ydx=enumRegFileGprOddNonSp) := 0x0
+  //          myModMemWord(ydx=enumRegFileGprFp) := valueHi
+  //          myModMemWord(ydx=enumRegFileGprSp) := valueLo
+  //        }
+  //      //}
+  //    }
+  //    //--------
+  //    //ret
+  //    //--------
+  //  }
 
-    def setSprSa32(
-      value: UInt,
-      doAssertValid: Boolean,
-      //optExtraFunc: Option[(Int) => Unit],
-    ): Unit = {
-      //--------
-      //var ret = new ArrayBuffer[Int]()
-      //--------
-      switch (myInstrDecEtc.sprSaSel) {
-        def outerMyModMemWord(ydx: Int) = (
-          //upExt(idx=1, regFileSlice=ydx).modMemWord
-          outpVec(ydx).myExt.modMemWord
-        )
-        val myZero = U(s"${params.mainWidth}'d0")
-        is (FlareCpuSprSelect.sprEven) {
-          for (ydx <- enumRegFileSprEven until enumRegFileSprOdd) {
-            //def myModMemWord = upExt(idx=1, regFileSlice=ydx).modMemWord
+  //  def setSprSa32(
+  //    value: UInt,
+  //    doAssertValid: Boolean,
+  //    //optExtraFunc: Option[(Int) => Unit],
+  //  ): Unit = {
+  //    //--------
+  //    //var ret = new ArrayBuffer[Int]()
+  //    //--------
+  //    switch (myInstrDecEtc.sprSaSel) {
+  //      def outerMyModMemWord(ydx: Int) = (
+  //        //upExt(idx=1, regFileSlice=ydx).modMemWord
+  //        outpVec(ydx).myExt.modMemWord
+  //      )
+  //      val myZero = U(s"${params.mainWidth}'d0")
+  //      is (FlareCpuSprSelect.sprEven) {
+  //        for (ydx <- enumRegFileSprEven until enumRegFileSprOdd) {
+  //          //def myModMemWord = upExt(idx=1, regFileSlice=ydx).modMemWord
 
-            def myModMemWord = (
-              outerMyModMemWord(ydx=ydx)
-              ////upExt(idx=1, regFileSlice=ydx).modMemWord
-              //outpVec(ydx).myExt.modMemWord
-            )
-            //val myZero = U(s"${params.mainWidth}'d0")
-            if (ydx == enumRegFileSprEven) {
-              myModMemWord := value
-              outpVec(ydx).myExt.modMemWordValid := True
-              if (doAssertValid) {
-                outpVec(ydx).myExt.valid := True
-              }
-              //optExtraFunc match {
-              //  case Some(myExtraFunc) => {
-              //    myExtraFunc(ydx)
-              //  }
-              //  case None => {
-              //  }
-              //}
-            } else {
-              if (myFormal) {
-                myModMemWord := myZero
-              }
-            }
-          }
-        }
-        is (FlareCpuSprSelect.sprOdd) {
-          for (ydx <- enumRegFileSprEven until enumRegFileSprOdd) {
-            //def myModMemWord = upExt(idx=1, regFileSlice=ydx).modMemWord
+  //          def myModMemWord = (
+  //            outerMyModMemWord(ydx=ydx)
+  //            ////upExt(idx=1, regFileSlice=ydx).modMemWord
+  //            //outpVec(ydx).myExt.modMemWord
+  //          )
+  //          //val myZero = U(s"${params.mainWidth}'d0")
+  //          if (ydx == enumRegFileSprEven) {
+  //            myModMemWord := value
+  //            outpVec(ydx).myExt.modMemWordValid := True
+  //            if (doAssertValid) {
+  //              outpVec(ydx).myExt.valid := True
+  //            }
+  //            //optExtraFunc match {
+  //            //  case Some(myExtraFunc) => {
+  //            //    myExtraFunc(ydx)
+  //            //  }
+  //            //  case None => {
+  //            //  }
+  //            //}
+  //          } else {
+  //            if (myFormal) {
+  //              myModMemWord := myZero
+  //            }
+  //          }
+  //        }
+  //      }
+  //      is (FlareCpuSprSelect.sprOdd) {
+  //        for (ydx <- enumRegFileSprEven until enumRegFileSprOdd) {
+  //          //def myModMemWord = upExt(idx=1, regFileSlice=ydx).modMemWord
 
-            def myModMemWord = (
-              outerMyModMemWord(ydx=ydx)
-              ////upExt(idx=1, regFileSlice=ydx).modMemWord
-              //outpVec(ydx).myExt.modMemWord
-            )
-            //val myZero = U(s"${params.mainWidth}'d0")
-            if (ydx == enumRegFileSprOdd) {
-              myModMemWord := value
-              outpVec(ydx).myExt.modMemWordValid := True
-              if (doAssertValid) {
-                outpVec(ydx).myExt.valid := True
-              }
-              //optExtraFunc match {
-              //  case Some(myExtraFunc) => {
-              //    myExtraFunc(ydx)
-              //  }
-              //  case None => {
-              //  }
-              //}
-            } else {
-              if (myFormal) {
-                myModMemWord := myZero
-              }
-            }
-          }
-        }
-      }
-      //--------
-      //ret
-      //--------
-    }
-    def setSprSa64(
-      valueHi: UInt,
-      valueLo: UInt,
-      doAssertValid: Boolean,
-      //optExtraFunc: Option[(Int) => Unit],
-    ): Unit = {
-      //--------
-      //var ret = new ArrayBuffer[Int]()
-      //--------
-      def myModMemWord(ydx: Int) = (
-        //upExt(idx=1, regFileSlice=ydx).modMemWord
-        outpVec(ydx).myExt.modMemWord
-      )
-      for (ydx <- enumRegFileSprEven until enumRegFileSprOdd) {
-        //--------
-        outpVec(ydx).myExt.modMemWordValid := True
-        if (doAssertValid) {
-          outpVec(ydx).myExt.valid := True
-        }
-        //outpVec(ydx).myExt.valid := True
-        //--------
-        //optExtraFunc match {
-        //  case Some(myExtraFunc) => {
-        //    myExtraFunc(ydx)
-        //  }
-        //  case None => {
-        //  }
-        //}
-        //--------
-      }
-      myModMemWord(ydx=enumRegFileSprEven) := valueHi
-      myModMemWord(ydx=enumRegFileSprOdd) := valueLo
-      //--------
-      //ret += enumRegFileSprEven
-      //ret += enumRegFileSprOdd
-      //ret
-      //--------
-    }
-    //--------
-    //for (ydx <- 0 until outpVec.size) {
-    //  //outpVec(ydx).myExt.modMemWordValid := False
-    //  outpVec(ydx).myExt.valid := False
-    //}
-    //--------
-    //when (
-    //  //rPrevTxnWasHazardAny
-    //  //rPrevTxnWasHazardVec(0)
-    //  rPrevTxnWasHazard
-    //) {
-    //  doTestModOpMain(doCheckHazard=true)
-    //} elsewhen (cMid0Front.up.isValid) {
-    //  doTestModOpMain(doCheckHazard=false)
-    //}
-    //object MyDcacheMissState
-    //extends SpinalEnum(defaultEncoding=binarySequential) {
-    //  val
-    //    
-    //}
-    //def doTestModOpMain(
-    //  doCheckHazard: Boolean
-    //): Unit = {
-    //  def doHandleHazardWithDcacheMiss(
-    //    haveCurrLoad: Boolean,
-    //    //someSetModMemWordFuncArr: Seq[((UInt) => Unit, Int)],
-    //    setModMemWordFunc: (
-    //      //Seq[UInt]
-    //      //--------
-    //      (
-    //        Int,
-    //      ) => UInt, // someGetMyRdMemWordFunc
-    //      Boolean,   // doAssertValid
-    //      //--------
-    //    ) => Unit
-    //  ): Unit = {
-    //    def myNonCurrFireSetModMemWord(
-    //      someGetMyRdMemWordFunc: (Int) => UInt
-    //    ) = (
-    //      setModMemWordFunc(
-    //        someGetMyRdMemWordFunc, // someGetMyRdMemWordFunc
-    //        false, // doAssertValid
-    //      )
-    //    )
-    //    def handleCurrFire(
-    //      //someSetModMemWordFuncArr: Seq[(() => Unit, Int)],
-    //      someGetMyRdMemWordFunc: (Int) => UInt=getMyRdMemWord
-    //    ): Unit = {
-    //      //--------
-    //      //outp.myExt.valid := True
-    //      nextPrevTxnWasHazard := False
-    //      //--------
-    //      setModMemWordFunc(
-    //        someGetMyRdMemWordFunc, // someGetMyRdMemWordFunc
-    //        true,                   // doAssertValid
-    //      )
-    //      //--------
-    //    }
-    //    def handleDuplicateIt(
-    //      actuallyDuplicateIt: Boolean,
-    //    ): Unit = {
-    //      for (zdx <- 0 until outpVec.size) {
-    //        def outp = outpVec(zdx)
-    //        outp := (
-    //          RegNext(outp) init(outp.getZero)
-    //        )
-    //        outp.myExt.valid := False
-    //        outp.myExt.modMemWordValid := (
-    //          False
-    //        )
-    //      }
-    //      if (actuallyDuplicateIt) {
-    //        cMid0Front.duplicateIt()
-    //      }
-    //    }
-    //    val rState = KeepAttribute(
-    //      Reg(Bool())
-    //      init(False)
-    //    )
-    //      .setName(
-    //        s"doHandleHazardWithDcacheMiss"
-    //        + s"_${doCheckHazard}_${haveCurrLoad}"
-    //        + s"_rState"
-    //      )
-    //    val rSavedRdMemWord1Valid = (
-    //      KeepAttribute(
-    //        Reg(Bool())
-    //        init(False)
-    //      )
-    //      .setName(
-    //        s"doModInModFrontFunc"
-    //        + s"_${doCheckHazard}_${haveCurrLoad}"
-    //        + s"_rSavedModMemWord1Valid"
-    //      )
-    //    )
-    //    val rSavedRdMemWord1 = (
-    //      KeepAttribute(
-    //        Reg(
-    //          Vec.fill(enumRegFileLim)(
-    //          //cloneOf(myRdMemWord))
-    //            UInt(params.mainWidth bits)
-    //          )
-    //        )
-    //        //init(0x0)
-    //        .setName(
-    //          s"doModInModFrontFunc"
-    //          + s"_${doCheckHazard}_${haveCurrLoad}"
-    //          + s"_rSavedModMemWord1"
-    //        )
-    //      )
-    //    )
-    //    for (ydx <- 0 until rSavedRdMemWord1.size) {
-    //      rSavedRdMemWord1(ydx).init(
-    //        rSavedRdMemWord1(ydx).getZero
-    //      )
-    //    }
-    //      
-    //    switch (rState) {
-    //      is (False) {
-    //        //when (
-    //        //  //!tempModFrontPayload.dcacheHit
-    //        //  //!io.dbus.valid
-    //        //  //|| (
-    //        //    !io.dbus.fire
-    //        //  //)
-    //        //) {
-    //        //  when (
-    //        //    modFront.isValid
-    //        //  ) {
-    //        //    if (haveCurrLoad) {
-    //        //      handleDuplicateIt(actuallyDuplicateIt=true)
-    //        //      //rSavedRdMemWord1 := myRdMemWord
-    //        //      for (ydx <- 0 until rSavedRdMemWord1.size) {
-    //        //        rSavedRdMemWord1(ydx) := getMyRdMemWord(ydx=ydx)
-    //        //      }
-    //        //      rState := True
-    //        //    } else {  // if (!haveCurrLoad)
-    //        //      when (modFront.isFiring) {
-    //        //        handleCurrFire()
-    //        //      }
-    //        //    }
-    //        //  } otherwise { // when (!modFront.isFiring)
-    //        //    handleDuplicateIt(actuallyDuplicateIt=true)
-    //        //  }
-    //        //} otherwise {
-    //        //  when (cMid0Front.up.isFiring) {
-    //        //    handleCurrFire()
-    //        //  }
-    //        //}
-    //        when (
-    //          //!tempModFrontPayload.dcacheHit
-    //          !io.dbus.fire
-    //        ) {
-    //          when (
-    //            modFront.isValid
-    //          ) {
-    //            //when (
-    //            //   rTempPrevOp
-    //            //   === (
-    //            //    PipeMemRmwSimDut.ModOp.LDR_RA_RB
-    //            //  )
-    //            //) {
-    //            if (haveCurrLoad) {
-    //              //cMid0Front.duplicateIt()
-    //              handleDuplicateIt(actuallyDuplicateIt=true)
+  //          def myModMemWord = (
+  //            outerMyModMemWord(ydx=ydx)
+  //            ////upExt(idx=1, regFileSlice=ydx).modMemWord
+  //            //outpVec(ydx).myExt.modMemWord
+  //          )
+  //          //val myZero = U(s"${params.mainWidth}'d0")
+  //          if (ydx == enumRegFileSprOdd) {
+  //            myModMemWord := value
+  //            outpVec(ydx).myExt.modMemWordValid := True
+  //            if (doAssertValid) {
+  //              outpVec(ydx).myExt.valid := True
+  //            }
+  //            //optExtraFunc match {
+  //            //  case Some(myExtraFunc) => {
+  //            //    myExtraFunc(ydx)
+  //            //  }
+  //            //  case None => {
+  //            //  }
+  //            //}
+  //          } else {
+  //            if (myFormal) {
+  //              myModMemWord := myZero
+  //            }
+  //          }
+  //        }
+  //      }
+  //    }
+  //    //--------
+  //    //ret
+  //    //--------
+  //  }
+  //  def setSprSa64(
+  //    valueHi: UInt,
+  //    valueLo: UInt,
+  //    doAssertValid: Boolean,
+  //    //optExtraFunc: Option[(Int) => Unit],
+  //  ): Unit = {
+  //    //--------
+  //    //var ret = new ArrayBuffer[Int]()
+  //    //--------
+  //    def myModMemWord(ydx: Int) = (
+  //      //upExt(idx=1, regFileSlice=ydx).modMemWord
+  //      outpVec(ydx).myExt.modMemWord
+  //    )
+  //    for (ydx <- enumRegFileSprEven until enumRegFileSprOdd) {
+  //      //--------
+  //      outpVec(ydx).myExt.modMemWordValid := True
+  //      if (doAssertValid) {
+  //        outpVec(ydx).myExt.valid := True
+  //      }
+  //      //outpVec(ydx).myExt.valid := True
+  //      //--------
+  //      //optExtraFunc match {
+  //      //  case Some(myExtraFunc) => {
+  //      //    myExtraFunc(ydx)
+  //      //  }
+  //      //  case None => {
+  //      //  }
+  //      //}
+  //      //--------
+  //    }
+  //    myModMemWord(ydx=enumRegFileSprEven) := valueHi
+  //    myModMemWord(ydx=enumRegFileSprOdd) := valueLo
+  //    //--------
+  //    //ret += enumRegFileSprEven
+  //    //ret += enumRegFileSprOdd
+  //    //ret
+  //    //--------
+  //  }
+  //  //--------
+  //  //for (ydx <- 0 until outpVec.size) {
+  //  //  //outpVec(ydx).myExt.modMemWordValid := False
+  //  //  outpVec(ydx).myExt.valid := False
+  //  //}
+  //  //--------
+  //  //when (
+  //  //  //rPrevTxnWasHazardAny
+  //  //  //rPrevTxnWasHazardVec(0)
+  //  //  rPrevTxnWasHazard
+  //  //) {
+  //  //  doTestModOpMain(doCheckHazard=true)
+  //  //} elsewhen (cMid0Front.up.isValid) {
+  //  //  doTestModOpMain(doCheckHazard=false)
+  //  //}
+  //  //object MyDcacheMissState
+  //  //extends SpinalEnum(defaultEncoding=binarySequential) {
+  //  //  val
+  //  //    
+  //  //}
+  //  //def doTestModOpMain(
+  //  //  doCheckHazard: Boolean
+  //  //): Unit = {
+  //  //  def doHandleHazardWithDcacheMiss(
+  //  //    haveCurrLoad: Boolean,
+  //  //    //someSetModMemWordFuncArr: Seq[((UInt) => Unit, Int)],
+  //  //    setModMemWordFunc: (
+  //  //      //Seq[UInt]
+  //  //      //--------
+  //  //      (
+  //  //        Int,
+  //  //      ) => UInt, // someGetMyRdMemWordFunc
+  //  //      Boolean,   // doAssertValid
+  //  //      //--------
+  //  //    ) => Unit
+  //  //  ): Unit = {
+  //  //    def myNonCurrFireSetModMemWord(
+  //  //      someGetMyRdMemWordFunc: (Int) => UInt
+  //  //    ) = (
+  //  //      setModMemWordFunc(
+  //  //        someGetMyRdMemWordFunc, // someGetMyRdMemWordFunc
+  //  //        false, // doAssertValid
+  //  //      )
+  //  //    )
+  //  //    def handleCurrFire(
+  //  //      //someSetModMemWordFuncArr: Seq[(() => Unit, Int)],
+  //  //      someGetMyRdMemWordFunc: (Int) => UInt=getMyRdMemWord
+  //  //    ): Unit = {
+  //  //      //--------
+  //  //      //outp.myExt.valid := True
+  //  //      nextPrevTxnWasHazard := False
+  //  //      //--------
+  //  //      setModMemWordFunc(
+  //  //        someGetMyRdMemWordFunc, // someGetMyRdMemWordFunc
+  //  //        true,                   // doAssertValid
+  //  //      )
+  //  //      //--------
+  //  //    }
+  //  //    def handleDuplicateIt(
+  //  //      actuallyDuplicateIt: Boolean,
+  //  //    ): Unit = {
+  //  //      for (zdx <- 0 until outpVec.size) {
+  //  //        def outp = outpVec(zdx)
+  //  //        outp := (
+  //  //          RegNext(outp) init(outp.getZero)
+  //  //        )
+  //  //        outp.myExt.valid := False
+  //  //        outp.myExt.modMemWordValid := (
+  //  //          False
+  //  //        )
+  //  //      }
+  //  //      if (actuallyDuplicateIt) {
+  //  //        cMid0Front.duplicateIt()
+  //  //      }
+  //  //    }
+  //  //    val rState = KeepAttribute(
+  //  //      Reg(Bool())
+  //  //      init(False)
+  //  //    )
+  //  //      .setName(
+  //  //        s"doHandleHazardWithDcacheMiss"
+  //  //        + s"_${doCheckHazard}_${haveCurrLoad}"
+  //  //        + s"_rState"
+  //  //      )
+  //  //    val rSavedRdMemWord1Valid = (
+  //  //      KeepAttribute(
+  //  //        Reg(Bool())
+  //  //        init(False)
+  //  //      )
+  //  //      .setName(
+  //  //        s"doModInModFrontFunc"
+  //  //        + s"_${doCheckHazard}_${haveCurrLoad}"
+  //  //        + s"_rSavedModMemWord1Valid"
+  //  //      )
+  //  //    )
+  //  //    val rSavedRdMemWord1 = (
+  //  //      KeepAttribute(
+  //  //        Reg(
+  //  //          Vec.fill(enumRegFileLim)(
+  //  //          //cloneOf(myRdMemWord))
+  //  //            UInt(params.mainWidth bits)
+  //  //          )
+  //  //        )
+  //  //        //init(0x0)
+  //  //        .setName(
+  //  //          s"doModInModFrontFunc"
+  //  //          + s"_${doCheckHazard}_${haveCurrLoad}"
+  //  //          + s"_rSavedModMemWord1"
+  //  //        )
+  //  //      )
+  //  //    )
+  //  //    for (ydx <- 0 until rSavedRdMemWord1.size) {
+  //  //      rSavedRdMemWord1(ydx).init(
+  //  //        rSavedRdMemWord1(ydx).getZero
+  //  //      )
+  //  //    }
+  //  //      
+  //  //    switch (rState) {
+  //  //      is (False) {
+  //  //        //when (
+  //  //        //  //!tempModFrontPayload.dcacheHit
+  //  //        //  //!io.dbus.valid
+  //  //        //  //|| (
+  //  //        //    !io.dbus.fire
+  //  //        //  //)
+  //  //        //) {
+  //  //        //  when (
+  //  //        //    modFront.isValid
+  //  //        //  ) {
+  //  //        //    if (haveCurrLoad) {
+  //  //        //      handleDuplicateIt(actuallyDuplicateIt=true)
+  //  //        //      //rSavedRdMemWord1 := myRdMemWord
+  //  //        //      for (ydx <- 0 until rSavedRdMemWord1.size) {
+  //  //        //        rSavedRdMemWord1(ydx) := getMyRdMemWord(ydx=ydx)
+  //  //        //      }
+  //  //        //      rState := True
+  //  //        //    } else {  // if (!haveCurrLoad)
+  //  //        //      when (modFront.isFiring) {
+  //  //        //        handleCurrFire()
+  //  //        //      }
+  //  //        //    }
+  //  //        //  } otherwise { // when (!modFront.isFiring)
+  //  //        //    handleDuplicateIt(actuallyDuplicateIt=true)
+  //  //        //  }
+  //  //        //} otherwise {
+  //  //        //  when (cMid0Front.up.isFiring) {
+  //  //        //    handleCurrFire()
+  //  //        //  }
+  //  //        //}
+  //  //        when (
+  //  //          //!tempModFrontPayload.dcacheHit
+  //  //          !io.dbus.fire
+  //  //        ) {
+  //  //          when (
+  //  //            modFront.isValid
+  //  //          ) {
+  //  //            //when (
+  //  //            //   rTempPrevOp
+  //  //            //   === (
+  //  //            //    PipeMemRmwSimDut.ModOp.LDR_RA_RB
+  //  //            //  )
+  //  //            //) {
+  //  //            if (haveCurrLoad) {
+  //  //              //cMid0Front.duplicateIt()
+  //  //              handleDuplicateIt(actuallyDuplicateIt=true)
 
-    //              GenerationFlags.formal {
-    //                assert(!rSavedRdMemWord1Valid)
-    //              }
-    //              rSavedRdMemWord1Valid := False
-    //              for (ydx <- 0 until rSavedRdMemWord1.size) {
-    //                rSavedRdMemWord1(ydx) := (
-    //                  getMyRdMemWord(ydx=ydx)
-    //                )
-    //              }
-    //              rState := True
-    //            } else {  // if (!haveCurrLoad)
-    //            //} otherwise {
-    //              when (modFront.isFiring) {
-    //                handleCurrFire()
-    //              }
-    //            }
-    //          } otherwise { // when (!modFront.isFiring)
-    //            handleDuplicateIt(actuallyDuplicateIt=true)
-    //          }
-    //        } otherwise {
-    //          when (cMid0Front.up.isFiring) {
-    //            //when (
-    //            //  (
-    //            //    (
-    //            //      RegNext(rState) init(False)
-    //            //    ) === False
-    //            //  ) && (
-    //            //    rTempPrevOp
-    //            //    === PipeMemRmwSimDut.ModOp.LDR_RA_RB
-    //            //  )
-    //            //) {
-    //            //  handleCurrFire()
-    //            //} otherwise {
-    //            //  handleCurrFire(
-    //            //  )
-    //            //}
-    //            when (rSavedRdMemWord1Valid) {
-    //              rSavedRdMemWord1Valid := False
-    //              handleCurrFire(
-    //                //someRdMemWord=rSavedRdMemWord1
-    //                someGetMyRdMemWordFunc=(
-    //                  (ydx: Int) => (rSavedRdMemWord1(ydx))
-    //                ),
-    //              )
-    //            } otherwise {
-    //              handleCurrFire()
-    //            }
-    //          }
-    //        }
-    //        GenerationFlags.formal {
-    //          when (pastValidAfterReset) {
-    //            when (past(rState) === True) {
-    //              for (ydx <- 0 until rSavedRdMemWord1.size) {
-    //                assert(stable(rSavedRdMemWord1(ydx)))
-    //              }
-    //            }
-    //          }
-    //        }
-    //      }
-    //      is (True) {
-    //        //when (cMid0Front.up.isFiring) {
-    //        //  //handleCurrFire(
-    //        //  //  someModMemWord=rSavedRdMemWord1
-    //        //  //)
-    //        //} otherwise {
-    //        //  handleDuplicateIt(actuallyDuplicateIt=false)
-    //        //}
-    //        GenerationFlags.formal {
-    //          when (pastValidAfterReset) {
-    //            when (past(rState) === False) {
-    //              assert(!past(tempModFrontPayload.dcacheHit))
-    //              assert(!rSavedRdMemWord1.valid)
-    //            } otherwise {
-    //              assert(
-    //                stable(rSavedRdMemWord)
-    //              )
-    //            }
-    //          }
-    //        }
-    //      }
-    //    }
-    //  }
-    //  //object MyState
-    //  //extends SpinalEnum(defaultEncoding=binarySequential)
-    //  //{
-    //  //  //val 
-    //  //}
-    //  //when (cMid0Front.up.isValid) {
-    //  //  switch (inpInstrDecEtc.decOp) {
-    //  //  }
-    //  //}
-    //}
-    //--------
-  }
+  //  //              GenerationFlags.formal {
+  //  //                assert(!rSavedRdMemWord1Valid)
+  //  //              }
+  //  //              rSavedRdMemWord1Valid := False
+  //  //              for (ydx <- 0 until rSavedRdMemWord1.size) {
+  //  //                rSavedRdMemWord1(ydx) := (
+  //  //                  getMyRdMemWord(ydx=ydx)
+  //  //                )
+  //  //              }
+  //  //              rState := True
+  //  //            } else {  // if (!haveCurrLoad)
+  //  //            //} otherwise {
+  //  //              when (modFront.isFiring) {
+  //  //                handleCurrFire()
+  //  //              }
+  //  //            }
+  //  //          } otherwise { // when (!modFront.isFiring)
+  //  //            handleDuplicateIt(actuallyDuplicateIt=true)
+  //  //          }
+  //  //        } otherwise {
+  //  //          when (cMid0Front.up.isFiring) {
+  //  //            //when (
+  //  //            //  (
+  //  //            //    (
+  //  //            //      RegNext(rState) init(False)
+  //  //            //    ) === False
+  //  //            //  ) && (
+  //  //            //    rTempPrevOp
+  //  //            //    === PipeMemRmwSimDut.ModOp.LDR_RA_RB
+  //  //            //  )
+  //  //            //) {
+  //  //            //  handleCurrFire()
+  //  //            //} otherwise {
+  //  //            //  handleCurrFire(
+  //  //            //  )
+  //  //            //}
+  //  //            when (rSavedRdMemWord1Valid) {
+  //  //              rSavedRdMemWord1Valid := False
+  //  //              handleCurrFire(
+  //  //                //someRdMemWord=rSavedRdMemWord1
+  //  //                someGetMyRdMemWordFunc=(
+  //  //                  (ydx: Int) => (rSavedRdMemWord1(ydx))
+  //  //                ),
+  //  //              )
+  //  //            } otherwise {
+  //  //              handleCurrFire()
+  //  //            }
+  //  //          }
+  //  //        }
+  //  //        GenerationFlags.formal {
+  //  //          when (pastValidAfterReset) {
+  //  //            when (past(rState) === True) {
+  //  //              for (ydx <- 0 until rSavedRdMemWord1.size) {
+  //  //                assert(stable(rSavedRdMemWord1(ydx)))
+  //  //              }
+  //  //            }
+  //  //          }
+  //  //        }
+  //  //      }
+  //  //      is (True) {
+  //  //        //when (cMid0Front.up.isFiring) {
+  //  //        //  //handleCurrFire(
+  //  //        //  //  someModMemWord=rSavedRdMemWord1
+  //  //        //  //)
+  //  //        //} otherwise {
+  //  //        //  handleDuplicateIt(actuallyDuplicateIt=false)
+  //  //        //}
+  //  //        GenerationFlags.formal {
+  //  //          when (pastValidAfterReset) {
+  //  //            when (past(rState) === False) {
+  //  //              assert(!past(tempModFrontPayload.dcacheHit))
+  //  //              assert(!rSavedRdMemWord1.valid)
+  //  //            } otherwise {
+  //  //              assert(
+  //  //                stable(rSavedRdMemWord)
+  //  //              )
+  //  //            }
+  //  //          }
+  //  //        }
+  //  //      }
+  //  //    }
+  //  //  }
+  //  //  //object MyState
+  //  //  //extends SpinalEnum(defaultEncoding=binarySequential)
+  //  //  //{
+  //  //  //  //val 
+  //  //  //}
+  //  //  //when (cMid0Front.up.isValid) {
+  //  //  //  switch (inpInstrDecEtc.decOp) {
+  //  //  //  }
+  //  //  //}
+  //  //}
+  //  //--------
+  //}
 }
 
 case class FlareCpu(
   params: FlareCpuParams,
-  optFormalTest: Int=(
+  optFormalTest: FlareCpuFormalTest=(
     FlareCpuParams.enumFormalTestNone
   ),
 ) extends Component {
@@ -3943,6 +4007,15 @@ case class FlareCpu(
     tempArr
   }
 
+  val regFilePmRmwCfg = (
+    FlareCpuParams.mkRegFilePmRmwCfg(
+      params=params,
+      wordCountArr=regFileWordCountArr,
+      optFormalTest=optFormalTest,
+      pipeName="FlareCpu_regFile",
+      linkArr=Some(linkArr)
+    )
+  )
   val regFile = PipeMemRmw[
     UInt,
     Bool,
@@ -3953,48 +4026,50 @@ case class FlareCpu(
     ],
     PipeMemRmwDualRdTypeDisabled[UInt, Bool]
   ](
-    wordType=params.regWordType(),
-    wordCountArr=regFileWordCountArr,
-    hazardCmpType=params.regFileHazardCmpType(),
+    cfg=regFilePmRmwCfg,
+    //wordType=params.regWordType(),
+    //wordCountArr=regFileWordCountArr,
+    //hazardCmpType=params.regFileHazardCmpType(),
     modType=FlareCpuParams.mkRegFileModType(
       params=params,
+      pmRmwCfg=regFilePmRmwCfg,
       optFormalTest=optFormalTest,
     ),
-    modRdPortCnt=params.regFileModRdPortCnt,
-    modStageCnt=params.regFileModStageCnt,
-    pipeName="FlareCpu_pipeName",
-    linkArr=Some(linkArr),
-    initBigInt={
-      val myInitBigInt = new ArrayBuffer[ArrayBuffer[BigInt]]()
-      //myInitBigInt += ArrayBuffer.fill(params.gprFileEvenWordCount)(
-      //  BigInt(0)
-      //)
-      myInitBigInt += ArrayBuffer.fill(params.gprFileEvenNonFpWordCount)(
-        BigInt(0)
-      )
-      myInitBigInt += ArrayBuffer.fill(params.gprFileFpWordCount)(
-        BigInt(0)
-      )
-      myInitBigInt += ArrayBuffer.fill(params.gprFileOddNonSpWordCount)(
-        BigInt(0)
-      )
-      myInitBigInt += ArrayBuffer.fill(params.gprFileSpWordCount)(
-        BigInt(0)
-      )
-      //myInitBigInt += ArrayBuffer.fill(params.sprFileWordCount)(
-      //  BigInt(0)
-      //)
-      myInitBigInt += ArrayBuffer.fill(params.sprFileEvenWordCount)(
-        BigInt(0)
-      )
-      myInitBigInt += ArrayBuffer.fill(params.sprFileOddWordCount)(
-        BigInt(0)
-      )
-      Some(myInitBigInt)
-    },
-    optModHazardKind=PipeMemRmw.modHazardKindFwd,
-    memRamStyle="block",
-    //optIncludeModFrontStageLink=false,
+    //modRdPortCnt=params.regFileModRdPortCnt,
+    //modStageCnt=params.regFileModStageCnt,
+    //pipeName="FlareCpu_pipeName",
+    //linkArr=Some(linkArr),
+    //initBigInt={
+    //  val myInitBigInt = new ArrayBuffer[ArrayBuffer[BigInt]]()
+    //  //myInitBigInt += ArrayBuffer.fill(params.gprFileEvenWordCount)(
+    //  //  BigInt(0)
+    //  //)
+    //  myInitBigInt += ArrayBuffer.fill(params.gprFileEvenNonFpWordCount)(
+    //    BigInt(0)
+    //  )
+    //  myInitBigInt += ArrayBuffer.fill(params.gprFileFpWordCount)(
+    //    BigInt(0)
+    //  )
+    //  myInitBigInt += ArrayBuffer.fill(params.gprFileOddNonSpWordCount)(
+    //    BigInt(0)
+    //  )
+    //  myInitBigInt += ArrayBuffer.fill(params.gprFileSpWordCount)(
+    //    BigInt(0)
+    //  )
+    //  //myInitBigInt += ArrayBuffer.fill(params.sprFileWordCount)(
+    //  //  BigInt(0)
+    //  //)
+    //  myInitBigInt += ArrayBuffer.fill(params.sprFileEvenWordCount)(
+    //    BigInt(0)
+    //  )
+    //  myInitBigInt += ArrayBuffer.fill(params.sprFileOddWordCount)(
+    //    BigInt(0)
+    //  )
+    //  Some(myInitBigInt)
+    //},
+    //optModHazardKind=PipeMemRmw.modHazardKindFwd,
+    //memRamStyle="block",
+    ////optIncludeModFrontStageLink=false,
   )(
     doModInFrontFunc=(
       None
@@ -4131,6 +4206,7 @@ case class FlareCpu(
   //}
   val cIdArea = FlareCpuPipeStageId(
     params=params,
+    regFilePmRmwCfg=regFilePmRmwCfg,
     cId=cId,
     pIf=pIf,
     //pId=pId,
