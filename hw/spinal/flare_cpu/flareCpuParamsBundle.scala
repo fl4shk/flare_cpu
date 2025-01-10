@@ -17,7 +17,7 @@ import libcheesevoyage.general._
 import libcheesevoyage.general.PipeMemRmw
 import libcheesevoyage.math.LongDivMultiCycle
 
-object FlareCpuCacheParams {
+object FlareCpuCacheConfig {
   def defaultNumLinesPow = (
     //log2Up(512)        // 32 kiB (if each line is 64 bytes long)
     log2Up(256)         // 16 kiB (if each line is 64 bytes long)
@@ -67,11 +67,11 @@ object FlareCpuCacheParams {
   //--------
 }
 
-case class FlareCpuCacheParams(
+case class FlareCpuCacheConfig(
   mainWidth: Int,
   lineElemNumBytes: Int,
-  numLinesPow: Int=FlareCpuCacheParams.defaultNumLinesPow,
-  numBytesPerLinePow: Int=FlareCpuCacheParams.defaultNumBytesPerLinePow, 
+  numLinesPow: Int=FlareCpuCacheConfig.defaultNumLinesPow,
+  numBytesPerLinePow: Int=FlareCpuCacheConfig.defaultNumBytesPerLinePow, 
 ) {
   def dontCacheAddrBit = mainWidth - 1
   //def lineIdxRange = log2Up(numBytesPerLine) - 1 downto 0
@@ -93,14 +93,14 @@ case class FlareCpuCacheParams(
       lineIdxRangePair._2 + log2Up(validVecElemWidth)
     )
   )
-  val rawElemNumBytesPow8 = FlareCpuCacheParams.rawElemNumBytesPow8
-  val rawElemNumBytesPow16 = FlareCpuCacheParams.rawElemNumBytesPow16
-  val rawElemNumBytesPow32 = FlareCpuCacheParams.rawElemNumBytesPow32
-  val rawElemNumBytesPow64 = FlareCpuCacheParams.rawElemNumBytesPow64
+  val rawElemNumBytesPow8 = FlareCpuCacheConfig.rawElemNumBytesPow8
+  val rawElemNumBytesPow16 = FlareCpuCacheConfig.rawElemNumBytesPow16
+  val rawElemNumBytesPow32 = FlareCpuCacheConfig.rawElemNumBytesPow32
+  val rawElemNumBytesPow64 = FlareCpuCacheConfig.rawElemNumBytesPow64
 
   def elemNumBytesPow(
     rawElemNumBytesPow: (Int, Int)
-  ) = FlareCpuCacheParams.elemNumBytesPow(rawElemNumBytesPow)
+  ) = FlareCpuCacheConfig.elemNumBytesPow(rawElemNumBytesPow)
 
   def lineDataIdxRange(rawElemNumBytesPow: (Int, Int)) = (
     numBytesPerLinePow - 1 downto elemNumBytesPow(rawElemNumBytesPow)._1
@@ -173,12 +173,12 @@ object FlareCpuRegFileInfo {
   )
   //--------
   def wordType(
-    params: FlareCpuParams
+    params: FlareCpuConfig
   ) = (
     UInt(params.mainWidth bits)
   )
   def hazardCmpType(
-    params: FlareCpuParams
+    params: FlareCpuConfig
   ) = (
     Bool()
   )
@@ -219,7 +219,7 @@ object FlareCpuFormalTest {
   case object Dont extends FlareCpuFormalTest
   case object Main extends FlareCpuFormalTest
 }
-object FlareCpuParams {
+object FlareCpuConfig {
   //--------
   def enumRegFileGprEvenNonFp: Int = (
     //0
@@ -251,61 +251,61 @@ object FlareCpuParams {
   )
   //--------
   //--------
-  def mkRegFilePmRmwCfg(
-    params: FlareCpuParams,
-    //wordCountArr: Seq[Int],
-    optFormalTest: FlareCpuFormalTest,
-    pipeName: String,
-    linkArr: Option[ArrayBuffer[Link]]=None,
-  ) = (
-    PipeMemRmwConfig(
-      wordType=FlareCpuRegFileInfo.wordType(params=params),
-      wordCountArr=(
-        //wordCountArr
-        FlareCpuRegFileInfo.pmRmwWordCountArr
-      ),
-      hazardCmpType=FlareCpuRegFileInfo.hazardCmpType(params=params),
-      modRdPortCnt=FlareCpuRegFileInfo.modRdPortCnt,
-      modStageCnt=FlareCpuRegFileInfo.modStageCnt,
-      pipeName=pipeName,
-      linkArr=linkArr,
-      optModHazardKind=PipeMemRmw.ModHazardKind.Fwd
-    )
-  )
-  def mkRegFileModType(
-    params: FlareCpuParams,
-    //wordCountArr: Seq[Int],
-    pmRmwCfg: PipeMemRmwConfig[
-      UInt,
-      Bool,
-    ],
-    optFormalTest: FlareCpuFormalTest,
-    //pipeName: String,
-    //linkArr: Option[ArrayBuffer[Link]]=None,
-  ) = (
-    FlareCpuPipeMemModType(
-      params=params,
-      pmRmwCfg=pmRmwCfg,
-      //mkRegFilePmRmwCfg(
-      //  params=params,
-      //  wordCountArr=wordCountArr,
-      //  optFormalTest=optFormalTest,
-      //  pipeName=pipeName,
-      //  linkArr=linkArr,
-      //),
-      ////wordType=params.regWordType(),
-      //wordCountMax=params.sprFileEvenWordCount,
-      ////hazardCmpType=params.regFileHazardCmpType(),
-      ////modRdPortCnt=params.regFileModRdPortCnt,
-      ////modStageCnt=params.regFileModStageCnt,
-      ////optModHazardKind=params.regFileOptModHazardKind,
-      modExtType=FlareCpuPipeMemModExtType(
-        params=params,
-        optFormalTest=optFormalTest,
-      ),
-      optFormalTest=optFormalTest,
-    )
-  )
+  //def mkRegFilePmRmwCfg(
+  //  params: FlareCpuConfig,
+  //  //wordCountArr: Seq[Int],
+  //  optFormalTest: FlareCpuFormalTest,
+  //  pipeName: String,
+  //  linkArr: Option[ArrayBuffer[Link]]=None,
+  //) = (
+  //  PipeMemRmwConfig(
+  //    wordType=FlareCpuRegFileInfo.wordType(params=params),
+  //    wordCountArr=(
+  //      //wordCountArr
+  //      FlareCpuRegFileInfo.pmRmwWordCountArr
+  //    ),
+  //    hazardCmpType=FlareCpuRegFileInfo.hazardCmpType(params=params),
+  //    modRdPortCnt=FlareCpuRegFileInfo.modRdPortCnt,
+  //    modStageCnt=FlareCpuRegFileInfo.modStageCnt,
+  //    pipeName=pipeName,
+  //    linkArr=linkArr,
+  //    optModHazardKind=PipeMemRmw.ModHazardKind.Fwd
+  //  )
+  //)
+  //def mkRegFileModType(
+  //  params: FlareCpuConfig,
+  //  //wordCountArr: Seq[Int],
+  //  pmRmwCfg: PipeMemRmwConfig[
+  //    UInt,
+  //    Bool,
+  //  ],
+  //  optFormalTest: FlareCpuFormalTest,
+  //  //pipeName: String,
+  //  //linkArr: Option[ArrayBuffer[Link]]=None,
+  //) = (
+  //  FlareCpuPipeMemModType(
+  //    params=params,
+  //    pmRmwCfg=pmRmwCfg,
+  //    //mkRegFilePmRmwCfg(
+  //    //  params=params,
+  //    //  wordCountArr=wordCountArr,
+  //    //  optFormalTest=optFormalTest,
+  //    //  pipeName=pipeName,
+  //    //  linkArr=linkArr,
+  //    //),
+  //    ////wordType=params.regWordType(),
+  //    //wordCountMax=params.sprFileEvenWordCount,
+  //    ////hazardCmpType=params.regFileHazardCmpType(),
+  //    ////modRdPortCnt=params.regFileModRdPortCnt,
+  //    ////modStageCnt=params.regFileModStageCnt,
+  //    ////optModHazardKind=params.regFileOptModHazardKind,
+  //    modExtType=FlareCpuPipeMemModExtType(
+  //      params=params,
+  //      optFormalTest=optFormalTest,
+  //    ),
+  //    optFormalTest=optFormalTest,
+  //  )
+  //)
   //--------
   //def enumFormalTestNone: FlareCpuFormalTest = (
   //  FlareCpuFormalTest.Dont
@@ -318,18 +318,18 @@ object FlareCpuParams {
   //--------
 }
 
-case class FlareCpuParams(
+case class FlareCpuConfig(
   //optIncludeSimd: Boolean=false,
   //optIncludeFpu: Boolean=false,
-  icacheNumLinesPow: Int=FlareCpuCacheParams.defaultNumLinesPow,
+  icacheNumLinesPow: Int=FlareCpuCacheConfig.defaultNumLinesPow,
   icacheNumBytesPerLinePow: Int=(
-    FlareCpuCacheParams.defaultNumBytesPerLinePow
+    FlareCpuCacheConfig.defaultNumBytesPerLinePow
   ),
   icacheRamStyle: String="block",
   icacheRamRwAddrCollision: String="",
-  dcacheNumLinesPow: Int=FlareCpuCacheParams.defaultNumLinesPow,
+  dcacheNumLinesPow: Int=FlareCpuCacheConfig.defaultNumLinesPow,
   dcacheNumBytesPerLinePow: Int=(
-    FlareCpuCacheParams.defaultNumBytesPerLinePow
+    FlareCpuCacheConfig.defaultNumBytesPerLinePow
   ),
   dcacheRamStyle: String="block",
   dcacheRamRwAddrCollision: String="",
@@ -406,16 +406,16 @@ case class FlareCpuParams(
   //def instrEncG1G5G6Simm5Width = 5
   //def instrEncG3Simm9Width = 9
   //--------
-  val rawElemNumBytesPow8 = FlareCpuCacheParams.rawElemNumBytesPow8
-  val rawElemNumBytesPow16 = FlareCpuCacheParams.rawElemNumBytesPow16
-  val rawElemNumBytesPow32 = FlareCpuCacheParams.rawElemNumBytesPow32
-  val rawElemNumBytesPow64 = FlareCpuCacheParams.rawElemNumBytesPow64
+  val rawElemNumBytesPow8 = FlareCpuCacheConfig.rawElemNumBytesPow8
+  val rawElemNumBytesPow16 = FlareCpuCacheConfig.rawElemNumBytesPow16
+  val rawElemNumBytesPow32 = FlareCpuCacheConfig.rawElemNumBytesPow32
+  val rawElemNumBytesPow64 = FlareCpuCacheConfig.rawElemNumBytesPow64
 
   def elemNumBytesPow(
     rawElemNumBytesPow: (Int, Int)
-  ) = FlareCpuCacheParams.elemNumBytesPow(rawElemNumBytesPow)
+  ) = FlareCpuCacheConfig.elemNumBytesPow(rawElemNumBytesPow)
   //--------
-  def icacheParams = FlareCpuCacheParams(
+  def icacheParams = FlareCpuCacheConfig(
     mainWidth=mainWidth,
     lineElemNumBytes=(instrMainWidth / 8),
     numLinesPow=icacheNumLinesPow,
@@ -451,7 +451,7 @@ case class FlareCpuParams(
   //  / (instrMainWidth / 8).toInt
   //)
   //--------
-  def dcacheParams = FlareCpuCacheParams(
+  def dcacheParams = FlareCpuCacheConfig(
     mainWidth=mainWidth,
     lineElemNumBytes=(mainWidth / 8),
     numLinesPow=dcacheNumLinesPow,

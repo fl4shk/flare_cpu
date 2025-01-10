@@ -23,7 +23,7 @@ import libcheesevoyage.math.LongDivMultiCycle
 import libcheesevoyage.formal.LcvFormal
 
 //case class FlareCpuFormalTestIoIbusIo(
-//  params: FlareCpuParams,
+//  cfg: FlareCpuConfig,
 //) extends Bundle {
 //}
 //object FlareCpuFormal {
@@ -65,165 +65,56 @@ object FlareCpuFormal {
   //  }
   //}
   //def delayStopAnyseq(
-  //  params: FlareCpuParams,
+  //  cfg: FlareCpuConfig,
   //  signal: UInt,
   //  resetValue: Int,
   //) = {
   //  delayStopAnyseq[
   //    UInt
   //  ](
-  //    params=params,
+  //    cfg=cfg,
   //    signal=signal,
   //    resetValue=resetValue
   //  )
   //}
 }
-//case class FlareCpuFormalTestIoIbus(
-//  params: FlareCpuParams,
+//case class FlareCpuFormalTestMain(
+//  cfg: FlareCpuConfig,
 //) extends Component {
-//  //assert(params.optFormalTest == FlareCpuParams.enumFormalTestMain)
-//  //--------
-//  val io = FlareCpuIo(
-//    params=params,
-//    haveDbus=false,
-//  )
-//  //--------
-//  def optFormalTestNoJumps = true
-//  def optFormalTest = FlareCpuParams.enumFormalTestMain
-//  //--------
-//  val linkArr = PipeHelper.mkLinkArr()
-//  //--------
-//  val pIf = Payload(FlareCpuPipeMemModExtType(
-//    params=params,
-//    optFormalTest=optFormalTest,
-//  ))
-//  val cIf = CtrlLink(
-//    up=Node(),
-//    down=Node(),
-//  )
-//  linkArr += cIf
-//
-//  val sIf = StageLink(
-//    up=cIf.down,
-//    down=Node(),
-//  )
-//  linkArr += sIf
-//  //--------
-//  //val pId = Payload(FlareCpuPipeMemModExtType(params=params))
-//  //val pId = Payload(FlareCpuPipeMemModExtType(
-//  //  params=params,
-//  //  optFormalTest=optFormalTest,
-//  //))
-//  val cId = CtrlLink(
-//    up=sIf.down,
-//    down=Node(),
-//  )
-//  linkArr += cId
-//  val sId = StageLink(
-//    up=cId.down,
-//    down=Node(),
-//  )
-//  linkArr += sId
-//  //--------
-//  val psExSetPc = Flow(
-//    UInt(params.mainWidth bits)
-//    //FlareCpuPsExSetPcPayload(
-//    //  params=params,
-//    //  optFormalTest=optFormalTest,
-//    //)
-//  )
-//  if (optFormalTestNoJumps) {
-//    psExSetPc := (
-//      RegNext(psExSetPc)
-//      init(psExSetPc.getZero)
-//    )
-//  } else { // if (!optFormalTestNoJumps)
-//    anyseq(psExSetPc)
-//  }
-//  //when (
-//  //  psExSetPc.fire
-//  //) {
-//  //  assert(
-//  //    
-//  //  )
-//  //}
-//  val psIdHaltIt = Bool()
-//  psIdHaltIt := False
-//  cIf.up.valid := True
-//  val cIfArea = FlareCpuPipeStageIf(
-//    params=params,
-//    cIf=cIf,
-//    pIf=pIf,
-//    io=io,
-//    psIdHaltIt=psIdHaltIt,
-//    psExSetPc=psExSetPc,
-//    optFormalTestNoJumps=optFormalTestNoJumps,
-//    optFormalTest=optFormalTest,
-//  ).setName("cIfArea")
-//  val cIdArea = FlareCpuPipeStageId(
-//    params=params,
-//    cId=cId,
-//    pIf=pIf,
-//    //pId=pId,
-//    //pId=pId,
-//    io=io,
-//    regFile=None,
-//    psIdHaltIt=psIdHaltIt,
-//    psExSetPc=psExSetPc,
-//    optFormalTest=optFormalTest,
-//  ).setName("cIdArea")
-//  //val rSIdDownReadyCnt = Reg(UInt(8 bits)) init(0x0)
-//  //if (params.formal) {
-//  //  //anyseq(sId.down.valid)
-//  //  //when (rSIdDownReadyCnt < 32) {
-//  //  //  anyseq(sId.down.ready)
-//  //  //  rSIdDownReadyCnt
-//  //  //} otherwise {
-//  //  //}
-//  //  //anyseq(sId.down.cancel)
-//  //}
-//  anyseq(sId.down.ready)
-//  //val rSIdDownReadyDelayStopAnyseq = (params.formal) generate (
-//  //  FlareCpuFormal.delayStopAnyseq(
-//  //    signal=sId.down.ready,
-//  //    reset=True,
-//  //    delay=8,
-//  //  )
-//  //)
-//  //--------
-//  Builder(linkArr.toSeq)
-//  //--------
 //}
-//object FlareCpuFormalTestIoIbus extends App {
-//  //val params = new FlareCpuParams(
-//  //  optFormalTest=FlareCpuParams.enumFormalTestMain
+//object FlareCpuFormalTestMain extends App {
+//  //val cfg = new FlareCpuConfig(
+//  //  optFormalTest=FlareCpuConfig.enumFormalTestMain
 //  //)
-//  val params = FlareCpuParams()
-//  case class FlareCpuTesterIoIbus() extends Component {
-//    val dut = FormalDut(FlareCpuFormalTestIoIbus(params=params))
+//  val cfg = FlareCpuConfig()
+//  case class FlareCpuTesterMain() extends Component {
+//    val dut = FormalDut(FlareCpu(
+//      cfg=cfg,
+//      optFormalTest=FlareCpuFormalTest.Main,
+//    ))
 //
-//    val ibus = dut.io.ibus
-//    anyseq(ibus.ready)
-//    anyseq(ibus.devData)
-//    //assumeInitial(
-//    //  ClockDomain.isResetActive
-//    //)
-//    //when (pastValid) {
-//    //  assume(!ClockDomain.isResetActive)
-//    //}
-//    //
-//    ////val rDidReset = RegNextWhen()
-//    ////assumeInitial(!rDidReset)
-//    //when (RegNext(ClockDomain.isResetActive)) {
-//    //  assume(!ClockDomain.isResetActive)
-//    //}
-//    ////when (ClockDomain.isResetActive) {
-//    ////  assume(
-//    ////    RegNext(Clo
-//    ////  )
+//    //val ibus = dut.io.ibus
+//    //anyseq(ibus.ready)
+//    //anyseq(ibus.devData)
+//    ////assumeInitial(
+//    ////  ClockDomain.isResetActive
+//    ////)
+//    ////when (pastValid) {
+//    ////  assume(!ClockDomain.isResetActive)
 //    ////}
-//    ////ClockDomain.isResetActive := RegNext(False) init(True)
-//    assumeInitial(ClockDomain.current.isResetActive)
+//    ////
+//    //////val rDidReset = RegNextWhen()
+//    //////assumeInitial(!rDidReset)
+//    ////when (RegNext(ClockDomain.isResetActive)) {
+//    ////  assume(!ClockDomain.isResetActive)
+//    ////}
+//    //////when (ClockDomain.isResetActive) {
+//    //////  assume(
+//    //////    RegNext(Clo
+//    //////  )
+//    //////}
+//    //////ClockDomain.isResetActive := RegNext(False) init(True)
+//    //assumeInitial(ClockDomain.current.isResetActive)
 //  }
 //  new SpinalFormalConfig(
 //    //.withConfig(config=SpinalConfig(
@@ -242,68 +133,8 @@ object FlareCpuFormal {
 //    .withProve(10)
 //    .doVerify({
 //      //val dut=FormalDut(FlareCpuFormalTestIoIbus(
-//      //  params=params,
+//      //  cfg=cfg,
 //      //))
-//      FlareCpuTesterIoIbus()
+//      FlareCpuTesterMain()
 //    })
 //}
-case class FlareCpuFormalTestMain(
-  params: FlareCpuParams,
-) extends Component {
-}
-object FlareCpuFormalTestMain extends App {
-  //val params = new FlareCpuParams(
-  //  optFormalTest=FlareCpuParams.enumFormalTestMain
-  //)
-  val params = FlareCpuParams()
-  case class FlareCpuTesterMain() extends Component {
-    val dut = FormalDut(FlareCpu(
-      params=params,
-      optFormalTest=FlareCpuFormalTest.Main,
-    ))
-
-    //val ibus = dut.io.ibus
-    //anyseq(ibus.ready)
-    //anyseq(ibus.devData)
-    ////assumeInitial(
-    ////  ClockDomain.isResetActive
-    ////)
-    ////when (pastValid) {
-    ////  assume(!ClockDomain.isResetActive)
-    ////}
-    ////
-    //////val rDidReset = RegNextWhen()
-    //////assumeInitial(!rDidReset)
-    ////when (RegNext(ClockDomain.isResetActive)) {
-    ////  assume(!ClockDomain.isResetActive)
-    ////}
-    //////when (ClockDomain.isResetActive) {
-    //////  assume(
-    //////    RegNext(Clo
-    //////  )
-    //////}
-    //////ClockDomain.isResetActive := RegNext(False) init(True)
-    //assumeInitial(ClockDomain.current.isResetActive)
-  }
-  new SpinalFormalConfig(
-    //.withConfig(config=SpinalConfig(
-    //),
-      _spinalConfig=SpinalConfig(
-        defaultConfigForClockDomains=ClockDomainConfig(
-          resetActiveLevel=HIGH,
-          resetKind=SYNC,
-        ),
-        formalAsserts=true,
-      ),
-      _keepDebugInfo=true
-    )
-    //.withBMC(10)
-    .withCover(10)
-    .withProve(10)
-    .doVerify({
-      //val dut=FormalDut(FlareCpuFormalTestIoIbus(
-      //  params=params,
-      //))
-      FlareCpuTesterMain()
-    })
-}

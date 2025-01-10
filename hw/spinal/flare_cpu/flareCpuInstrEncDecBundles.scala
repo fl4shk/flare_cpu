@@ -108,30 +108,30 @@ object FlareCpuInstrEncConst {
   //--------
 }
 case class FlareCpuInstrG0EncPre(
-  params: FlareCpuParams,
+  cfg: FlareCpuConfig,
 ) extends Bundle {
   //--------
-  val simm = UInt(params.preWidth bits)
+  val simm = UInt(cfg.preWidth bits)
   val subgrp = UInt(FlareCpuInstrEncConst.g0PreSubgrpWidth bits)
   val grp = UInt(FlareCpuInstrEncConst.g0GrpWidth bits)
   def fullgrp = Cat(grp, subgrp)
 }
 case class FlareCpuInstrG0EncLpreHi(
-  params: FlareCpuParams
+  cfg: FlareCpuConfig
 ) extends Bundle {
   //val simm = UInt(lpreWidth bits)
   //--------
-  val simmHi = UInt((params.lpreWidth - params.instrMainWidth) bits)
+  val simmHi = UInt((cfg.lpreWidth - cfg.instrMainWidth) bits)
   val subgrp = UInt(FlareCpuInstrEncConst.g0LpreSubgrpWidth bits)
   val grp = UInt(FlareCpuInstrEncConst.g0GrpWidth bits)
   def fullgrp = Cat(grp, subgrp)
 }
 case class FlareCpuInstrG0EncAtomic(
-  params: FlareCpuParams
+  cfg: FlareCpuConfig
 ) extends Bundle {
   //--------
-  val raIdx = UInt(params.numGprsSprsPow bits)
-  val rbIdx = UInt(params.numGprsSprsPow bits)
+  val raIdx = UInt(cfg.numGprsSprsPow bits)
+  val rbIdx = UInt(cfg.numGprsSprsPow bits)
   val l = Bool()
   val subgrp = UInt(FlareCpuInstrEncConst.g0AtomicSubgrpWidth bits)
   val grp = UInt(FlareCpuInstrEncConst.g0GrpWidth bits)
@@ -159,13 +159,13 @@ object FlareCpuInstrG1EncOp extends SpinalEnum(
     = newElement();
 }
 case class FlareCpuInstrG1Enc(
-  params: FlareCpuParams,
+  cfg: FlareCpuConfig,
 ) extends Bundle {
   //--------
-  val raIdx = UInt(params.numGprsSprsPow bits)
+  val raIdx = UInt(cfg.numGprsSprsPow bits)
   val op = FlareCpuInstrG1EncOp()
   // immediate or signed immediate, depending on the opcode
-  val imm = UInt(params.g1g7ImmWidth bits) 
+  val imm = UInt(cfg.g1g7ImmWidth bits) 
   val grp = UInt(FlareCpuInstrEncConst.g1GrpWidth bits)
 }
 object FlareCpuInstrG2EncOp extends SpinalEnum(
@@ -191,10 +191,10 @@ object FlareCpuInstrG2EncOp extends SpinalEnum(
     = newElement();
 }
 case class FlareCpuInstrG2Enc(
-  params: FlareCpuParams,
+  cfg: FlareCpuConfig,
 ) extends Bundle {
-  val raIdx = UInt(params.numGprsSprsPow bits)
-  val rbIdx = UInt(params.numGprsSprsPow bits)
+  val raIdx = UInt(cfg.numGprsSprsPow bits)
+  val rbIdx = UInt(cfg.numGprsSprsPow bits)
   val op = FlareCpuInstrG2EncOp()
   val f = Bool()
   val grp = UInt(FlareCpuInstrEncConst.g2GrpWidth bits)
@@ -222,10 +222,10 @@ object FlareCpuInstrG3EncOp extends SpinalEnum(
     = newElement();
 }
 case class FlareCpuInstrG3Enc(
-  params: FlareCpuParams,
+  cfg: FlareCpuConfig,
 ) extends Bundle {
   val op = FlareCpuInstrG3EncOp()
-  val simm = SInt(params.g3ImmWidth bits)
+  val simm = SInt(cfg.g3ImmWidth bits)
   val grp = UInt(FlareCpuInstrEncConst.g3GrpWidth bits)
 }
 
@@ -279,45 +279,45 @@ object FlareCpuInstrG4EncOp extends SpinalEnum(
     = newElement();
 }
 case class FlareCpuInstrG4Enc(
-  params: FlareCpuParams,
+  cfg: FlareCpuConfig,
 ) extends Bundle {
-  val raIdx = UInt(params.numGprsSprsPow bits)
-  val rbIdx = UInt(params.numGprsSprsPow bits)
+  val raIdx = UInt(cfg.numGprsSprsPow bits)
+  val rbIdx = UInt(cfg.numGprsSprsPow bits)
   val op = FlareCpuInstrG4EncOp()
   val grp = UInt(FlareCpuInstrEncConst.g4GrpWidth bits)
 }
 case class FlareCpuInstrG5Sg0Enc(
-  params: FlareCpuParams,
+  cfg: FlareCpuConfig,
 ) extends Bundle {
-  //val simm = SInt(params.g1g7ImmWidth bits)
-  //val rbIdx = UInt(params.numGprsSprsPow bits)
-  //val raIdx = UInt(params.numGprsSprsPow bits)
-  val raIdx = UInt(params.numGprsSprsPow bits)
-  val rbIdx = UInt(params.numGprsSprsPow bits)
+  //val simm = SInt(cfg.g1g7ImmWidth bits)
+  //val rbIdx = UInt(cfg.numGprsSprsPow bits)
+  //val raIdx = UInt(cfg.numGprsSprsPow bits)
+  val raIdx = UInt(cfg.numGprsSprsPow bits)
+  val rbIdx = UInt(cfg.numGprsSprsPow bits)
   val reserved = UInt(FlareCpuInstrEncConst.g5Sg0ReservedWidth bits)
   val subgrp = UInt(FlareCpuInstrEncConst.g5Sg0SubgrpWidth bits)
   val grp = UInt(FlareCpuInstrEncConst.g5GrpWidth bits)
   def fullgrp = Cat(grp, subgrp)
 }
 case class FlareCpuInstrG5Sg1Enc(
-  params: FlareCpuParams,
+  cfg: FlareCpuConfig,
 ) extends Bundle {
-  //val simm = SInt(params.g1g7ImmWidth bits)
-  //val rbIdx = UInt(params.numGprsSprsPow bits)
-  //val raIdx = UInt(params.numGprsSprsPow bits)
-  val raIdx = UInt(params.numGprsSprsPow bits)
-  val simm = UInt(params.g5ImmWidth bits)
+  //val simm = SInt(cfg.g1g7ImmWidth bits)
+  //val rbIdx = UInt(cfg.numGprsSprsPow bits)
+  //val raIdx = UInt(cfg.numGprsSprsPow bits)
+  val raIdx = UInt(cfg.numGprsSprsPow bits)
+  val simm = UInt(cfg.g5ImmWidth bits)
   val subgrp = UInt(FlareCpuInstrEncConst.g5Sg1SubgrpWidth bits)
   val grp = UInt(FlareCpuInstrEncConst.g5GrpWidth bits)
   def fullgrp = Cat(grp, subgrp)
 }
 //case class FlareCpuInstrG6Enc(
-//  params: FlareCpuParams,
+//  cfg: FlareCpuParams,
 //) extends Bundle {
 //  val grp = UInt(FlareCpuInstrEncConst.g6GrpWidth bits)
-//  val simm = SInt(params.nonG3ImmWidth bits)
-//  val rbIdx = UInt(params.numGprsSprsPow bits)
-//  val raIdx = UInt(params.numGprsSprsPow bits)
+//  val simm = SInt(cfg.nonG3ImmWidth bits)
+//  val rbIdx = UInt(cfg.numGprsSprsPow bits)
+//  val raIdx = UInt(cfg.numGprsSprsPow bits)
 //}
 // this includes the `w` bit (since it's contiguous with the opcode field)
 object FlareCpuInstrG7Sg00FullOpEnc extends SpinalEnum(
@@ -335,11 +335,11 @@ object FlareCpuInstrG7Sg00FullOpEnc extends SpinalEnum(
     = newElement();
 }
 case class FlareCpuInstrG7Sg00Enc(
-  params: FlareCpuParams,
+  cfg: FlareCpuConfig,
 ) extends Bundle {
   //--------
-  val raIdx = UInt(params.numGprsSprsPow bits)
-  val rbIdx = UInt(params.numGprsSprsPow bits)
+  val raIdx = UInt(cfg.numGprsSprsPow bits)
+  val rbIdx = UInt(cfg.numGprsSprsPow bits)
   val op = FlareCpuInstrG7Sg00FullOpEnc()
   def w = op.asBits.msb
   val subgrp = UInt(FlareCpuInstrEncConst.g7Sg00SubgrpWidth bits)
@@ -357,11 +357,11 @@ object FlareCpuInstrG7Sg010EncOp extends SpinalEnum(
     = newElement();
 }
 case class FlareCpuInstrG7Sg010Enc(
-  params: FlareCpuParams,
+  cfg: FlareCpuConfig,
 ) extends Bundle {
   //--------
-  val raIdx = UInt(params.numGprsSprsPow bits)
-  val rbIdx = UInt(params.numGprsSprsPow bits)
+  val raIdx = UInt(cfg.numGprsSprsPow bits)
+  val rbIdx = UInt(cfg.numGprsSprsPow bits)
   val op = FlareCpuInstrG7Sg010EncOp()
   val subgrp = UInt(FlareCpuInstrEncConst.g7Sg010SubgrpWidth bits)
   val grp = UInt(FlareCpuInstrEncConst.g7GrpWidth bits)
@@ -369,21 +369,21 @@ case class FlareCpuInstrG7Sg010Enc(
 }
 
 case class FlareCpuInstrG7Sg0110Enc(
-  params: FlareCpuParams,
+  cfg: FlareCpuConfig,
 ) extends Bundle {
   //--------
-  val raIdx = UInt(params.numGprsSprsPow bits)
-  val imm = UInt(params.g1g7ImmWidth bits) 
+  val raIdx = UInt(cfg.numGprsSprsPow bits)
+  val imm = UInt(cfg.g1g7ImmWidth bits) 
   val subgrp = UInt(FlareCpuInstrEncConst.g7Sg0110SubgrpWidth bits)
   val grp = UInt(FlareCpuInstrEncConst.g7GrpWidth bits)
   def fullgrp = Cat(grp, subgrp)
 }
 
 case class FlareCpuInstrG7Sg01110Enc(
-  params: FlareCpuParams,
+  cfg: FlareCpuConfig,
 ) extends Bundle {
   //--------
-  val blank = UInt(params.g7Sg01110BlankWidth bits)
+  val blank = UInt(cfg.g7Sg01110BlankWidth bits)
   val subgrp = UInt(FlareCpuInstrEncConst.g7Sg01110SubgrpWidth bits)
   val grp = UInt(FlareCpuInstrEncConst.g7GrpWidth bits)
   def fullgrp = Cat(grp, subgrp)
@@ -412,23 +412,23 @@ object FlareCpuInstrFullgrpDec extends SpinalEnum(
     = newElement();
 }
 case class FlareCpuInstrEnc(
-  params: FlareCpuParams,
+  cfg: FlareCpuConfig,
 ) extends Bundle {
-  val g0Pre = FlareCpuInstrG0EncPre(params=params)
-  val g0LpreHi = FlareCpuInstrG0EncLpreHi(params=params)
-  val g0LpreLo = UInt(params.instrMainWidth bits)
-  val g0Atomic = FlareCpuInstrG0EncAtomic(params=params)
-  val g1 = FlareCpuInstrG1Enc(params=params)
-  val g2 = FlareCpuInstrG2Enc(params=params)
-  val g3 = FlareCpuInstrG3Enc(params=params)
-  val g4 = FlareCpuInstrG4Enc(params=params)
-  val g5Sg0 = FlareCpuInstrG5Sg0Enc(params=params)
-  val g5Sg1 = FlareCpuInstrG5Sg1Enc(params=params)
-  //val g6 = FlareCpuInstrG6Enc(params=params)
-  val g7Sg00 = FlareCpuInstrG7Sg00Enc(params=params)
-  val g7Sg010 = FlareCpuInstrG7Sg010Enc(params=params)
-  val g7Sg0110 = FlareCpuInstrG7Sg0110Enc(params=params)
-  val g7Sg01110 = FlareCpuInstrG7Sg01110Enc(params=params)
+  val g0Pre = FlareCpuInstrG0EncPre(cfg=cfg)
+  val g0LpreHi = FlareCpuInstrG0EncLpreHi(cfg=cfg)
+  val g0LpreLo = UInt(cfg.instrMainWidth bits)
+  val g0Atomic = FlareCpuInstrG0EncAtomic(cfg=cfg)
+  val g1 = FlareCpuInstrG1Enc(cfg=cfg)
+  val g2 = FlareCpuInstrG2Enc(cfg=cfg)
+  val g3 = FlareCpuInstrG3Enc(cfg=cfg)
+  val g4 = FlareCpuInstrG4Enc(cfg=cfg)
+  val g5Sg0 = FlareCpuInstrG5Sg0Enc(cfg=cfg)
+  val g5Sg1 = FlareCpuInstrG5Sg1Enc(cfg=cfg)
+  //val g6 = FlareCpuInstrG6Enc(cfg=cfg)
+  val g7Sg00 = FlareCpuInstrG7Sg00Enc(cfg=cfg)
+  val g7Sg010 = FlareCpuInstrG7Sg010Enc(cfg=cfg)
+  val g7Sg0110 = FlareCpuInstrG7Sg0110Enc(cfg=cfg)
+  val g7Sg01110 = FlareCpuInstrG7Sg01110Enc(cfg=cfg)
 }
 object FlareCpuInstrDecOp
 extends SpinalEnum(defaultEncoding=binarySequential) {
@@ -613,7 +613,7 @@ object FlareCpuSprSelect extends SpinalEnum(
 }
 
 case class FlareCpuDecodeTemp(
-  params: FlareCpuParams,
+  cfg: FlareCpuConfig,
 ) extends Bundle {
   val indexRaRbValid = Bool()
   val indexRaSimmValid = Bool()
@@ -622,19 +622,19 @@ case class FlareCpuDecodeTemp(
   val lpreValid = Bool()
 }
 case class FlareCpuInstrDecEtc(
-  params: FlareCpuParams,
+  cfg: FlareCpuConfig,
 ) extends Bundle {
   //--------
   //val bubble = Bool()
   val isInvalid = Bool()
   val haveFullInstr = Bool()
   val fullgrp = FlareCpuInstrFullgrpDec()
-  val fullSimm = UInt(params.mainWidth bits)
-  val fullImm = UInt(params.mainWidth bits)
-  val fullPcrelSimm = UInt(params.mainWidth bits)
-  //val indexRa = UInt(params.mainWidth bits)
-  //val indexRb = UInt(params.mainWidth bits)
-  //val indexSum = UInt(params.mainWidth bits)
+  val fullSimm = UInt(cfg.mainWidth bits)
+  val fullImm = UInt(cfg.mainWidth bits)
+  val fullPcrelSimm = UInt(cfg.mainWidth bits)
+  //val indexRa = UInt(cfg.mainWidth bits)
+  //val indexRb = UInt(cfg.mainWidth bits)
+  //val indexSum = UInt(cfg.mainWidth bits)
   val fwl = Bool()
   val decOp = FlareCpuInstrDecOp()
 
@@ -652,43 +652,43 @@ case class FlareCpuInstrDecEtc(
   val sprSbSel = FlareCpuSprSelect()
   //--------
   val wrGprEvenNonFpRaIdx = Bool()
-  val gprEvenNonFpRaIdx = Flow(UInt(params.numGprsSprsPow bits))
-  val gprEvenNonFpRbIdx = Flow(UInt(params.numGprsSprsPow bits))
+  val gprEvenNonFpRaIdx = Flow(UInt(cfg.numGprsSprsPow bits))
+  val gprEvenNonFpRbIdx = Flow(UInt(cfg.numGprsSprsPow bits))
   //--------
   val wrGprFpRaIdx = Bool()
-  val gprFpRaIdx = Flow(UInt(params.numGprsSprsPow bits))
-  val gprFpRbIdx = Flow(UInt(params.numGprsSprsPow bits))
+  val gprFpRaIdx = Flow(UInt(cfg.numGprsSprsPow bits))
+  val gprFpRbIdx = Flow(UInt(cfg.numGprsSprsPow bits))
   //--------
   val wrGprOddNonSpRaIdx = Bool()
-  val gprOddNonSpRaIdx = Flow(UInt(params.numGprsSprsPow bits))
-  val gprOddNonSpRbIdx = Flow(UInt(params.numGprsSprsPow bits))
+  val gprOddNonSpRaIdx = Flow(UInt(cfg.numGprsSprsPow bits))
+  val gprOddNonSpRbIdx = Flow(UInt(cfg.numGprsSprsPow bits))
   //--------
   //val haveGprOddNonSpRaIdx = Bool()
   //val haveGprOddNonSpRbIdx = Bool()
   val wrGprSpRaIdx = Bool()
-  val gprSpRaIdx = Flow(UInt(params.numGprsSprsPow bits))
-  val gprSpRbIdx = Flow(UInt(params.numGprsSprsPow bits))
+  val gprSpRaIdx = Flow(UInt(cfg.numGprsSprsPow bits))
+  val gprSpRbIdx = Flow(UInt(cfg.numGprsSprsPow bits))
   //--------
   val wrSprEvenSaIdx = Bool()
-  val sprEvenSaIdx = Flow(UInt(params.numGprsSprsPow bits))
-  val sprEvenSbIdx = Flow(UInt(params.numGprsSprsPow bits))
+  val sprEvenSaIdx = Flow(UInt(cfg.numGprsSprsPow bits))
+  val sprEvenSbIdx = Flow(UInt(cfg.numGprsSprsPow bits))
   //--------
   val wrSprOddSaIdx = Bool()
-  val sprOddSaIdx = Flow(UInt(params.numGprsSprsPow bits))
-  val sprOddSbIdx = Flow(UInt(params.numGprsSprsPow bits))
+  val sprOddSaIdx = Flow(UInt(cfg.numGprsSprsPow bits))
+  val sprOddSbIdx = Flow(UInt(cfg.numGprsSprsPow bits))
   //--------
 
-  val raIdx = /*Flow*/(UInt(params.numGprsSprsPow bits))
-  val rbIdx = /*Flow*/(UInt(params.numGprsSprsPow bits))
-  val indexRaIdx = UInt(params.numGprsSprsPow bits)
-  val indexRbIdx = UInt(params.numGprsSprsPow bits)
-  val decodeTemp = FlareCpuDecodeTemp(params=params)
-  //val saIdx = /*Flow*/(UInt(params.numGprsSprsPow bits))
-  //val sbIdx = /*Flow*/(UInt(params.numGprsSprsPow bits))
+  val raIdx = /*Flow*/(UInt(cfg.numGprsSprsPow bits))
+  val rbIdx = /*Flow*/(UInt(cfg.numGprsSprsPow bits))
+  val indexRaIdx = UInt(cfg.numGprsSprsPow bits)
+  val indexRbIdx = UInt(cfg.numGprsSprsPow bits)
+  val decodeTemp = FlareCpuDecodeTemp(cfg=cfg)
+  //val saIdx = /*Flow*/(UInt(cfg.numGprsSprsPow bits))
+  //val sbIdx = /*Flow*/(UInt(cfg.numGprsSprsPow bits))
   //--------
 }
 //case class FlareCpuInstrDecEtc(
-//  params: FlareCpuParams,
+//  cfg: FlareCpuParams,
 //  //decodeIo: FlareCpuPsDecodeIo,
 //  //isDecode: Boolean,
 //) extends Bundle {
@@ -700,9 +700,9 @@ case class FlareCpuInstrDecEtc(
 //  val isInvalid = Bool()
 //  val haveFullInstr = Bool()
 //  val fullgrp = FlareCpuInstrFullgrpDec()
-//  val fullSimm = UInt(params.mainWidth bits)
-//  val fullImm = UInt(params.mainWidth bits)
-//  val fullPcrelSimm = UInt(params.mainWidth bits)
+//  val fullSimm = UInt(cfg.mainWidth bits)
+//  val fullImm = UInt(cfg.mainWidth bits)
+//  val fullPcrelSimm = UInt(cfg.mainWidth bits)
 //
 //  def enumGprRa = 0 
 //  def enumGprRb = 1
@@ -723,54 +723,54 @@ case class FlareCpuInstrDecEtc(
 //  def enumGprRb64Hi = 16
 //  def enumGprRb64Lo = 17
 //
-//  //val nonFwdGprVec = Vec.fill(params.numGprsSprs)(
-//  //  UInt(params.mainWidth bits)
+//  //val nonFwdGprVec = Vec.fill(cfg.numGprsSprs)(
+//  //  UInt(cfg.mainWidth bits)
 //  //)
-//  ////val fwdGprVec = Vec.fill(params.numGprsSprs)(
-//  ////  UInt(params.mainWidth bits)
+//  ////val fwdGprVec = Vec.fill(cfg.numGprsSprs)(
+//  ////  UInt(cfg.mainWidth bits)
 //  ////)
-//  //val nonFwdSprVec = Vec.fill(params.numGprsSprs)(
-//  //  UInt(params.mainWidth bits)
+//  //val nonFwdSprVec = Vec.fill(cfg.numGprsSprs)(
+//  //  UInt(cfg.mainWidth bits)
 //  //)
-//  ////val fwdSprVec = Vec.fill(params.numGprsSprs)(
-//  ////  UInt(params.mainWidth bits)
+//  ////val fwdSprVec = Vec.fill(cfg.numGprsSprs)(
+//  ////  UInt(cfg.mainWidth bits)
 //  ////)
 //
-//  val ra = UInt(params.mainWidth bits)         // `rA`
-//  val rb = UInt(params.mainWidth bits)         // `rB`
-//  val rc = UInt(params.mainWidth bits)         // `rC`
-//  val gprLr = UInt(params.mainWidth bits)      // `lr`
-//  val gprFp = UInt(params.mainWidth bits)      // `fp`
-//  val gprSp = UInt(params.mainWidth bits)      // `sp`
-//  //val rd = UInt(params.mainWidth bits)         // `rD`
-//  val sa = UInt(params.mainWidth bits)         // `sA`
-//  val sb = UInt(params.mainWidth bits)         // `sB`
-//  val sprFlags = UInt(params.mainWidth bits)   // `flags`
-//  val sprIds = UInt(params.mainWidth bits)     // `ids`
-//  val sprIra = UInt(params.mainWidth bits)     // `ira`
-//  val sprIe = UInt(params.mainWidth bits)      // `ie`
-//  val sprIty = UInt(params.mainWidth bits)     // `ity`
-//  val sprSty = UInt(params.mainWidth bits)     // `sty`
+//  val ra = UInt(cfg.mainWidth bits)         // `rA`
+//  val rb = UInt(cfg.mainWidth bits)         // `rB`
+//  val rc = UInt(cfg.mainWidth bits)         // `rC`
+//  val gprLr = UInt(cfg.mainWidth bits)      // `lr`
+//  val gprFp = UInt(cfg.mainWidth bits)      // `fp`
+//  val gprSp = UInt(cfg.mainWidth bits)      // `sp`
+//  //val rd = UInt(cfg.mainWidth bits)         // `rD`
+//  val sa = UInt(cfg.mainWidth bits)         // `sA`
+//  val sb = UInt(cfg.mainWidth bits)         // `sB`
+//  val sprFlags = UInt(cfg.mainWidth bits)   // `flags`
+//  val sprIds = UInt(cfg.mainWidth bits)     // `ids`
+//  val sprIra = UInt(cfg.mainWidth bits)     // `ira`
+//  val sprIe = UInt(cfg.mainWidth bits)      // `ie`
+//  val sprIty = UInt(cfg.mainWidth bits)     // `ity`
+//  val sprSty = UInt(cfg.mainWidth bits)     // `sty`
 //
 //
-//  val raIdx = UInt(params.numGprsSprsPow bits) //
-//  val rbIdx = UInt(params.numGprsSprsPow bits) //
-//  val rcIdx = UInt(params.numGprsSprsPow bits) // 
-//  //val rdIdx = UInt(params.numGprsSprsPow bits) // 
+//  val raIdx = UInt(cfg.numGprsSprsPow bits) //
+//  val rbIdx = UInt(cfg.numGprsSprsPow bits) //
+//  val rcIdx = UInt(cfg.numGprsSprsPow bits) // 
+//  //val rdIdx = UInt(cfg.numGprsSprsPow bits) // 
 //
-//  //val saIdx = UInt(params.numGprsSprsPow bits) //
-//  //val sbIdx = UInt(params.numGprsSprsPow bits) //
+//  //val saIdx = UInt(cfg.numGprsSprsPow bits) //
+//  //val sbIdx = UInt(cfg.numGprsSprsPow bits) //
 //
 //
-//  val ra64Hi = UInt(params.mainWidth bits)     //
-//  val ra64Lo = UInt(params.mainWidth bits)     //
-//  val rb64Hi = UInt(params.mainWidth bits)     //
-//  val rb64Lo = UInt(params.mainWidth bits)     //
+//  val ra64Hi = UInt(cfg.mainWidth bits)     //
+//  val ra64Lo = UInt(cfg.mainWidth bits)     //
+//  val rb64Hi = UInt(cfg.mainWidth bits)     //
+//  val rb64Lo = UInt(cfg.mainWidth bits)     //
 //
-//  //val ra64HiIdx = UInt(params.numGprsSprsPow bits)
-//  //val ra64LoIdx = UInt(params.numGprsSprsPow bits)
-//  //val rb64HiIdx = UInt(params.numGprsSprsPow bits)
-//  //val rb64LoIdx = UInt(params.numGprsSprsPow bits)
+//  //val ra64HiIdx = UInt(cfg.numGprsSprsPow bits)
+//  //val ra64LoIdx = UInt(cfg.numGprsSprsPow bits)
+//  //val rb64HiIdx = UInt(cfg.numGprsSprsPow bits)
+//  //val rb64LoIdx = UInt(cfg.numGprsSprsPow bits)
 //
 //  def ra64HiIdx = Cat(
 //    raIdx(raIdx.high downto 1),
@@ -920,7 +920,7 @@ case class FlareCpuInstrDecEtc(
 //            && mySecond._2.get(isGpr).wrReg.fire
 //            && mySecond._1
 //          )
-//          val fwdVec = Vec(UInt(params.mainWidth bits), 2)
+//          val fwdVec = Vec(UInt(cfg.mainWidth bits), 2)
 //          fwdVec(0) := tempExOutp.wrReg.payload
 //          fwdVec(1) := mySecond._2.get(isGpr).wrReg.payload
 //          val myFindFirst = condVec.sFindFirst(_ === True)
@@ -974,7 +974,7 @@ case class FlareCpuInstrDecEtc(
 //      }
 //    }
 //    //--------
-//    //for (idx <- 0 until params.numGprsSprs) {
+//    //for (idx <- 0 until cfg.numGprsSprs) {
 //    //  fwdGprVec(idx) := doFwdOneReg(
 //    //    decIdx=idx,
 //    //    isGpr=true,
@@ -1153,6 +1153,6 @@ case class FlareCpuInstrDecEtc(
 //    //--------
 //  }
 //  //--------
-//  val instrEnc = FlareCpuInstrEnc(params=params)
+//  val instrEnc = FlareCpuInstrEnc(cfg=cfg)
 //  //--------
 //}

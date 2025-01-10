@@ -58,6 +58,6 @@ lazy val flare_cpu = (project in file("."))
     )
 
 
-  ).dependsOn(libsnowhouse)
+  ).dependsOn(libsnowhouse, libcheesevoyage)
 
 fork := true
