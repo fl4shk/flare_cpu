@@ -1,0 +1,3 @@
+[submodule "submodules/libsnowhouse"]
+	path = submodules/libsnowhouse
+	url = git@github.com:fl4shk/libsnowhouse.git
