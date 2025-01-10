@@ -156,49 +156,40 @@ case class FlareCpuPipeMemModType[
   val modExt = modExtType()
   //--------
   //println(s"FlareCpuPipeMemModType: ${modRdPortCnt}")
-  val myExt = PipeMemRmwPayloadExt(
-    cfg=pmRmwCfg,
-    //wordCount=wordCountMax,
-    wordCount=pmRmwCfg.wordCountMax,
-    //wordType=wordType(),
-    //wordCount=wordCountMax,
-    //hazardCmpType=hazardCmpType(),
-    //modRdPortCnt=modRdPortCnt,
-    //modStageCnt=modStageCnt,
-    //optModHazardKind=optModHazardKind,
-    //optReorder=false,
+  val myExt = Vec.fill(pmRmwCfg.memArrSize)(
+    PipeMemRmwPayloadExt(
+      cfg=pmRmwCfg,
+      //wordCount=wordCountMax,
+      wordCount=pmRmwCfg.wordCountMax,
+      //wordType=wordType(),
+      //wordCount=wordCountMax,
+      //hazardCmpType=hazardCmpType(),
+      //modRdPortCnt=modRdPortCnt,
+      //modStageCnt=modStageCnt,
+      //optModHazardKind=optModHazardKind,
+      //optReorder=false,
+    )
   )
   //--------
   def setPipeMemRmwExt(
-    ext: PipeMemRmwPayloadExt[WordT, HazardCmpT],
+    inpExt: PipeMemRmwPayloadExt[WordT, HazardCmpT],
     ydx: Int,
     memArrIdx: Int,
   ): Unit = {
-    myExt := ext
+    myExt(ydx) := inpExt
   }
   def getPipeMemRmwExt(
-    ext: PipeMemRmwPayloadExt[WordT, HazardCmpT],
+    outpExt: PipeMemRmwPayloadExt[WordT, HazardCmpT],
     ydx: Int,
     memArrIdx: Int,
   ): Unit = {
-    ext := myExt
+    outpExt := myExt(ydx)
   }
   //--------
   val myFwd = (
     optFormalTest != FlareCpuFormalTest.Dont
   ) generate (
-    PipeMemRmwFwd[
-      WordT,
-      HazardCmpT,
-    ](
-      //wordType=PipeMemRmwSimDut.wordType(),
-      //wordCount=PipeMemRmwSimDut.wordCount,
-      //hazardCmpType=PipeMemRmwSimDut.hazardCmpType(),
-      //modRdPortCnt=PipeMemRmwSimDut.modRdPortCnt,
-      //modStageCnt=PipeMemRmwSimDut.modStageCnt,
-      //memArrSize=PipeMemRmwSimDut.memArrSize,
-      //optModHazardKind=PipeMemRmwSimDut.optModHazardKind,
-      //optReorder=PipeMemRmwSimDut.optReorder,
+    PipeMemRmwFwd(
       cfg=pmRmwCfg
     )
   )
@@ -766,62 +757,88 @@ case class FlareCpuPipeStageId(
   //canIrq := True
 
   //val myFrontPayloadGprEven = mkRegFileModType()
-  val myFrontPayloadGprEvenNonFp = mkRegFileModType()
-  val myFrontPayloadGprFp = mkRegFileModType()
-  val myFrontPayloadGprOddNonSp = mkRegFileModType()
-  val myFrontPayloadGprSp = mkRegFileModType()
-  val myFrontPayloadSprEven = mkRegFileModType()
-  val myFrontPayloadSprOdd = mkRegFileModType()
-
-  myFrontPayloadGprEvenNonFp := (
-    RegNext(myFrontPayloadGprEvenNonFp)
-    init(myFrontPayloadGprEvenNonFp.getZero)
+  val myFrontPayload = mkRegFileModType()
+  myFrontPayload := (
+    RegNext(myFrontPayload)
+    init(myFrontPayload.getZero)
   )
-  myFrontPayloadGprFp := (
-    RegNext(myFrontPayloadGprFp)
-    init(myFrontPayloadGprFp.getZero)
+  //val myFrontPayloadGprEvenNonFp = mkRegFileModType()
+  //val myFrontPayloadGprFp = mkRegFileModType()
+  //val myFrontPayloadGprOddNonSp = mkRegFileModType()
+  //val myFrontPayloadGprSp = mkRegFileModType()
+  //val myFrontPayloadSprEven = mkRegFileModType()
+  //val myFrontPayloadSprOdd = mkRegFileModType()
+  def myGprEvenNonFpExt = myFrontPayload.myExt(
+    enumRegFileGprEvenNonFp
   )
-  myFrontPayloadGprOddNonSp := (
-    RegNext(myFrontPayloadGprOddNonSp)
-    init(myFrontPayloadGprOddNonSp.getZero)
+  def myGprFpExt = myFrontPayload.myExt(
+    enumRegFileGprFp
   )
-  myFrontPayloadGprSp := (
-    RegNext(myFrontPayloadGprSp)
-    init(myFrontPayloadGprSp.getZero)
+  def myGprOddNonSpExt = myFrontPayload.myExt(
+    enumRegFileGprOddNonSp
   )
-  myFrontPayloadSprEven := (
-    RegNext(myFrontPayloadSprEven)
-    init(myFrontPayloadSprEven.getZero)
+  def myGprSpExt = myFrontPayload.myExt(
+    enumRegFileGprSp
   )
-  myFrontPayloadSprOdd := (
-    RegNext(myFrontPayloadSprOdd)
-    init(myFrontPayloadSprOdd.getZero)
+  def mySprEvenExt = myFrontPayload.myExt(
+    enumRegFileSprEven
+  )
+  def mySprOddExt = myFrontPayload.myExt(
+    enumRegFileSprOdd
   )
 
-  //regFile match {
-  //  case Some(myRegFile) => {
-  //    up(myRegFile.io.frontPayloadArr(enumRegFileGprEvenNonFp)) := (
-  //      myFrontPayloadGprEvenNonFp
-  //    )
-  //    up(myRegFile.io.frontPayloadArr(enumRegFileGprFp)) := (
-  //      myFrontPayloadGprFp
-  //    )
-  //    up(myRegFile.io.frontPayloadArr(enumRegFileGprOddNonSp)) := (
-  //      myFrontPayloadGprOddNonSp
-  //    )
-  //    up(myRegFile.io.frontPayloadArr(enumRegFileGprSp)) := (
-  //      myFrontPayloadGprSp
-  //    )
-  //    up(myRegFile.io.frontPayloadArr(enumRegFileSprEven)) := (
-  //      myFrontPayloadSprEven
-  //    )
-  //    up(myRegFile.io.frontPayloadArr(enumRegFileSprOdd)) := (
-  //      myFrontPayloadSprOdd
-  //    )
-  //  }
-  //  case None => {
-  //  }
-  //}
+  //myFrontPayloadGprEvenNonFp := (
+  //  RegNext(myFrontPayloadGprEvenNonFp)
+  //  init(myFrontPayloadGprEvenNonFp.getZero)
+  //)
+  //myFrontPayloadGprFp := (
+  //  RegNext(myFrontPayloadGprFp)
+  //  init(myFrontPayloadGprFp.getZero)
+  //)
+  //myFrontPayloadGprOddNonSp := (
+  //  RegNext(myFrontPayloadGprOddNonSp)
+  //  init(myFrontPayloadGprOddNonSp.getZero)
+  //)
+  //myFrontPayloadGprSp := (
+  //  RegNext(myFrontPayloadGprSp)
+  //  init(myFrontPayloadGprSp.getZero)
+  //)
+  //myFrontPayloadSprEven := (
+  //  RegNext(myFrontPayloadSprEven)
+  //  init(myFrontPayloadSprEven.getZero)
+  //)
+  //myFrontPayloadSprOdd := (
+  //  RegNext(myFrontPayloadSprOdd)
+  //  init(myFrontPayloadSprOdd.getZero)
+  //)
+
+  regFile match {
+    case Some(myRegFile) => {
+      up(myRegFile.io.frontPayload) := (
+        myFrontPayload
+      )
+      //up(myRegFile.io.frontPayloadArr(enumRegFileGprEvenNonFp)) := (
+      //  myFrontPayloadGprEvenNonFp
+      //)
+      //up(myRegFile.io.frontPayloadArr(enumRegFileGprFp)) := (
+      //  myFrontPayloadGprFp
+      //)
+      //up(myRegFile.io.frontPayloadArr(enumRegFileGprOddNonSp)) := (
+      //  myFrontPayloadGprOddNonSp
+      //)
+      //up(myRegFile.io.frontPayloadArr(enumRegFileGprSp)) := (
+      //  myFrontPayloadGprSp
+      //)
+      //up(myRegFile.io.frontPayloadArr(enumRegFileSprEven)) := (
+      //  myFrontPayloadSprEven
+      //)
+      //up(myRegFile.io.frontPayloadArr(enumRegFileSprOdd)) := (
+      //  myFrontPayloadSprOdd
+      //)
+    }
+    case None => {
+    }
+  }
   object MultiCycleState
   extends SpinalEnum(defaultEncoding=binarySequential) {
     val
@@ -868,94 +885,95 @@ case class FlareCpuPipeStageId(
 
     //def clearRegsMain(): Unit = {
     //}
+    myFrontPayload.modExt := upModExt
     //--------
     //myFrontPayloadGprEvenNonFp.myExt.modMemWordValid := (
     //  upInstrDecEtc.gprEvenNonFpRaIdx.valid
     //)
-    myFrontPayloadGprEvenNonFp.modExt := upModExt
-    myFrontPayloadGprEvenNonFp.myExt.memAddr(0) := (
+    //myFrontPayloadGprEvenNonFp.modExt := upModExt
+    myGprEvenNonFpExt.memAddr(0) := (
       upInstrDecEtc.gprEvenNonFpRaIdx.payload(
-        myFrontPayloadGprEvenNonFp.myExt.memAddr(0).bitsRange
+        myGprEvenNonFpExt.memAddr(0).bitsRange
       )
     )
-    myFrontPayloadGprEvenNonFp.myExt.memAddr(1) := (
+    myGprEvenNonFpExt.memAddr(1) := (
       upInstrDecEtc.gprEvenNonFpRbIdx.payload(
-        myFrontPayloadGprEvenNonFp.myExt.memAddr(1).bitsRange
+        myGprEvenNonFpExt.memAddr(1).bitsRange
       )
     )
     //--------
-    myFrontPayloadGprFp.modExt := upModExt
-    //myFrontPayloadGprFp.myExt.modMemWordValid := (
-    //  upInstrDecEtc.gprFpRaIdx.valid
-    //)
-    myFrontPayloadGprFp.myExt.memAddr(0) := (
+    //myFrontPayloadGprFp.modExt := upModExt
+    ////myFrontPayloadGprFp.myExt.modMemWordValid := (
+    ////  upInstrDecEtc.gprFpRaIdx.valid
+    ////)
+    myGprFpExt.memAddr(0) := (
       upInstrDecEtc.gprFpRaIdx.payload(
-        myFrontPayloadGprFp.myExt.memAddr(0).bitsRange
+        myGprFpExt.memAddr(0).bitsRange
       )
     )
-    myFrontPayloadGprFp.myExt.memAddr(1) := (
+    myGprFpExt.memAddr(1) := (
       upInstrDecEtc.gprFpRbIdx.payload(
-        myFrontPayloadGprFp.myExt.memAddr(1).bitsRange
+        myGprFpExt.memAddr(1).bitsRange
       )
     )
     //--------
     //myFrontPayloadGprOddNonSp.myExt.modMemWordValid := (
     //  upInstrDecEtc.gprOddNonSpRaIdx.valid
     //)
-    myFrontPayloadGprOddNonSp.modExt := upModExt
-    myFrontPayloadGprOddNonSp.myExt.memAddr(0) := (
+    //myFrontPayloadGprOddNonSp.modExt := upModExt
+    myGprOddNonSpExt.memAddr(0) := (
       upInstrDecEtc.gprOddNonSpRaIdx.payload(
-        myFrontPayloadGprOddNonSp.myExt.memAddr(0).bitsRange
+        myGprOddNonSpExt.memAddr(0).bitsRange
       )
     )
-    myFrontPayloadGprOddNonSp.myExt.memAddr(1) := (
+    myGprOddNonSpExt.memAddr(1) := (
       upInstrDecEtc.gprOddNonSpRbIdx.payload(
-        myFrontPayloadGprOddNonSp.myExt.memAddr(1).bitsRange
+        myGprOddNonSpExt.memAddr(1).bitsRange
       )
     )
     //--------
     //myFrontPayloadGprSp.myExt.modMemWordValid := (
     //  upInstrDecEtc.gprSpRaIdx.valid
     //)
-    myFrontPayloadGprSp.modExt := upModExt
-    myFrontPayloadGprSp.myExt.memAddr(0) := (
+    //myFrontPayloadGprSp.modExt := upModExt
+    myGprSpExt.memAddr(0) := (
       upInstrDecEtc.gprSpRaIdx.payload(
-        myFrontPayloadGprSp.myExt.memAddr(0).bitsRange
+        myGprSpExt.memAddr(0).bitsRange
       )
     )
-    myFrontPayloadGprSp.myExt.memAddr(1) := (
+    myGprSpExt.memAddr(1) := (
       upInstrDecEtc.gprSpRbIdx.payload(
-        myFrontPayloadGprSp.myExt.memAddr(1).bitsRange
+        myGprSpExt.memAddr(1).bitsRange
       )
     )
     //--------
     //myFrontPayloadSprEven.myExt.modMemWordValid := (
     //  upInstrDecEtc.sprEvenSaIdx.valid
     //)
-    myFrontPayloadSprEven.modExt := upModExt
-    myFrontPayloadSprEven.myExt.memAddr(0) := (
+    //myFrontPayloadSprEven.modExt := upModExt
+    mySprEvenExt.memAddr(0) := (
       upInstrDecEtc.sprEvenSaIdx.payload(
-        myFrontPayloadSprEven.myExt.memAddr(0).bitsRange
+        mySprEvenExt.memAddr(0).bitsRange
       )
     )
-    myFrontPayloadSprEven.myExt.memAddr(1) := (
+    mySprEvenExt.memAddr(1) := (
       upInstrDecEtc.sprEvenSbIdx.payload(
-        myFrontPayloadSprEven.myExt.memAddr(1).bitsRange
+        mySprEvenExt.memAddr(1).bitsRange
       )
     )
     //--------
     //myFrontPayloadSprOdd.myExt.modMemWordValid := (
     //  upInstrDecEtc.sprOddSaIdx.valid
     //)
-    myFrontPayloadSprOdd.modExt := upModExt
-    myFrontPayloadSprOdd.myExt.memAddr(0) := (
+    //myFrontPayloadSprOdd.modExt := upModExt
+    mySprOddExt.memAddr(0) := (
       upInstrDecEtc.sprOddSaIdx.payload(
-        myFrontPayloadSprOdd.myExt.memAddr(0).bitsRange
+        mySprOddExt.memAddr(0).bitsRange
       )
     )
-    myFrontPayloadSprOdd.myExt.memAddr(1) := (
+    mySprOddExt.memAddr(1) := (
       upInstrDecEtc.sprOddSbIdx.payload(
-        myFrontPayloadSprOdd.myExt.memAddr(1).bitsRange
+        mySprOddExt.memAddr(1).bitsRange
       )
     )
     //--------
@@ -2928,10 +2946,10 @@ case class FlareCpuPipeStageEx(
   def modFront = doModParams.modFront
   def getMyRdMemWord(ydx: Int) = (
     doModParams.getMyRdMemWordFunc(
-      (
-        //U(s"2'd1").resized
-        U(s"2'd2").resized
-      ),
+      //(
+      //  //U(s"2'd1").resized
+      //  U(s"2'd2").resized
+      //),
       ydx
     )
   )

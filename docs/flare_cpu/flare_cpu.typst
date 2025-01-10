@@ -384,8 +384,8 @@ Here is a list of instructions from this encoding group.
   `cmp rA, #simm`
   //--------
   - Effect: Compare `rA` to `simm`.
-  - Affectable flags:
-    `Z`, `C`, `V`, `N`
+  //- Affectable flags:
+  //  `Z`, `C`, `V`, `N`
   //--------
 - Opcode `0x5`:
   `cpy rA, #simm`
@@ -482,32 +482,32 @@ Here is a list of instructions from this encoding group.
   //--------
   - Mnemonic for when flags not affected: `add`
   - Mnemonic for when flags affected: `add.f`
-  - Affectable flags:
-    `Z`, `C`, `V`, `N`
+  //- Affectable flags:
+  //  `Z`, `C`, `V`, `N`
   //--------
 - Opcode `0x1`:
   `sub rA, rB`
   //--------
   - Mnemonic for when flags not affected: `sub`
   - Mnemonic for when flags affected: `sub.f`
-  - Affectable flags:
-    `Z`, `C`, `V`, `N`
+  //- Affectable flags:
+  //  `Z`, `C`, `V`, `N`
   //--------
 - Opcode `0x2`:
   `add rA, sp, rB`
   //--------
   - Mnemonic for when flags not affected: `add`
   - Mnemonic for when flags affected: `add.f`
-  - Affectable flags:
-    `Z`, `C`, `V`, `N`
+  //- Affectable flags:
+  //  `Z`, `C`, `V`, `N`
   //--------
 - Opcode `0x3`
   `add rA, fp, rB`
   //--------
   - Mnemonic for when flags not affected: `add`
   - Mnemonic for when flags affected: `add.f`
-  - Affectable flags:
-    `Z`, `C`, `V`, `N`
+  //- Affectable flags:
+  //  `Z`, `C`, `V`, `N`
   //--------
 - Opcode `0x4`:
   `cmp rA, rB`
@@ -515,8 +515,8 @@ Here is a list of instructions from this encoding group.
   - Effect: Compare `rA` to `rB`. `cmp`
     is _always_ able to affect flags, independent of the
     encoded `f` bit of the instruction.
-  - Affectable flags:
-    `Z`, `C`, `V`, `N`
+  //- Affectable flags:
+  //  `Z`, `C`, `V`, `N`
   //--------
 - Opcode `0x5`:
   `cpy rA, rB`
@@ -524,8 +524,8 @@ Here is a list of instructions from this encoding group.
   - Mnemonic for when flags not affected: `cpy`
   - Mnemonic for when flags affected: `cpy.f`
   - Effect: Copy `rB` into `rA`
-  - Affectable flags:
-    `Z`, `N`
+  //- Affectable flags:
+  //  `Z`, `N`
   //--------
 - Opcode `0x6`:
   `lsl rA, rB`
@@ -533,8 +533,8 @@ Here is a list of instructions from this encoding group.
   - Mnemonic for when flags not affected: `lsl`
   - Mnemonic for when flags affected: `lsl.f`
   - Effect: Logical shift left
-  - Affectable flags:
-    `Z`, `N`
+  //- Affectable flags:
+  //  `Z`, `N`
   //--------
 - Opcode `0x7`:
   `lsr rA, rB`
@@ -542,8 +542,8 @@ Here is a list of instructions from this encoding group.
   - Mnemonic for when flags not affected: `lsr`
   - Mnemonic for when flags affected: `lsr.f`
   - Effect: Logical shift right
-  - Affectable flags:
-    `Z`, `N`
+  //- Affectable flags:
+  //  `Z`, `N`
   //--------
 - Opcode `0x8`:
   `asr rA, rB`
@@ -551,8 +551,8 @@ Here is a list of instructions from this encoding group.
   - Mnemonic for when flags not affected: `asr`
   - Mnemonic for when flags affected: `asr.f`
   - Effect: Arithmetic shift right
-  - Affectable flags:
-    `Z`, `N`
+  //- Affectable flags:
+  //  `Z`, `N`
   //--------
 - Opcode `0x9`:
   `and rA, rB`
@@ -560,8 +560,8 @@ Here is a list of instructions from this encoding group.
   - Mnemonic for when flags not affected: `and`
   - Mnemonic for when flags affected: `and.f`
   - Effect: Bitwise AND
-  - Affectable flags:
-    `Z`, `N`
+  //- Affectable flags:
+  //  `Z`, `N`
   //--------
 - Opcode `0xa`:
   `orr rA, rB`
@@ -569,8 +569,8 @@ Here is a list of instructions from this encoding group.
   - Mnemonic for when flags not affected: `orr`
   - Mnemonic for when flags affected: `orr.f`
   - Effect: Bitwise OR
-  - Affectable flags:
-    `Z`, `N`
+  //- Affectable flags:
+  //  `Z`, `N`
   //--------
 - Opcode `0xb`:
   `xor rA, rB`
@@ -578,8 +578,8 @@ Here is a list of instructions from this encoding group.
   - Mnemonic for when flags not affected: `xor`
   - Mnemonic for when flags affected: `xor.f`
   - Effect: Bitwise XOR
-  - Affectable flags:
-    `Z`, `N`
+  //- Affectable flags:
+  //  `Z`, `N`
   //--------
 - Opcode `0xc`:
   `adc rA, rB`
@@ -589,8 +589,8 @@ Here is a list of instructions from this encoding group.
   - Effect: Add with Carry, using the formula
     `rA + rB + flags.C` to compute the value that will be
     written into `rA`.
-  - Affectable flags:
-    `Z`, `C`, `V`, `N`
+  //- Affectable flags:
+  //  `Z`, `C`, `V`, `N`
   //--------
 - Opcode `0xd`:
   `sbc rA, rB`
@@ -600,8 +600,8 @@ Here is a list of instructions from this encoding group.
   - Effect: Subtract with Borrow, using the formula
     `rA + (~rB) + flags.C` to compute the value that will be
     written into `rA`.
-  - Affectable flags:
-    `Z`, `C`, `V`, `N`
+  //- Affectable flags:
+  //  `Z`, `C`, `V`, `N`
   //--------
 - Opcode `0xe`:
   `cmpbc rA, rB`
@@ -617,8 +617,8 @@ Here is a list of instructions from this encoding group.
     subtraction's result into `rA`.
     However, this instruction sets the `Z` flag to
     `prev(flags.Z) AND ((rA + (~rB) + flags.C) == 0)`
-  - Affectable flags:
-    `Z`, `C`, `V`, `N`
+  //- Affectable flags:
+  //  `Z`, `C`, `V`, `N`
   //--------
 //- Opcode `0xe`:
 // `udiv64 rA, rB`
@@ -1574,15 +1574,15 @@ Here is a list of instructions from this encoding group.
     `cmpb rA, rB`
     //--------
     - Effect: Compare `rA[7:0]` to `rB[7:0]`
-    - Affectable flags:
-      `Z`, `C`, `V`, `N`
+    //- Affectable flags:
+    //  `Z`, `C`, `V`, `N`
     //--------
   - `w` value `0b1`:
     `cmph rA, rB`
     //--------
     - Effect: Compare `rA[15:0]` to `rB[15:0]`
-    - Affectable flags:
-      `Z`, `C`, `V`, `N`
+    //- Affectable flags:
+    //  `Z`, `C`, `V`, `N`
     //--------
   //--------
 - Opcode `0x1`:

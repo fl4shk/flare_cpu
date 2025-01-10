@@ -247,13 +247,20 @@ object FlareCpuFormal {
 //      FlareCpuTesterIoIbus()
 //    })
 //}
+case class FlareCpuFormalTestMain(
+  params: FlareCpuParams,
+) extends Component {
+}
 object FlareCpuFormalTestMain extends App {
   //val params = new FlareCpuParams(
   //  optFormalTest=FlareCpuParams.enumFormalTestMain
   //)
   val params = FlareCpuParams()
   case class FlareCpuTesterMain() extends Component {
-    //val dut = FormalDut(FlareCpuFormalTestMain(params=params))
+    val dut = FormalDut(FlareCpu(
+      params=params,
+      optFormalTest=FlareCpuFormalTest.Main,
+    ))
 
     //val ibus = dut.io.ibus
     //anyseq(ibus.ready)
