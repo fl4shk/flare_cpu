@@ -17,6 +17,7 @@ import libcheesevoyage.general._
 import libcheesevoyage.general.PipeMemRmw
 import libcheesevoyage.general.PipeHelper
 import libcheesevoyage.math.LongDivMultiCycle
+import libsnowhouse._
 
 object FlareCpuInstrEncConst {
   //--------
@@ -225,7 +226,7 @@ case class FlareCpuInstrG3Enc(
   cfg: FlareCpuConfig,
 ) extends Bundle {
   val op = FlareCpuInstrG3EncOp()
-  val simm = SInt(cfg.g3ImmWidth bits)
+  val simm = UInt(cfg.g3ImmWidth bits)
   val grp = UInt(FlareCpuInstrEncConst.g3GrpWidth bits)
 }
 
@@ -413,7 +414,7 @@ object FlareCpuInstrFullgrpDec extends SpinalEnum(
 }
 case class FlareCpuInstrEnc(
   cfg: FlareCpuConfig,
-) extends Bundle {
+) extends Union {
   val g0Pre = FlareCpuInstrG0EncPre(cfg=cfg)
   val g0LpreHi = FlareCpuInstrG0EncLpreHi(cfg=cfg)
   val g0LpreLo = UInt(cfg.instrMainWidth bits)
@@ -430,263 +431,306 @@ case class FlareCpuInstrEnc(
   val g7Sg0110 = FlareCpuInstrG7Sg0110Enc(cfg=cfg)
   val g7Sg01110 = FlareCpuInstrG7Sg01110Enc(cfg=cfg)
 }
-object FlareCpuInstrDecOp
-extends SpinalEnum(defaultEncoding=binarySequential) {
+//object FlareCpuInstrDecOp
+//extends SpinalEnum(defaultEncoding=binarySequential) 
+object FlareCpuOp {
+  private var _opCnt: Int = 0
+  def mkOp(
+    name: String,
+    //kind: Int,
+    //update: Boolean,
+  ): (/*UInt,*/ Int, /*Int,*/ String) = {
+    val ret = (
+      _opCnt,
+      //kind,
+      name,
+    )
+    //if (update) {
+      _opCnt += 1
+    //}
+    ret
+  }
   // decoded instruction opcode
-  val
-    //--------
-    bubble,   // fake instruction, acts as a NOP and prevents forwarding in
-              // the `PipeMemRmw`s
-              // used, for example, for `index`, `lpre`'s low immediate bits
-    lpreSimmHi,
-    lpreSimmLo, // fake instruction, acts as a bubble
-    preSimm,
-    //--------
-    cmpxchg, // without lock
-    cmpxchgLock, // with lock
-    xchg,     // without lock
-    xchgLock,   // with lock
-    //--------
-    //addRaRbSimm, // only `fp`, `sp`, or `pc` can be `rB`
-    addRaSimm,
-    addRaPcSimm,
-    addRaSpSimm,
-    addRaFpSimm,
+  //--------
+  //bubble,   // fake instruction, acts as a NOP and prevents forwarding in
+  //          // the `PipeMemRmw`s
+  //          // used, for example, for `index`, `lpre`'s low immediate bits
+  //val lpreSimmHi = mkOp("lpreSimmHi")
+  //val lpreSimmLo = mkOp("lpreSimmLo") // fake instruction, acts as a bubble
+  //val preSimm = mkOp("preSimm")
+  //--------
+  // TODO: implement these in `libsnowhouse`
+  //val cmpxchg = mkOp("cmpxchg") // without lock
+  //val cmpxchgLock = mkOp("cmpxchgLock") // with lock
+  //val xchg = mkOp("xchg")     // without lock
+  //val xchgLock = mkOp("xchgLock")   // with lock
+  //--------
+  //addRaRbSimm, // only `fp`, `sp`, or `pc` can be `rB`
+  val addRaSimm = mkOp("addRaSimm")
+  val addRaPcSimm = mkOp("addRaPcSimm")
+  //val addRaSpSimm = mkOp("addRaSpSimm")
+  //val addRaFpSimm = mkOp("addRaFpSimm")
 
-    cmpRaSimm,
-    cpyRaSimm,
-    lslRaImm,
-    lsrRaImm,
+  val cmpRaSimm = mkOp("cmpRaSimm")
+  val cpyRaSimm = mkOp("cpyRaSimm")
+  val lslRaImm = mkOp("lslRaImm")
+  val lsrRaImm = mkOp("lsrRaImm")
 
-    asrRaImm,
-    andRaSimm,
-    orrRaSimm,
-    xorRaSimm,
+  val asrRaImm = mkOp("asrRaImm")
+  val andRaSimm = mkOp("andRaSimm")
+  val orrRaSimm = mkOp("orrRaSimm")
+  val xorRaSimm = mkOp("xorRaSimm")
 
-    zeRaImm,
-    seRaImm,
-    swiRaSimm,
-    swiImm,
-    //--------
-    addRaRb,
-    subRaRb,
-    addRaSpRb,
-    addRaFpRb,
-    //--------
-    cmpRaRb,
-    cpyRaRb,
-    lslRaRb,
-    lsrRaRb,
-    asrRaRb,
-    andRaRb,
-    orrRaRb,
-    xorRaRb,
-    //--------
-    adcRaRb,
-    sbcRaRb,
-    cmpbcRaRb,
-    //--------
-    //addRaRbFlags,
-    //subRaRbFlags,
-    //addRaSpRbFlags,
-    //addRaFpRbFlags,
-    ////--------
-    ////cmpRaRbFlags,
-    //cpyRaRbFlags,
-    //lslRaRbFlags,
-    //lsrRaRbFlags,
-    //asrRaRbFlags,
-    //andRaRbFlags,
-    //orrRaRbFlags,
-    //xorRaRbFlags,
-    ////--------
-    //adcRaRbFlags,
-    //sbcRaRbFlags,
-    //cmpbcRaRbFlags,
-    //--------
-    blSimm,
-    braSimm,
-    beqSimm,
-    bneSimm,
-    bmiSimm,
-    bplSimm,
-    bvsSimm,
-    bvcSimm,
-    bgeuSimm,
-    bltuSimm,
-    bgtuSimm,
-    bleuSimm,
-    bgesSimm,
-    bltsSimm,
-    bgtsSimm,
-    blesSimm,
-    //--------
-    jlRa,
-    jmpRa,
-    jmpIra,
-    reti,
-    ei,
-    di,
-    //--------
-    pushRaRb,
-    pushSaRb,
-    popRaRb,
-    popSaRb,
-    popPcRb,
-    //--------
-    mulRaRb,
-    //--------
-    //udivRaRb,
-    //sdivRaRb,
-    //udivmodRaRbRc,
-    //sdivmodRaRbRc,
-    udivmodRaRb,
-    sdivmodRaRb,
-    //--------
-    //lumulRcRdRaRb,
-    //lsmulRcRdRaRb,
-    lumulRaRb,
-    lsmulRaRb,
-    //--------
-    //udiv64RaRb,
-    //sdiv64RaRb,
-    //udivmod64RaRbRcRd,
-    //sdivmod64RaRbRcRd,
-    udivmod64RaRb,
-    sdivmod64RaRb,
-    //--------
-    ldubRaRbLdst,
-    ldsbRaRbLdst,
-    lduhRaRbLdst,
-    ldshRaRbLdst,
-    ldrRaRbLdst,
-    stbRaRbLdst,
-    sthRaRbLdst,
-    strRaRbLdst,
-    //--------
-    cpyRaSb,
-    cpySaRb,
-    cpySaSb,
-    //--------
-    indexRaRb,
-    indexRaSimm,
-    //--------
-    //ldrRaRbSimmLdst,
-    //strRaRbSimmLdst,
-    //--------
-    ldrSaRbLdst,
-    ldrSaSbLdst,
-    strSaRbLdst,
-    strSaSbLdst,
-    //--------
-    cmpbRaRb,
-    cmphRaRb,
-    lsrbRaRb,
-    lsrhRaRb,
-    asrbRaRb,
-    asrhRaRb,
-    //--------
-    icreloadRaSimm,
-    //--------
-    icflush
-    //--------
-    = newElement()
+  // TODO: implement these in `libsnowhouse`
+  //val zeRaImm = mkOp("zeRaImm")
+  //val seRaImm = mkOp("seRaImm")
+  //val swiRaSimm = mkOp("swiRaSimm")
+  //val swiImm = mkOp("swiImm")
+  //--------
+  val addRaRb = mkOp("addRaRb")
+  val subRaRb = mkOp("subRaRb")
+  //val addRaSpRb = mkOp("addRaSpRb")
+  //val addRaFpRb = mkOp("addRaFpRb")
+  //--------
+  val cmpRaRb = mkOp("cmpRaRb")
+  val cpyRaRb = mkOp("cpyRaRb")
+  val lslRaRb = mkOp("lslRaRb")
+  val lsrRaRb = mkOp("lsrRaRb")
+  val asrRaRb = mkOp("asrRaRb")
+  val andRaRb = mkOp("andRaRb")
+  val orrRaRb = mkOp("orrRaRb")
+  val xorRaRb = mkOp("xorRaRb")
+  //--------
+  val adcRaRb = mkOp("adcRaRb")
+  val sbcRaRb = mkOp("sbcRaRb")
+  val cmpbcRaRb = mkOp("cmpbcRaRb")
+  //--------
+  val addRaRbFlags = mkOp("addRaRbFlags")
+  val subRaRbFlags = mkOp("subRaRbFlags")
+  val addRaSpRbFlags = mkOp("addRaSpRbFlags")
+  val addRaFpRbFlags = mkOp("addRaFpRbFlags")
+  //--------
+  //cmpRaRbFlags,
+  val cpyRaRbFlags = mkOp("cpyRaRbFlags")
+  val lslRaRbFlags = mkOp("lslRaRbFlags")
+  val lsrRaRbFlags = mkOp("lsrRaRbFlags")
+  val asrRaRbFlags = mkOp("asrRaRbFlags")
+  val andRaRbFlags = mkOp("andRaRbFlags")
+  val orrRaRbFlags = mkOp("orrRaRbFlags")
+  val xorRaRbFlags = mkOp("xorRaRbFlags")
+  //--------
+  val adcRaRbFlags = mkOp("adcRaRbFlags")
+  val sbcRaRbFlags = mkOp("sbcRaRbFlags")
+  val cmpbcRaRbFlags = mkOp("cmpbcRaRbFlags")
+  //--------
+  val blSimm = mkOp("blSimm")
+  val braSimm = mkOp("braSimm")
+  val beqSimm = mkOp("beqSimm")
+  val bneSimm = mkOp("bneSimm")
+  val bmiSimm = mkOp("bmiSimm")
+  val bplSimm = mkOp("bplSimm")
+  val bvsSimm = mkOp("bvsSimm")
+  val bvcSimm = mkOp("bvcSimm")
+  val bgeuSimm = mkOp("bgeuSimm")
+  val bltuSimm = mkOp("bltuSimm")
+  val bgtuSimm = mkOp("bgtuSimm")
+  val bleuSimm = mkOp("bleuSimm")
+  val bgesSimm = mkOp("bgesSimm")
+  val bltsSimm = mkOp("bltsSimm")
+  val bgtsSimm = mkOp("bgtsSimm")
+  val blesSimm = mkOp("blesSimm")
+  //--------
+  val jlRa = mkOp("jlRa")
+  val jmpRa = mkOp("jmpRa")
+  val jmpIra = mkOp("jmpIra")
+  val reti = mkOp("reti")
+  val ei = mkOp("ei")
+  val di = mkOp("di")
+  //--------
+  // TODO: implement these as multiple `libsnowhouse` operations
+  //val pushRaRb = mkOp("pushRaRb")
+  //val pushSaRb = mkOp("pushSaRb")
+  //val popRaRb = mkOp("popRaRb")
+  //val popSaRb = mkOp("popSaRb")
+  //val popPcRb = mkOp("popPcRb")
+  //--------
+  val mulRaRb = mkOp("mulRaRb")
+  //--------
+  // These are implemented with multiple `libsnowhouse` instructions.
+  val udivRaRb = mkOp("udivRaRb")
+  val sdivRaRb = mkOp("sdivRaRb")
+  val umodRaRb = mkOp("umodRaRb")
+  val smodRaRb = mkOp("smodRaRb")
+  //udivmodRaRbRc,
+  //sdivmodRaRbRc,
+  //val udivmodRaRb = mkOp("udivmodRaRb")
+  //val sdivmodRaRb = mkOp("sdivmodRaRb")
+  //--------
+  //lumulRcRdRaRb,
+  //lsmulRcRdRaRb,
+  // TODO: implement support for these in `libsnowhouse`
+  val lumulRaRb = mkOp("lumulRaRb")
+  val lsmulRaRb = mkOp("lsmulRaRb")
+  //--------
+  // TODO: implement these in `libsnowhouse`
+  val udiv64RaRb = mkOp("udiv64RaRb")
+  val sdiv64RaRb = mkOp("sdiv64RaRb")
+  val umod64RaRb = mkOp("umod64RaRb")
+  val smod64RaRb = mkOp("smod64RaRb")
+  //udivmod64RaRbRcRd,
+  //sdivmod64RaRbRcRd,
+  //val udivmod64RaRb = mkOp("udivmod64RaRb")
+  //val sdivmod64RaRb = mkOp("sdivmod64RaRb")
+  //--------
+  val ldubRaRbLdst = mkOp("ldubRaRbLdst")
+  val ldsbRaRbLdst = mkOp("ldsbRaRbLdst")
+  val lduhRaRbLdst = mkOp("lduhRaRbLdst")
+  val ldshRaRbLdst = mkOp("ldshRaRbLdst")
+  val ldrRaRbLdst = mkOp("ldrRaRbLdst")
+  val stbRaRbLdst = mkOp("stbRaRbLdst")
+  val sthRaRbLdst = mkOp("sthRaRbLdst")
+  val strRaRbLdst = mkOp("strRaRbLdst")
+
+  val ldubRaIndexRegLdst = mkOp("ldubRaRbLdst")
+  val ldsbRaIndexRegLdst = mkOp("ldsbRaRbLdst")
+  val lduhRaIndexRegLdst = mkOp("lduhRaRbLdst")
+  val ldshRaIndexRegLdst = mkOp("ldshRaRbLdst")
+  val ldrRaIndexRegLdst = mkOp("ldrRaRbLdst")
+  val stbRaIndexRegLdst = mkOp("stbRaRbLdst")
+  val sthRaIndexRegLdst = mkOp("sthRaRbLdst")
+  val strRaIndexRegLdst = mkOp("strRaRbLdst")
+  //--------
+  val cpyRaFlags = mkOp("cpyRaFlags")
+  // TODO: should eventually support more special-purpose registers in
+  // `libsnowhouse`
+  //val cpyRaSb = mkOp("cpyRaSb")
+  val cpyFlagsRa = mkOp("cpyFlagsRa")
+  //val cpySaRb = mkOp("cpySaRb")
+  //val cpySaSb = mkOp("cpySaSb")
+  ////--------
+  val indexRaRb = mkOp("indexRaRb")
+  val indexRaSimm = mkOp("indexRaSimm")
+  //--------
+  //ldrRaRbSimmLdst,
+  //strRaRbSimmLdst,
+  //--------
+  //val ldrSaRbLdst = mkOp("ldrSaRbLdst")
+  //val ldrSaSbLdst = mkOp("ldrSaSbLdst")
+  //val strSaRbLdst = mkOp("strSaRbLdst")
+  //val strSaSbLdst = mkOp("strSaSbLdst")
+  //--------
+  val cmpbRaRb = mkOp("cmpbRaRb")
+  val cmphRaRb = mkOp("cmphRaRb")
+  val lsrbRaRb = mkOp("lsrbRaRb")
+  val lsrhRaRb = mkOp("lsrhRaRb")
+  val asrbRaRb = mkOp("asrbRaRb")
+  val asrhRaRb = mkOp("asrhRaRb")
+  ////--------
+  // TODO: support these two instructions!
+  //val icreloadRaSimm = mkOp("icreloadRaSimm")
+  ////--------
+  //val icflush = mkOp("icflush")
+  ////--------
+  //= newElement()
 }
-object FlareCpuGprSelect extends SpinalEnum(
-  defaultEncoding=binarySequential
-) {
-  val
-    gprEvenNonFp,
-    gprFp,
-    gprOddNonSp,
-    gprSp
-    //gpr64
-    = newElement();
-}
-object FlareCpuSprSelect extends SpinalEnum(
-  defaultEncoding=binarySequential
-) {
-  val
-    sprEven,
-    sprOdd
-    = newElement();
-}
+//object FlareCpuGprSelect extends SpinalEnum(
+//  defaultEncoding=binarySequential
+//) {
+//  val
+//    gprEvenNonFp,
+//    gprFp,
+//    gprOddNonSp,
+//    gprSp
+//    //gpr64
+//    = newElement();
+//}
+//object FlareCpuSprSelect extends SpinalEnum(
+//  defaultEncoding=binarySequential
+//) {
+//  val
+//    sprEven,
+//    sprOdd
+//    = newElement();
+//}
 
 case class FlareCpuDecodeTemp(
   cfg: FlareCpuConfig,
 ) extends Bundle {
   val indexRaRbValid = Bool()
   val indexRaSimmValid = Bool()
+  val indexEitherValid = Bool()
   val preLpreValid = Bool()
-  val preValid = Bool()
-  val lpreValid = Bool()
+  //val preValid = Bool()
+  //val lpreValid = Bool()
+  val lpreOnlyHaveHi = Bool()
 }
-case class FlareCpuInstrDecEtc(
-  cfg: FlareCpuConfig,
-) extends Bundle {
-  //--------
-  //val bubble = Bool()
-  val isInvalid = Bool()
-  val haveFullInstr = Bool()
-  val fullgrp = FlareCpuInstrFullgrpDec()
-  val fullSimm = UInt(cfg.mainWidth bits)
-  val fullImm = UInt(cfg.mainWidth bits)
-  val fullPcrelSimm = UInt(cfg.mainWidth bits)
-  //val indexRa = UInt(cfg.mainWidth bits)
-  //val indexRb = UInt(cfg.mainWidth bits)
-  //val indexSum = UInt(cfg.mainWidth bits)
-  val fwl = Bool()
-  val decOp = FlareCpuInstrDecOp()
+//case class FlareCpuInstrDecEtc(
+//  cfg: FlareCpuConfig,
+//) extends Bundle {
+//  //--------
+//  //val bubble = Bool()
+//  val isInvalid = Bool()
+//  val haveFullInstr = Bool()
+//  val fullgrp = FlareCpuInstrFullgrpDec()
+//  val fullSimm = UInt(cfg.mainWidth bits)
+//  val fullImm = UInt(cfg.mainWidth bits)
+//  val fullPcrelSimm = UInt(cfg.mainWidth bits)
+//  //val indexRa = UInt(cfg.mainWidth bits)
+//  //val indexRb = UInt(cfg.mainWidth bits)
+//  //val indexSum = UInt(cfg.mainWidth bits)
+//  val fwl = Bool()
+//  val decOp = FlareCpuInstrDecOp()
+//
+//  //val regFileGprEvenModMemWordValid = Bool()
+//  //val regFileGprOddNonSpModMemWordValid = Bool()
+//  //val regFileGprSpModMemWordValid = Bool()
+//  //val regFileSprModMemWordValid = Bool()
+//
+//  val gprRaSel = FlareCpuGprSelect()
+//  //val gprRa64LoSel = FlareCpuGprSelect()
+//  val gprRa64IsNonFpSp = Bool() // 64-bit GPR rA pair select
+//  val gprRbSel = FlareCpuGprSelect()
+//  val gprRb64IsNonFpSp = Bool() // 64-bit GPR rB pair select
+//  val sprSaSel = FlareCpuSprSelect()
+//  val sprSbSel = FlareCpuSprSelect()
+//  //--------
+//  val wrGprEvenNonFpRaIdx = Bool()
+//  val gprEvenNonFpRaIdx = Flow(UInt(cfg.numGprsSprsPow bits))
+//  val gprEvenNonFpRbIdx = Flow(UInt(cfg.numGprsSprsPow bits))
+//  //--------
+//  val wrGprFpRaIdx = Bool()
+//  val gprFpRaIdx = Flow(UInt(cfg.numGprsSprsPow bits))
+//  val gprFpRbIdx = Flow(UInt(cfg.numGprsSprsPow bits))
+//  //--------
+//  val wrGprOddNonSpRaIdx = Bool()
+//  val gprOddNonSpRaIdx = Flow(UInt(cfg.numGprsSprsPow bits))
+//  val gprOddNonSpRbIdx = Flow(UInt(cfg.numGprsSprsPow bits))
+//  //--------
+//  //val haveGprOddNonSpRaIdx = Bool()
+//  //val haveGprOddNonSpRbIdx = Bool()
+//  val wrGprSpRaIdx = Bool()
+//  val gprSpRaIdx = Flow(UInt(cfg.numGprsSprsPow bits))
+//  val gprSpRbIdx = Flow(UInt(cfg.numGprsSprsPow bits))
+//  //--------
+//  val wrSprEvenSaIdx = Bool()
+//  val sprEvenSaIdx = Flow(UInt(cfg.numGprsSprsPow bits))
+//  val sprEvenSbIdx = Flow(UInt(cfg.numGprsSprsPow bits))
+//  //--------
+//  val wrSprOddSaIdx = Bool()
+//  val sprOddSaIdx = Flow(UInt(cfg.numGprsSprsPow bits))
+//  val sprOddSbIdx = Flow(UInt(cfg.numGprsSprsPow bits))
+//  //--------
+//
+//  val raIdx = /*Flow*/(UInt(cfg.numGprsSprsPow bits))
+//  val rbIdx = /*Flow*/(UInt(cfg.numGprsSprsPow bits))
+//  val indexRaIdx = UInt(cfg.numGprsSprsPow bits)
+//  val indexRbIdx = UInt(cfg.numGprsSprsPow bits)
+//  val decodeTemp = FlareCpuDecodeTemp(cfg=cfg)
+//  //val saIdx = /*Flow*/(UInt(cfg.numGprsSprsPow bits))
+//  //val sbIdx = /*Flow*/(UInt(cfg.numGprsSprsPow bits))
+//  //--------
+//}
 
-  //val regFileGprEvenModMemWordValid = Bool()
-  //val regFileGprOddNonSpModMemWordValid = Bool()
-  //val regFileGprSpModMemWordValid = Bool()
-  //val regFileSprModMemWordValid = Bool()
-
-  val gprRaSel = FlareCpuGprSelect()
-  //val gprRa64LoSel = FlareCpuGprSelect()
-  val gprRa64IsNonFpSp = Bool() // 64-bit GPR rA pair select
-  val gprRbSel = FlareCpuGprSelect()
-  val gprRb64IsNonFpSp = Bool() // 64-bit GPR rB pair select
-  val sprSaSel = FlareCpuSprSelect()
-  val sprSbSel = FlareCpuSprSelect()
-  //--------
-  val wrGprEvenNonFpRaIdx = Bool()
-  val gprEvenNonFpRaIdx = Flow(UInt(cfg.numGprsSprsPow bits))
-  val gprEvenNonFpRbIdx = Flow(UInt(cfg.numGprsSprsPow bits))
-  //--------
-  val wrGprFpRaIdx = Bool()
-  val gprFpRaIdx = Flow(UInt(cfg.numGprsSprsPow bits))
-  val gprFpRbIdx = Flow(UInt(cfg.numGprsSprsPow bits))
-  //--------
-  val wrGprOddNonSpRaIdx = Bool()
-  val gprOddNonSpRaIdx = Flow(UInt(cfg.numGprsSprsPow bits))
-  val gprOddNonSpRbIdx = Flow(UInt(cfg.numGprsSprsPow bits))
-  //--------
-  //val haveGprOddNonSpRaIdx = Bool()
-  //val haveGprOddNonSpRbIdx = Bool()
-  val wrGprSpRaIdx = Bool()
-  val gprSpRaIdx = Flow(UInt(cfg.numGprsSprsPow bits))
-  val gprSpRbIdx = Flow(UInt(cfg.numGprsSprsPow bits))
-  //--------
-  val wrSprEvenSaIdx = Bool()
-  val sprEvenSaIdx = Flow(UInt(cfg.numGprsSprsPow bits))
-  val sprEvenSbIdx = Flow(UInt(cfg.numGprsSprsPow bits))
-  //--------
-  val wrSprOddSaIdx = Bool()
-  val sprOddSaIdx = Flow(UInt(cfg.numGprsSprsPow bits))
-  val sprOddSbIdx = Flow(UInt(cfg.numGprsSprsPow bits))
-  //--------
-
-  val raIdx = /*Flow*/(UInt(cfg.numGprsSprsPow bits))
-  val rbIdx = /*Flow*/(UInt(cfg.numGprsSprsPow bits))
-  val indexRaIdx = UInt(cfg.numGprsSprsPow bits)
-  val indexRbIdx = UInt(cfg.numGprsSprsPow bits)
-  val decodeTemp = FlareCpuDecodeTemp(cfg=cfg)
-  //val saIdx = /*Flow*/(UInt(cfg.numGprsSprsPow bits))
-  //val sbIdx = /*Flow*/(UInt(cfg.numGprsSprsPow bits))
-  //--------
-}
 //case class FlareCpuInstrDecEtc(
 //  cfg: FlareCpuParams,
 //  //decodeIo: FlareCpuPsDecodeIo,

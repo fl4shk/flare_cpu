@@ -23,10 +23,1013 @@ import libcheesevoyage.math.LongDivMultiCycle
 import libcheesevoyage.bus.lcvStall.{
   LcvStallIo, LcvStallHost, LcvStallHostSaved
 }
+import libsnowhouse._
 
 
 object FlareCpuFormalInstrCnt {
   def cntWidth = 8
+}
+object FlareCpuPipeStageInstrDecode {
+  def apply(
+    cfg: FlareCpuConfig,
+    psId: SnowHousePipeStageInstrDecode
+  ) = new Area {
+    //--------
+    // NOTE: the `KeepAttribute(...)`s seem to be required for signals
+    // defined in this function.
+    //--------
+    import FlareCpuOp._
+    def upPayload = psId.upPayload
+    def io = psId.io
+    def shCfg = psId.cfg
+    def cId = psId.cId
+    //val encInstr = FlareCpuInstrEnc(cfg=cfg)
+    //encInstr.assignFromBits(
+    //)
+    val encInstr = (
+      KeepAttribute(
+        FlareCpuInstrEnc(cfg=cfg)
+      )
+      .setName("InstrDecode_encInstr")
+    )
+    encInstr.assignFromBits(
+      //io.ibus.devData.instr.asBits
+      Mux[Bits](
+        !psId.shouldBubble,
+        psId.tempInstr.asBits,
+        psId.tempInstr.asBits.getZero
+      )
+    )
+    //object State
+    //extends SpinalEnum(defaultEncoding=binarySequential) {
+    //  val
+    //    MAIN,
+    //    HAVE_PRE,
+    //    HAVE_LPRE,
+    //    HAVE_INDEX_REG,
+    //    HAVE_INDEX_SIMM
+    //    = newElement()
+    //}
+    val rDecodeTemp = (
+      KeepAttribute({
+        val temp = Reg(FlareCpuDecodeTemp(cfg=cfg))
+        temp.init(temp.getZero)
+        temp
+      })
+      .setName(s"InstrDecode_rDecodeTemp")
+    )
+    val nextState = Bool()
+    val rState = (
+      KeepAttribute({
+        RegNext(
+          next=nextState,
+          //init=nextState.getZero,
+        )
+      })
+      .setName(s"InstrDecode_rMultiCycleState")
+    )
+    nextState := rState
+    for (idx <- 0 until shCfg.maxNumGprsPerInstr) {
+      upPayload.gprIsZeroVec(idx) := (
+        upPayload.gprIdxVec(idx) === 0x0
+      )
+    }
+    upPayload.gprIdxVec.foreach(gprIdx => {
+      gprIdx := RegNext(
+        next=gprIdx,
+        init=gprIdx.getZero,
+      )
+    })
+    //upPayload.gprIdxVec(0) := encInstr.raIdx
+    //upPayload.gprIdxVec(1) := encInstr.rbIdx
+    //upPayload.gprIdxVec(2) := encInstr.rcIdx
+    //val tempImm = Cat(
+    //  Mux[UInt](
+    //    encInstr.imm16.msb,
+    //    U"16'hffff",
+    //    U"16'h0000",
+    //  ),
+    //  encInstr.imm16.asSInt
+    //).asUInt
+    //val tempImm = UInt(cfg.mainWidth bits)
+    //tempImm := (
+    //  Cat(
+    //    Mux[UInt](
+    //      encInstr.imm16.msb,
+    //      U"16'hffff",
+    //      U"16'h0000",
+    //    ),
+    //    encInstr.imm16.asSInt
+    //  ).asUInt
+    //)
+    //val rPrevPreImm = (
+    //  KeepAttribute(
+    //    RegNextWhen(
+    //      next=Cat(
+    //        encInstr.raIdx,
+    //        encInstr.rbIdx,
+    //        encInstr.rcIdx,
+    //        encInstr.imm16
+    //      ).asUInt,
+    //      cond=cId.up.isFiring,
+    //      //init=encInstr.imm16.getZero,
+    //    )
+    //  )
+    //  .setName(s"InstrDecode_rPrevPreImm")
+    //)
+    val rPrevPrefixImm = (
+      KeepAttribute(
+        Reg(UInt(cfg.mainWidth bits))
+        init(0x0)
+      )
+      .setName(s"InstrDecode_rPrevPrefixImm")
+    )
+    //switch (rState) {
+    //  is (False) {
+    //    upPayload.imm := tempImm
+    //  }
+    //  is (True) {
+    //    upPayload.imm := (
+    //      Cat(
+    //        rPrevPreImm,
+    //        encInstr.imm16,
+    //      ).asUInt.resized
+    //    )
+    //    when (cId.up.isFiring) {
+    //      upPayload.blockIrq := False
+    //      nextState := False
+    //    }
+    //  }
+    //}
+    def setOp(
+      someOp: (Int, /*Int,*/ String)
+    ): Unit = {
+      for (
+        ((tuple, opInfo), opInfoIdx) <- shCfg.opInfoMap.view.zipWithIndex
+      ) {
+        if (someOp == tuple) {
+          println(
+            s"${opInfoIdx}: ${someOp._2}"
+          )
+          upPayload.op := opInfoIdx
+          return
+        }
+      }
+      assert(
+        false,
+        s"eek! ${someOp}"
+      )
+    }
+    def doDefault(
+      doBlockIrq: Boolean,
+      doSetImm: Boolean=true
+    ): Unit = {
+      // this function could be useful for decoding variable width
+      // instructions!
+      // just do a NOP
+      setOp(addRaSimm)
+      if (doBlockIrq) {
+        upPayload.blockIrq := True
+      } else {
+        rDecodeTemp := rDecodeTemp.getZero
+      }
+      upPayload.gprIdxVec.foreach{gprIdx => {
+        gprIdx := 0x0
+      }}
+      if (doSetImm) {
+        upPayload.imm := 0x0
+      }
+    }
+    upPayload.blockIrq := (
+      //RegNext(
+      //  next=upPayload.blockIrq,
+      //  init=upPayload.blockIrq.getZero,
+      //)
+      False
+    )
+    when (cId.up.isFiring) {
+      when (rDecodeTemp.lpreOnlyHaveHi) {
+        //when (!psId.shouldBubble) {
+          rPrevPrefixImm := Cat(
+            rPrevPrefixImm,
+            psId.tempInstr,
+          ).asUInt.resized
+          rDecodeTemp.lpreOnlyHaveHi := False
+          upPayload.blockIrq := True
+        //}
+      } otherwise {
+        switch (encInstr.g0Pre.grp) {
+          import FlareCpuInstrEncConst._
+          is (g0Grp) {
+            when (cId.up.isFiring) {
+              when (encInstr.g0Pre.subgrp === g0PreSubgrp) {
+                when (!rDecodeTemp.preLpreValid) {
+                  rDecodeTemp.preLpreValid := True
+                  rPrevPrefixImm := Cat(
+                    Mux[SInt](
+                      encInstr.g0Pre.simm.msb,
+                      S(s"${cfg.mainWidth}'d-1"),
+                      S(s"${cfg.mainWidth}'d0"),
+                    ),
+                    encInstr.g0Pre.simm,
+                  ).asUInt.resized
+
+                  upPayload.blockIrq := True
+                } otherwise {
+                  doDefault(
+                    doBlockIrq=false,
+                  )
+                }
+              } elsewhen (encInstr.g0LpreHi.subgrp === g0LpreSubgrp) {
+                when (!rDecodeTemp.preLpreValid) {
+                  rDecodeTemp.preLpreValid := True
+                  rDecodeTemp.lpreOnlyHaveHi := True
+                  
+                  rPrevPrefixImm := Cat(
+                    Mux[SInt](
+                      encInstr.g0LpreHi.simmHi.msb,
+                      S(s"${cfg.mainWidth}'d-1"),
+                      S(s"${cfg.mainWidth}'d0"),
+                    ),
+                    encInstr.g0LpreHi.simmHi,
+                  ).asUInt.resized
+                  upPayload.blockIrq := True
+                } otherwise {
+                  doDefault(
+                    doBlockIrq=false,
+                  )
+                }
+              } otherwise {
+                doDefault(
+                  doBlockIrq=false,
+                )
+              }
+            }
+            //elsewhen (encInstr.g0Atomic.subgrp === g0AtomicSubgrp) {
+            //  // TODO: support atomic instructions
+            //  doDefault(
+            //    doBlockIrq=false,
+            //  )
+            //}
+          }
+          is (g1Grp) {
+            upPayload.gprIdxVec(0) := encInstr.g1.raIdx
+            upPayload.gprIdxVec(1) := encInstr.g1.raIdx
+            upPayload.gprIdxVec(2) := encInstr.g1.raIdx
+            //upPayload.gprIdxVec(2) := encInstr.g1.rbIdx
+            val tempUImm = UInt(cfg.mainWidth bits)
+            val tempSImm = UInt(cfg.mainWidth bits)
+            when (!rDecodeTemp.preLpreValid) {
+              tempUImm := (
+                encInstr.g1.imm.resized
+              )
+              tempSImm := (
+                Cat(
+                  Mux[SInt](
+                    encInstr.g1.imm.msb,
+                    S(s"${cfg.mainWidth}'d-1"),
+                    S(s"${cfg.mainWidth}'d0"),
+                  ),
+                  encInstr.g1.imm
+                ).asUInt.resized
+              )
+            } otherwise {
+              //upPayload.rPrevPrefixImm
+              tempUImm := (
+                Cat(
+                  rPrevPrefixImm,
+                  encInstr.g1.imm,
+                ).asUInt.resized
+              )
+              tempSImm := (
+                Cat(
+                  rPrevPrefixImm,
+                  encInstr.g1.imm,
+                ).asUInt.resized
+              )
+            }
+            upPayload.imm := tempSImm
+            rDecodeTemp := rDecodeTemp.getZero
+            switch (encInstr.g1.op) {
+              is (FlareCpuInstrG1EncOp.addRaS5) {
+                // Opcode 0x0: add rA, #simm5
+                setOp(FlareCpuOp.addRaSimm)
+              }
+              is (FlareCpuInstrG1EncOp.addRaPcS5) {
+                // Opcode 0x1: add rA, pc, #simm5
+                setOp(FlareCpuOp.addRaPcSimm)
+              }
+              is (FlareCpuInstrG1EncOp.addRaSpS5) {
+                // Opcode 0x2: add rA, sp, #simm5
+                upPayload.gprIdxVec(1) := gprSpIdx
+                setOp(FlareCpuOp.addRaSimm)
+              }
+              is (FlareCpuInstrG1EncOp.addRaFpS5) {
+                // Opcode 0x3: add rA, fp, #simm5
+                upPayload.gprIdxVec(1) := gprFpIdx
+                setOp(FlareCpuOp.addRaSimm)
+              }
+              is (FlareCpuInstrG1EncOp.cmpRaS5) {
+                // Opcode 0x4: cmp rA, #simm5
+                setOp(FlareCpuOp.cmpRaSimm)
+              }
+              is (FlareCpuInstrG1EncOp.cpyRaS5) {
+                // Opcode 0x5: cpy rA, #simm5
+                setOp(FlareCpuOp.cpyRaSimm)
+              }
+              is (FlareCpuInstrG1EncOp.lslRaI5) {
+                // Opcode 0x6: lsl rA, #imm5
+                upPayload.imm := tempUImm
+                setOp(FlareCpuOp.lslRaImm)
+              }
+              is (FlareCpuInstrG1EncOp.lsrRaI5) {
+                // Opcode 0x7: lsr rA, #imm5
+                upPayload.imm := tempUImm
+                setOp(FlareCpuOp.lsrRaImm)
+              }
+              is (FlareCpuInstrG1EncOp.asrRaI5) {
+                // Opcode 0x8: asr rA, #imm5
+                upPayload.imm := tempUImm
+                setOp(FlareCpuOp.asrRaImm)
+              }
+              is (FlareCpuInstrG1EncOp.andRaS5) {
+                // Opcode 0x9: and rA, #simm5
+                setOp(FlareCpuOp.andRaSimm)
+              }
+              is (FlareCpuInstrG1EncOp.orrRaS5) {
+                // Opcode 0xa: orr rA, #simm5
+                setOp(FlareCpuOp.orrRaSimm)
+              }
+              is (FlareCpuInstrG1EncOp.xorRaS5) {
+                // Opcode 0xb: xor rA, #simm5
+                setOp(FlareCpuOp.xorRaSimm)
+              }
+              default {
+                doDefault(
+                  doBlockIrq=false
+                )
+              }
+              // TODO: the rest of these instructions
+              //is (FlareCpuInstrG1EncOp.zeRaI5) {
+              //  // Opcode 0xc: ze rA, #imm5
+              //  upPayload.imm := tempUImm
+              //}
+              //is (FlareCpuInstrG1EncOp.seRaI5) {
+              //  // Opcode 0xd: se rA, #imm5
+              //  upPayload.imm := tempUImm
+              //}
+              //is (FlareCpuInstrG1EncOp.swiRaS5) {
+              //  // Opcode 0xe: swi rA, #simm5
+              //  //upPayload.imm := tempSImm
+              //}
+              //is (FlareCpuInstrG1EncOp.swiI5) {
+              //  // Opcode 0xf: swi #imm5
+              //  upPayload.imm := tempUImm
+              //}
+            }
+          }
+          is (g2Grp) {
+            upPayload.gprIdxVec(0) := encInstr.g2.raIdx
+            upPayload.gprIdxVec(1) := encInstr.g2.raIdx
+            upPayload.gprIdxVec(2) := encInstr.g2.rbIdx
+            rDecodeTemp := rDecodeTemp.getZero
+            switch (encInstr.g2.op) {
+              is (FlareCpuInstrG2EncOp.addRaRb) {
+                // Opcode 0x0: add rA, rB
+                when (!encInstr.g2.f) {
+                  setOp(FlareCpuOp.addRaRb)
+                } otherwise {
+                  setOp(FlareCpuOp.addRaRbFlags)
+                }
+              }
+              is (FlareCpuInstrG2EncOp.subRaRb) {
+                // Opcode 0x1: sub rA, rB
+                when (!encInstr.g2.f) {
+                  setOp(FlareCpuOp.subRaRb)
+                } otherwise {
+                  setOp(FlareCpuOp.subRaRbFlags)
+                }
+              }
+              is (FlareCpuInstrG2EncOp.addRaSpRb) {
+                // Opcode 0x2: add rA, sp, rB
+                upPayload.gprIdxVec(1) := gprSpIdx
+                when (!encInstr.g2.f) {
+                  setOp(FlareCpuOp.addRaRb)
+                } otherwise {
+                  setOp(FlareCpuOp.addRaRbFlags)
+                }
+              }
+              is (FlareCpuInstrG2EncOp.addRaFpRb) {
+                // Opcode 0x3: add rA, fp, rB
+                upPayload.gprIdxVec(1) := gprFpIdx
+                when (!encInstr.g2.f) {
+                  setOp(FlareCpuOp.addRaRb)
+                } otherwise {
+                  setOp(FlareCpuOp.addRaRbFlags)
+                }
+              }
+              is (FlareCpuInstrG2EncOp.cmpRaRb) {
+                // Opcode 0x4: cmp rA, rB
+                setOp(FlareCpuOp.cmpRaRb)
+              }
+              is (FlareCpuInstrG2EncOp.cpyRaRb) {
+                // Opcode 0x5: cpy rA, rB
+                when (!encInstr.g2.f) {
+                  setOp(FlareCpuOp.cpyRaRb)
+                } otherwise {
+                  setOp(FlareCpuOp.cpyRaRbFlags)
+                }
+              }
+              is (FlareCpuInstrG2EncOp.lslRaRb) {
+                // Opcode 0x6: lsl rA, rB
+                when (!encInstr.g2.f) {
+                  setOp(FlareCpuOp.lslRaRb)
+                } otherwise {
+                  setOp(FlareCpuOp.lslRaRbFlags)
+                }
+              }
+              is (FlareCpuInstrG2EncOp.lsrRaRb) {
+                // Opcode 0x7: lsr rA, rB
+                when (!encInstr.g2.f) {
+                  setOp(FlareCpuOp.lsrRaRb)
+                } otherwise {
+                  setOp(FlareCpuOp.lsrRaRbFlags)
+                }
+              }
+              is (FlareCpuInstrG2EncOp.asrRaRb) {
+                // Opcode 0x8: asr rA, rB
+                when (!encInstr.g2.f) {
+                  setOp(FlareCpuOp.asrRaRb)
+                } otherwise {
+                  setOp(FlareCpuOp.asrRaRbFlags)
+                }
+              }
+              is (FlareCpuInstrG2EncOp.andRaRb) {
+                // Opcode 0x9: and rA, rB
+                when (!encInstr.g2.f) {
+                  setOp(FlareCpuOp.andRaRb)
+                } otherwise {
+                  setOp(FlareCpuOp.andRaRbFlags)
+                }
+              }
+              is (FlareCpuInstrG2EncOp.orrRaRb) {
+                // Opcode 0xa: orr rA, rB
+                when (!encInstr.g2.f) {
+                  setOp(FlareCpuOp.orrRaRb)
+                } otherwise {
+                  setOp(FlareCpuOp.orrRaRbFlags)
+                }
+              }
+              is (FlareCpuInstrG2EncOp.xorRaRb) {
+                // Opcode 0xb: xor rA, rB
+                when (!encInstr.g2.f) {
+                  setOp(FlareCpuOp.xorRaRb)
+                } otherwise {
+                  setOp(FlareCpuOp.xorRaRbFlags)
+                }
+              }
+              is (FlareCpuInstrG2EncOp.adcRaRb) {
+                // Opcode 0xc: adc rA, rB
+                when (!encInstr.g2.f) {
+                  setOp(FlareCpuOp.adcRaRb)
+                } otherwise {
+                  setOp(FlareCpuOp.adcRaRbFlags)
+                }
+              }
+              is (FlareCpuInstrG2EncOp.sbcRaRb) {
+                // Opcode 0xd: sbc rA, rB
+                when (!encInstr.g2.f) {
+                  setOp(FlareCpuOp.sbcRaRb)
+                } otherwise {
+                  setOp(FlareCpuOp.sbcRaRbFlags)
+                }
+              }
+              default {
+                doDefault(
+                  doBlockIrq=false,
+                  doSetImm=true,
+                )
+              }
+              //is (FlareCpuInstrG2EncOp.cmpbcRaRb) {
+              //  // Opcode 0xe: cmpbc rA, rB
+              //  // TODO
+              //  doDefault(
+              //    doBloc
+              //  )
+              //}
+              //is (FlareCpuInstrG2EncOp.invalid0) {
+              //  // Opcode 0xf: invalid operation 0
+              //}
+            }
+          }
+          is (g3Grp) {
+            rDecodeTemp := rDecodeTemp.getZero
+            //upPayload.gprIdxVec(0) := 0x0
+            //upPayload.gprIdxVec(1) := 0x0
+            //upPayload.gprIdxVec(2) := 0x0
+            val tempUImm = UInt(cfg.mainWidth bits)
+            val tempSImm = UInt(cfg.mainWidth bits)
+            when (!rDecodeTemp.preLpreValid) {
+              tempUImm := (
+                encInstr.g3.simm.resized
+              )
+              tempSImm := (
+                Cat(
+                  Mux[SInt](
+                    encInstr.g3.simm.msb,
+                    S(s"${cfg.mainWidth}'d-1"),
+                    S(s"${cfg.mainWidth}'d0"),
+                  ),
+                  encInstr.g3.simm
+                ).asUInt.resized
+              )
+            } otherwise {
+              //upPayload.rPrevPrefixImm
+              tempUImm := (
+                Cat(
+                  rPrevPrefixImm,
+                  encInstr.g3.simm,
+                ).asUInt.resized
+              )
+              tempSImm := (
+                Cat(
+                  rPrevPrefixImm,
+                  encInstr.g3.simm,
+                ).asUInt.resized
+              )
+            }
+            upPayload.imm := tempSImm
+            switch (encInstr.g3.op) {
+              is (FlareCpuInstrG3EncOp.blS9) {
+                // Opcode 0x0: bl simm9
+                setOp(FlareCpuOp.blSimm)
+              }
+              is (FlareCpuInstrG3EncOp.braS9) {
+                // Opcode 0x1: bra simm9
+                setOp(FlareCpuOp.braSimm)
+              }
+              is (FlareCpuInstrG3EncOp.beqS9) {
+                // Opcode 0x2: beq simm9
+                setOp(FlareCpuOp.beqSimm)
+              }
+              is (FlareCpuInstrG3EncOp.bneS9) {
+                // Opcode 0x3: bne simm9
+                setOp(FlareCpuOp.bneSimm)
+              }
+              is (FlareCpuInstrG3EncOp.bmiS9) {
+                // Opcode 0x4: bmi simm9
+                setOp(FlareCpuOp.bmiSimm)
+              }
+              is (FlareCpuInstrG3EncOp.bplS9) {
+                // Opcode 0x5: bpl simm9
+                setOp(FlareCpuOp.bplSimm)
+              }
+              is (FlareCpuInstrG3EncOp.bvsS9) {
+                // Opcode 0x6: bvs simm9
+                setOp(FlareCpuOp.bvsSimm)
+              }
+              is (FlareCpuInstrG3EncOp.bvcS9) {
+                // Opcode 0x7: bvc simm9
+                setOp(FlareCpuOp.bvcSimm)
+              }
+              is (FlareCpuInstrG3EncOp.bgeuS9) {
+                // Opcode 0x8: bgeu simm9
+                setOp(FlareCpuOp.bgeuSimm)
+              }
+              is (FlareCpuInstrG3EncOp.bltuS9) {
+                // Opcode 0x9: bltu simm9
+                setOp(FlareCpuOp.bltuSimm)
+              }
+              is (FlareCpuInstrG3EncOp.bgtuS9) {
+                // Opcode 0xa: bgtu simm9
+                setOp(FlareCpuOp.bgtuSimm)
+              }
+              is (FlareCpuInstrG3EncOp.bleuS9) {
+                // Opcode 0xb: bleu simm9
+                setOp(FlareCpuOp.bleuSimm)
+              }
+              is (FlareCpuInstrG3EncOp.bgesS9) {
+                // Opcode 0xc: bges simm9
+                setOp(FlareCpuOp.bgesSimm)
+              }
+              is (FlareCpuInstrG3EncOp.bltsS9) {
+                // Opcode 0xd: blts simm9
+                setOp(FlareCpuOp.bltsSimm)
+              }
+              is (FlareCpuInstrG3EncOp.bgtsS9) {
+                // Opcode 0xe: bgts simm9
+                setOp(FlareCpuOp.bgtsSimm)
+              }
+              is (FlareCpuInstrG3EncOp.blesS9) {
+                // Opcode 0xf: bles simm9
+                setOp(FlareCpuOp.blesSimm)
+              }
+            }
+          }
+          is (g4Grp) {
+            rDecodeTemp := rDecodeTemp.getZero
+            upPayload.gprIdxVec(0) := encInstr.g4.raIdx
+            upPayload.gprIdxVec(1) := encInstr.g4.raIdx
+            upPayload.gprIdxVec(2) := encInstr.g4.rbIdx
+            switch (encInstr.g4.op) {
+              is (FlareCpuInstrG4EncOp.jlRa) {
+                // Opcode 0x0: jl rA
+                upPayload.gprIdxVec(0) := gprLrIdx
+                setOp(FlareCpuOp.jlRa)
+              }
+              is (FlareCpuInstrG4EncOp.jmpRa) {
+                // Opcode 0x1: jmp rA
+                setOp(FlareCpuOp.jmpRa)
+              }
+              //is (FlareCpuInstrG4EncOp.jmpIra) {
+              //  // Opcode 0x2: jmp ira
+              //}
+              //is (FlareCpuInstrG4EncOp.reti) {
+              //  // Opcode 0x3: reti
+              //}
+              //is (FlareCpuInstrG4EncOp.ei) {
+              //  // Opcode 0x4: ei
+              //}
+              //is (FlareCpuInstrG4EncOp.di) {
+              //  // Opcode 0x5: di
+              //}
+              //is (FlareCpuInstrG4EncOp.pushRaRb) {
+              //  // Opcode 0x6: push rA, rB
+              //}
+              //is (FlareCpuInstrG4EncOp.pushSaRb) {
+              //  // Opcode 0x7: push sA, rB
+              //}
+              //is (FlareCpuInstrG4EncOp.popRaRb) {
+              //  // Opcode 0x8: pop rA, rB
+              //}
+              //is (FlareCpuInstrG4EncOp.popSaRb) {
+              //  // Opcode 0x9: pop sA, rB
+              //}
+              //is (FlareCpuInstrG4EncOp.popPcRb) {
+              //  // Opcode 0xa: pop pc, rB
+              //}
+              is (FlareCpuInstrG4EncOp.mulRaRb) {
+                // Opcode 0xb: mul rA, rB
+                setOp(FlareCpuOp.mulRaRb)
+              }
+              //is (FlareCpuInstrG4EncOp.udivmodRaRb) {
+              //  // Opcode 0xc: udivmod rA, rB
+              //}
+              //is (FlareCpuInstrG4EncOp.sdivmodRaRb) {
+              //  // Opcode 0xd: sdivmod rA, rB
+              //}
+              //is (FlareCpuInstrG4EncOp.lumulRaRb) {
+              //  // Opcode 0xe: lumul rA, rB
+              //}
+              //is (FlareCpuInstrG4EncOp.lsmulRaRb) {
+              //  // Opcode 0xf: lsmul rA, rB
+              //}
+              //--------
+              //is (FlareCpuInstrG4EncOp.udivmod64RaRb) {
+              //  // Opcode 0x10: udivmod64 rA, rB
+              //}
+              //is (FlareCpuInstrG4EncOp.sdivmod64RaRb) {
+              //  // Opcode 0x11: sdivmod64 rA, rB
+              //}
+              is (FlareCpuInstrG4EncOp.ldubRaRb) {
+                // Opcode 0x12: ldub rA, [rB]
+                when (!rDecodeTemp.indexEitherValid) {
+                  setOp(FlareCpuOp.ldubRaRbLdst)
+                } otherwise {
+                  setOp(FlareCpuOp.ldubRaIndexRegLdst)
+                }
+              }
+              is (FlareCpuInstrG4EncOp.ldsbRaRb) {
+                // Opcode 0x13: ldsb rA, [rB]
+                when (!rDecodeTemp.indexEitherValid) {
+                  setOp(FlareCpuOp.ldsbRaRbLdst)
+                } otherwise {
+                  setOp(FlareCpuOp.ldsbRaIndexRegLdst)
+                }
+              }
+              is (FlareCpuInstrG4EncOp.lduhRaRb) {
+                // Opcode 0x14: lduh rA, [rB]
+                when (!rDecodeTemp.indexEitherValid) {
+                  setOp(FlareCpuOp.lduhRaRbLdst)
+                } otherwise {
+                  setOp(FlareCpuOp.lduhRaIndexRegLdst)
+                }
+              }
+              is (FlareCpuInstrG4EncOp.ldshRaRb) {
+                // Opcode 0x15: ldsh rA, [rB]
+                when (!rDecodeTemp.indexEitherValid) {
+                  setOp(FlareCpuOp.ldshRaRbLdst)
+                } otherwise {
+                  setOp(FlareCpuOp.ldshRaIndexRegLdst)
+                }
+              }
+              is (FlareCpuInstrG4EncOp.ldrRaRb) {
+                // Opcode 0x16: ldr rA, [rB]
+                when (!rDecodeTemp.indexEitherValid) {
+                  setOp(FlareCpuOp.ldrRaRbLdst)
+                } otherwise {
+                  setOp(FlareCpuOp.ldrRaIndexRegLdst)
+                }
+              }
+              //is (FlareCpuInstrG4EncOp.reserved17) {
+              //  // Opcode 0x17: reserved
+              //}
+              is (FlareCpuInstrG4EncOp.stbRaRb) {
+                // Opcode 0x18: stb rA, [rB]
+                when (!rDecodeTemp.indexEitherValid) {
+                  setOp(FlareCpuOp.stbRaRbLdst)
+                } otherwise {
+                  setOp(FlareCpuOp.stbRaIndexRegLdst)
+                }
+              }
+              is (FlareCpuInstrG4EncOp.sthRaRb) {
+                // Opcode 0x19: sth rA, [rB]
+                when (!rDecodeTemp.indexEitherValid) {
+                  setOp(FlareCpuOp.sthRaRbLdst)
+                } otherwise {
+                  setOp(FlareCpuOp.sthRaIndexRegLdst)
+                }
+              }
+              is (FlareCpuInstrG4EncOp.strRaRb) {
+                // Opcode 0x1a: str rA, [rB]
+                when (!rDecodeTemp.indexEitherValid) {
+                  setOp(FlareCpuOp.strRaRbLdst)
+                } otherwise {
+                  setOp(FlareCpuOp.strRaIndexRegLdst)
+                }
+              }
+              //is (FlareCpuInstrG4EncOp.reserved1b) {
+              //  // Opcode 0x1b: reserved
+              //}
+              //is (FlareCpuInstrG4EncOp.cpyRaSb) {
+              //  // Opcode 0x1c: cpy rA, sB
+              //}
+              //is (FlareCpuInstrG4EncOp.cpySaRb) {
+              //  // Opcode 0x1d: cpy sA, rB
+              //}
+              //is (FlareCpuInstrG4EncOp.cpySaSb) {
+              //  // Opcode 0x1e: cpy sA, sB
+              //}
+              default {
+                doDefault(
+                  doBlockIrq=false,
+                  doSetImm=true,
+                )
+              }
+            }
+          }
+          is (g5Grp) {
+            //rDecodeTemp := rDecodeTemp.getZero
+            when (encInstr.g5Sg0.subgrp === g5Sg0Subgrp) {
+              when (
+                !rDecodeTemp.indexEitherValid
+              ) {
+                upPayload.gprIdxVec(1) := encInstr.g5Sg0.raIdx
+                upPayload.gprIdxVec(2) := encInstr.g5Sg0.rbIdx
+                upPayload.blockIrq := True
+                setOp(FlareCpuOp.indexRaRb)
+              } otherwise {
+                doDefault(
+                  doBlockIrq=false,
+                  doSetImm=true,
+                )
+              }
+            } otherwise {
+              when (
+                !rDecodeTemp.preLpreValid
+                && !rDecodeTemp.indexEitherValid
+              ) {
+                rDecodeTemp.indexEitherValid := True
+                rDecodeTemp.indexRaSimmValid := True
+                //val tempUImm = UInt(cfg.mainWidth bits)
+                val tempSImm = UInt(cfg.mainWidth bits)
+                when (!rDecodeTemp.preLpreValid) {
+                  tempSImm := (
+                    Cat(
+                      Mux[SInt](
+                        encInstr.g5Sg1.simm.msb,
+                        S(s"${cfg.mainWidth}'d-1"),
+                        S(s"${cfg.mainWidth}'d0"),
+                      ),
+                      encInstr.g5Sg1.simm,
+                    ).asUInt.resized
+                  )
+                } otherwise {
+                  tempSImm := (
+                    Cat(
+                      rPrevPrefixImm,
+                      encInstr.g5Sg1.simm,
+                    ).asUInt.resized
+                  )
+                }
+                upPayload.imm := tempSImm
+                upPayload.gprIdxVec(1) := encInstr.g5Sg1.raIdx
+                upPayload.blockIrq := True
+                setOp(FlareCpuOp.indexRaSimm)
+              } otherwise {
+                doDefault(
+                  doBlockIrq=false,
+                  doSetImm=true,
+                )
+              }
+            }
+          }
+          is (g6Grp) {
+            rDecodeTemp := rDecodeTemp.getZero
+          }
+          is (g7Grp) {
+            rDecodeTemp := rDecodeTemp.getZero
+          }
+        }
+      }
+    }
+    //switch (encInstr.op) {
+    //  is (AddRaRbRc._1) {
+    //    when (encInstr.rcIdx =/= 0x0) {
+    //      setOp(AddRaRbRc)
+    //    } otherwise {
+    //      setOp(AddRaRbSimm16)
+    //    }
+    //  }
+    //  is (SubRaRbRc._1) {
+    //    //when (encInstr.rcIdx =/= 0x0) {
+    //      setOp(SubRaRbRc)
+    //    //} otherwise {
+    //    //  setOp(SubRaRbSimm16)
+    //    //}
+    //  }
+    //  is (SltuRaRbRc._1) {
+    //    switch (encInstr.imm16(0 downto 0)) {
+    //      is (SltuRaRbRc._2) {
+    //        setOp(SltuRaRbRc)
+    //      }
+    //      is (SltsRaRbRc._2) {
+    //        setOp(SltsRaRbRc)
+    //      }
+    //    }
+    //  }
+    //  is (XorRaRbRc._1) {
+    //    when (encInstr.rcIdx =/= 0x0) {
+    //      setOp(XorRaRbRc)
+    //    } otherwise {
+    //      setOp(XorRaRbImm16)
+    //    }
+    //  }
+    //  is (OrRaRbRc._1) {
+    //    when (encInstr.rcIdx =/= 0x0) {
+    //      setOp(OrRaRbRc)
+    //    } otherwise {
+    //      setOp(OrRaRbImm16)
+    //    }
+    //  }
+    //  is (AndRaRbRc._1) {
+    //    setOp(AndRaRbRc)
+    //  }
+    //  is (LslRaRbRc._1) {
+    //    switch (encInstr.imm16(1 downto 0)) {
+    //      is (LslRaRbRc._2) {
+    //        setOp(LslRaRbRc)
+    //      }
+    //      is (LsrRaRbRc._2) {
+    //        setOp(LsrRaRbRc)
+    //      }
+    //      is (AsrRaRbRc._2) {
+    //        setOp(AsrRaRbRc)
+    //      }
+    //      default {
+    //        doDefault()
+    //      }
+    //    }
+    //  }
+    //  //is (AddRaPcSimm16._1) {
+    //  //  setOp(AddRaPcSimm16)
+    //  //}
+    //  is (MulRaRbRc._1) {
+    //    switch (encInstr.imm16(2 downto 0)) {
+    //      is (MulRaRbRc._2) {
+    //        setOp(MulRaRbRc)
+    //      }
+    //      is (UdivRaRbRc._2) {
+    //        setOp(UdivRaRbRc)
+    //      }
+    //      is (SdivRaRbRc._2) {
+    //        setOp(SdivRaRbRc)
+    //      }
+    //      is (UmodRaRbRc._2) {
+    //        setOp(UmodRaRbRc)
+    //      }
+    //      is (SmodRaRbRc._2) {
+    //        setOp(SmodRaRbRc)
+    //      }
+    //      default {
+    //        doDefault()
+    //      }
+    //    }
+    //  }
+    //  is (LdrRaRbRc._1) {
+    //    when (encInstr.rcIdx =/= 0x0) {
+    //      setOp(LdrRaRbRc)
+    //    } otherwise {
+    //      setOp(LdrRaRbSimm16)
+    //    }
+    //  }
+    //  is (LduhRaRbRc._1) {
+    //    switch (encInstr.imm16(1 downto 0)) {
+    //      is (LduhRaRbRc._2) {
+    //        setOp(LduhRaRbRc)
+    //      }
+    //      is (LdshRaRbRc._2) {
+    //        setOp(LdshRaRbRc)
+    //      }
+    //      is (LdubRaRbRc._2) {
+    //        setOp(LdubRaRbRc)
+    //      }
+    //      is (LdsbRaRbRc._2) {
+    //        setOp(LdsbRaRbRc)
+    //      }
+    //    }
+    //  }
+    //  is (StrRaRbRc._1) {
+    //    when (encInstr.rcIdx =/= 0x0) {
+    //      setOp(StrRaRbRc)
+    //    } otherwise {
+    //      setOp(StrRaRbSimm16)
+    //    }
+    //  }
+    //  is (SthRaRbRc._1) {
+    //    switch (encInstr.imm16(0 downto 0)) {
+    //      is (SthRaRbRc._2) {
+    //        setOp(SthRaRbRc)
+    //      }
+    //      is (StbRaRbRc._2) {
+    //        setOp(StbRaRbRc)
+    //      }
+    //    }
+    //  }
+    //  is (BeqRaRbSimm._1) {
+    //    switch (encInstr.rcIdx(1 downto 0)) {
+    //      is (BeqRaRbSimm._2) {
+    //        when (
+    //          encInstr.raIdx === encInstr.rbIdx
+    //          && encInstr.raIdx =/= 0x0
+    //        ) {
+    //          setOp(BlSimm)
+    //        } otherwise {
+    //          setOp(BeqRaRbSimm)
+    //        }
+    //      }
+    //      is (BneRaRbSimm._2) {
+    //        when (
+    //          encInstr.raIdx === encInstr.rbIdx
+    //          && encInstr.raIdx =/= 0x0
+    //        ) {
+    //          setOp(AddRaPcSimm16)
+    //        } otherwise {
+    //          setOp(BneRaRbSimm)
+    //        }
+    //      }
+    //      is (JlRaRb._2) {
+    //        setOp(JlRaRb)
+    //      }
+    //      default {
+    //        doDefault()
+    //      }
+    //    }
+    //  }
+    //  //is (CpyuRaRb._1) {
+    //  //  switch (encInstr.rcIdx(0 downto 0)) {
+    //  //    //is (CpyRaRb._2) {
+    //  //    //  setOp(CpyRaRb)
+    //  //    //}
+    //  //    //is (CpyRaSimm16._2) {
+    //  //    //  setOp(CpyRaSimm16)
+    //  //    //}
+    //  //    is (CpyuRaRb._2) {
+    //  //      setOp(CpyuRaRb)
+    //  //    }
+    //  //    is (CpyuRaSimm16._2) {
+    //  //      setOp(CpyuRaSimm16)
+    //  //    }
+    //  //  }
+    //  //}
+    //  is (PreImm16._1) {
+    //    doDefault(
+    //      //doSetImm=false
+    //    )
+    //    when (
+    //      cId.up.isFiring
+    //      && !rState
+    //    ) {
+    //      upPayload.blockIrq := True
+    //      nextState := True
+    //    }
+    //  }
+    //  default {
+    //    doDefault()
+    //  }
+    //}
+    //upPayload.op := encInstr.op
+  }
 }
 
 //case class FlareCpuIcacheWordType(

@@ -30,22 +30,22 @@ import libcheesevoyage.formal.LcvFormal
 //  def mkStopAnyseqCnt
 //}
 object FlareCpuFormal {
-  def defaultDelayCntWidth = 8
-  def delayStopAnyseq[
-    WordT <: Data,
-  ](
-    signal: WordT,
-    reset: WordT,
-    delay: UInt,
-    cntWidth: Int=defaultDelayCntWidth,
-  ) = (
-    LcvFormal.DelayStopAnyseq(
-      signal=signal,
-      reset=reset,
-      delay=delay,
-      cntWidth=cntWidth,
-    )
-  )
+  //def defaultDelayCntWidth = 8
+  //def delayStopAnyseq[
+  //  WordT <: Data,
+  //](
+  //  signal: WordT,
+  //  reset: WordT,
+  //  delay: UInt,
+  //  cntWidth: Int=defaultDelayCntWidth,
+  //) = (
+  //  LcvFormal.DelayStopAnyseq(
+  //    signal=signal,
+  //    reset=reset,
+  //    delay=delay,
+  //    cntWidth=cntWidth,
+  //  )
+  //)
   //case class DelayStopAnyseq[
   //  WordT <: Data,
   //](
