@@ -886,11 +886,11 @@ Here is a list of instructions from this encoding group.
   - Effect: pops `rA` off the stack, using
     `rB` as the stack pointer, pre-incrementing `rB`.
   - This instruction does nothing when `rA` is the same register as `rB`. 
-  - This instruction does nothing when all of the following conditions are
-    met:
-    - `rA`'s register encoding's evenness/oddness is the same as `rB`'s
-      register encoding's evenness/oddness.
-    - `rB` *is not* `sp` 
+  //- This instruction does nothing when all of the following conditions are
+  //  met:
+  //  - `rA`'s register encoding's evenness/oddness is the same as `rB`'s
+  //    register encoding's evenness/oddness.
+  //  - `rB` *is not* `sp` 
   - Note: As a pseudo instruction, omitting "`, rB`" will
     automatically select `sp` as the particular stack
     pointer. 

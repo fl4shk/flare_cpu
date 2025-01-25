@@ -26,7 +26,9 @@ ifdef DEBUG
 endif
 
 # This is the name of the output file.  Change this if needed!
-PROJ:=$(shell basename $(CURDIR))$(DEBUG_SUFFIX).elf
+PROJ_BASE:=$(shell basename $(CURDIR))$(DEBUG_SUFFIX)
+PROJ:=$(PROJ_BASE).elf
+PROJ_BIN:=$(PROJ_BASE).bin
 
 # This is used for do_asmouts
 #VERBOSE_ASM_FLAG:=-fverbose-asm
@@ -45,6 +47,7 @@ AS:=$(PREFIX)as
 S_FLAGS:=$(S_FLAGS) #-mlinkrelax
 
 OBJDUMP:=$(PREFIX)objdump
+OBJCOPY:=$(PREFIX)objcopy
 
 
 #LD:=$(CXX)
@@ -125,6 +128,7 @@ EFILES:=$(CXX_EFILES) $(C_EFILES)
 .PHONY : all
 all : all_pre $(OFILES)
 	$(LD) $(OFILES) -o $(PROJ) $(LD_FLAGS)
+	$(OBJCOPY) -O binary $(PROJ) $(PROJ_BIN)
 
 
 # all_objs is ENTIRELY optional

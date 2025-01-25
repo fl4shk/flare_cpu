@@ -542,17 +542,17 @@ object FlareCpuOp {
   //--------
   val jlRa = mkOp("jlRa")
   val jmpRa = mkOp("jmpRa")
-  val jmpIra = mkOp("jmpIra")
+  //val jmpIra = mkOp("jmpIra")
   val reti = mkOp("reti")
   val ei = mkOp("ei")
   val di = mkOp("di")
   //--------
   // TODO: implement these as multiple `libsnowhouse` operations
-  //val pushRaRb = mkOp("pushRaRb")
-  //val pushSaRb = mkOp("pushSaRb")
-  //val popRaRb = mkOp("popRaRb")
-  //val popSaRb = mkOp("popSaRb")
-  //val popPcRb = mkOp("popPcRb")
+  val pushRaRb = mkOp("pushRaRb")
+  val pushSaRb = mkOp("pushSaRb")
+  val popRaRb = mkOp("popRaRb")
+  val popSaRb = mkOp("popSaRb")
+  val popPcRb = mkOp("popPcRb")
   //--------
   val mulRaRb = mkOp("mulRaRb")
   //--------

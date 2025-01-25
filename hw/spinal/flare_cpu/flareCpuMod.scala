@@ -24,6 +24,7 @@ import libcheesevoyage.bus.lcvStall.{
   LcvStallIo, LcvStallHost, LcvStallHostSaved
 }
 import libsnowhouse._
+import java.io.{FileInputStream, BufferedInputStream}
 
 
 object FlareCpuFormalInstrCnt {
@@ -53,12 +54,12 @@ object FlareCpuPipeStageInstrDecode {
       .setName("InstrDecode_encInstr")
     )
     encInstr.assignFromBits(
-      //io.ibus.devData.instr.asBits
-      Mux[Bits](
-        !psId.shouldBubble,
+      ////io.ibus.devData.instr.asBits
+      //Mux[Bits](
+      //  !psId.shouldBubble,
         psId.tempInstr.asBits,
-        psId.tempInstr.asBits.getZero
-      )
+      //  psId.tempInstr.asBits.getZero
+      //)
     )
     //object State
     //extends SpinalEnum(defaultEncoding=binarySequential) {
@@ -162,42 +163,110 @@ object FlareCpuPipeStageInstrDecode {
     //  }
     //}
     def setOp(
-      someOp: (Int, /*Int,*/ String)
-    ): Unit = {
+      someOp: (Int, String),
+      //someOutpOp: UInt=upPayload.op,
+    ): Area = new Area {
+      setName(s"setOp_${someOp._1}")
+      var found = false
       for (
         ((tuple, opInfo), opInfoIdx) <- shCfg.opInfoMap.view.zipWithIndex
       ) {
         if (someOp == tuple) {
-          println(
-            s"${opInfoIdx}: ${someOp._2}"
-          )
-          upPayload.op := opInfoIdx
-          return
+          val mySplitOp = upPayload.splitOp
+          //for ((src, srcIdx) <- opInfo.srcArr.view.zipWithIndex) {
+          //  mySplitOp.srcKindVec
+          //}
+          for (
+            ((_, cpyOpInfo), cpyOpInfoIdx)
+            <- shCfg.cpyCpyuiOpInfoMap.view.zipWithIndex
+          ) {
+            if (opInfo == cpyOpInfo) {
+              println(
+                //s"pureCpyOp (${cpyOpInfoIdx}): "
+                //+ s"${opInfoIdx}: ${someOp._2}"
+                s"cpyCpyuiOp: ${cpyOpInfoIdx} "
+                + s"${someOp._2} // ${opInfoIdx}"
+              )
+              //upPayload.op := opInfoIdx
+              //mySplitOp.pureCpyOp.valid := True
+              mySplitOp.kind := SnowHouseSplitOpKind.CPY_CPYUI
+              mySplitOp.cpyCpyuiOp := cpyOpInfoIdx
+              //return
+              found = true
+            }
+          }
+          for (
+            ((_, jmpOpInfo), jmpOpInfoIdx)
+            <- shCfg.jmpBrOpInfoMap.view.zipWithIndex
+          ) {
+            if (opInfo == jmpOpInfo) {
+              println(
+                s"jmpBrOp: ${jmpOpInfoIdx} "
+                + s"${someOp._2} // ${opInfoIdx}"
+              )
+              //upPayload.op := opInfoIdx
+              //mySplitOp.pureJmpOp.valid := True
+              mySplitOp.kind := SnowHouseSplitOpKind.JMP_BR
+              mySplitOp.jmpBrOp := jmpOpInfoIdx
+              //return
+              found = true
+            }
+          }
+          for (
+            ((_, aluOpInfo), aluOpInfoIdx)
+            <- shCfg.aluOpInfoMap.view.zipWithIndex
+          ) {
+            if (opInfo == aluOpInfo) {
+              println(
+                s"aluOp: ${aluOpInfoIdx} "
+                + s"${someOp._2} // ${opInfoIdx}"
+              )
+              mySplitOp.kind := SnowHouseSplitOpKind.ALU
+              mySplitOp.aluOp := aluOpInfoIdx
+              found = true
+            }
+          }
+          for (
+            ((_, multiCycleOpInfo), multiCycleOpInfoIdx)
+            <- shCfg.multiCycleOpInfoMap.view.zipWithIndex
+          ) {
+            if (opInfo == multiCycleOpInfo) {
+              println(
+                s"multiCycleOp: ${multiCycleOpInfoIdx} "
+                + s"${someOp._2} // ${opInfoIdx}"
+              )
+              mySplitOp.kind := SnowHouseSplitOpKind.MULTI_CYCLE
+              mySplitOp.multiCycleOp := multiCycleOpInfoIdx
+              //return
+              found = true
+            }
+          }
         }
       }
-      assert(
-        false,
-        s"eek! ${someOp}"
-      )
+      if (!found) {
+        assert(
+          false,
+          s"eek! ${someOp}"
+        )
+      }
     }
     def doDefault(
       doBlockIrq: Boolean,
       doSetImm: Boolean=true
     ): Unit = {
-      // this function could be useful for decoding variable width
-      // instructions!
-      // just do a NOP
       setOp(addRaSimm)
-      if (doBlockIrq) {
-        upPayload.blockIrq := True
-      } else {
-        rDecodeTemp := rDecodeTemp.getZero
-      }
-      upPayload.gprIdxVec.foreach{gprIdx => {
-        gprIdx := 0x0
-      }}
+      //if (doBlockIrq) {
+      //  upPayload.blockIrq := True
+      //} else {
+      //  rDecodeTemp := rDecodeTemp.getZero
+      //}
+      //upPayload.gprIdxVec.foreach{gprIdx => {
+      //  gprIdx := 0x0
+      //}}
       if (doSetImm) {
-        upPayload.imm := 0x0
+        upPayload.imm.foreach(imm => {
+          imm := 0x0
+        })
       }
     }
     upPayload.blockIrq := (
@@ -308,7 +377,9 @@ object FlareCpuPipeStageInstrDecode {
                 ).asUInt.resized
               )
             }
-            upPayload.imm := tempSImm
+            upPayload.imm.foreach(imm => {
+              imm := tempSImm
+            })
             rDecodeTemp := rDecodeTemp.getZero
             switch (encInstr.g1.op) {
               is (FlareCpuInstrG1EncOp.addRaS5) {
@@ -339,17 +410,26 @@ object FlareCpuPipeStageInstrDecode {
               }
               is (FlareCpuInstrG1EncOp.lslRaI5) {
                 // Opcode 0x6: lsl rA, #imm5
-                upPayload.imm := tempUImm
+                //upPayload.imm := tempUImm
+                upPayload.imm.foreach(imm => {
+                  imm := tempUImm
+                })
                 setOp(FlareCpuOp.lslRaImm)
               }
               is (FlareCpuInstrG1EncOp.lsrRaI5) {
                 // Opcode 0x7: lsr rA, #imm5
-                upPayload.imm := tempUImm
+                //upPayload.imm := tempUImm
+                upPayload.imm.foreach(imm => {
+                  imm := tempUImm
+                })
                 setOp(FlareCpuOp.lsrRaImm)
               }
               is (FlareCpuInstrG1EncOp.asrRaI5) {
                 // Opcode 0x8: asr rA, #imm5
-                upPayload.imm := tempUImm
+                //upPayload.imm := tempUImm
+                upPayload.imm.foreach(imm => {
+                  imm := tempUImm
+                })
                 setOp(FlareCpuOp.asrRaImm)
               }
               is (FlareCpuInstrG1EncOp.andRaS5) {
@@ -558,7 +638,10 @@ object FlareCpuPipeStageInstrDecode {
                 ).asUInt.resized
               )
             }
-            upPayload.imm := tempSImm
+            //upPayload.imm := tempSImm
+            upPayload.imm.foreach(imm => {
+              imm := tempSImm
+            })
             switch (encInstr.g3.op) {
               is (FlareCpuInstrG3EncOp.blS9) {
                 // Opcode 0x0: bl simm9
@@ -758,6 +841,7 @@ object FlareCpuPipeStageInstrDecode {
                   setOp(FlareCpuOp.strRaIndexRegLdst)
                 }
               }
+              // TODO: the rest of these instructions
               //is (FlareCpuInstrG4EncOp.reserved1b) {
               //  // Opcode 0x1b: reserved
               //}
@@ -822,7 +906,10 @@ object FlareCpuPipeStageInstrDecode {
                     ).asUInt.resized
                   )
                 }
-                upPayload.imm := tempSImm
+                //upPayload.imm := tempSImm
+                upPayload.imm.foreach(imm => {
+                  imm := tempSImm
+                })
                 upPayload.gprIdxVec(1) := encInstr.g5Sg1.raIdx
                 upPayload.blockIrq := True
                 setOp(FlareCpuOp.indexRaSimm)
@@ -834,201 +921,44 @@ object FlareCpuPipeStageInstrDecode {
               }
             }
           }
-          is (g6Grp) {
-            rDecodeTemp := rDecodeTemp.getZero
-          }
-          is (g7Grp) {
-            rDecodeTemp := rDecodeTemp.getZero
+          //is (g6Grp) {
+          //  rDecodeTemp := rDecodeTemp.getZero
+          //}
+          //is (g7Grp) {
+          //  rDecodeTemp := rDecodeTemp.getZero
+          //}
+          default {
+            doDefault(
+              doBlockIrq=false,
+              doSetImm=true,
+            )
           }
         }
       }
     }
-    //switch (encInstr.op) {
-    //  is (AddRaRbRc._1) {
-    //    when (encInstr.rcIdx =/= 0x0) {
-    //      setOp(AddRaRbRc)
-    //    } otherwise {
-    //      setOp(AddRaRbSimm16)
-    //    }
-    //  }
-    //  is (SubRaRbRc._1) {
-    //    //when (encInstr.rcIdx =/= 0x0) {
-    //      setOp(SubRaRbRc)
-    //    //} otherwise {
-    //    //  setOp(SubRaRbSimm16)
-    //    //}
-    //  }
-    //  is (SltuRaRbRc._1) {
-    //    switch (encInstr.imm16(0 downto 0)) {
-    //      is (SltuRaRbRc._2) {
-    //        setOp(SltuRaRbRc)
-    //      }
-    //      is (SltsRaRbRc._2) {
-    //        setOp(SltsRaRbRc)
-    //      }
-    //    }
-    //  }
-    //  is (XorRaRbRc._1) {
-    //    when (encInstr.rcIdx =/= 0x0) {
-    //      setOp(XorRaRbRc)
-    //    } otherwise {
-    //      setOp(XorRaRbImm16)
-    //    }
-    //  }
-    //  is (OrRaRbRc._1) {
-    //    when (encInstr.rcIdx =/= 0x0) {
-    //      setOp(OrRaRbRc)
-    //    } otherwise {
-    //      setOp(OrRaRbImm16)
-    //    }
-    //  }
-    //  is (AndRaRbRc._1) {
-    //    setOp(AndRaRbRc)
-    //  }
-    //  is (LslRaRbRc._1) {
-    //    switch (encInstr.imm16(1 downto 0)) {
-    //      is (LslRaRbRc._2) {
-    //        setOp(LslRaRbRc)
-    //      }
-    //      is (LsrRaRbRc._2) {
-    //        setOp(LsrRaRbRc)
-    //      }
-    //      is (AsrRaRbRc._2) {
-    //        setOp(AsrRaRbRc)
-    //      }
-    //      default {
-    //        doDefault()
-    //      }
-    //    }
-    //  }
-    //  //is (AddRaPcSimm16._1) {
-    //  //  setOp(AddRaPcSimm16)
-    //  //}
-    //  is (MulRaRbRc._1) {
-    //    switch (encInstr.imm16(2 downto 0)) {
-    //      is (MulRaRbRc._2) {
-    //        setOp(MulRaRbRc)
-    //      }
-    //      is (UdivRaRbRc._2) {
-    //        setOp(UdivRaRbRc)
-    //      }
-    //      is (SdivRaRbRc._2) {
-    //        setOp(SdivRaRbRc)
-    //      }
-    //      is (UmodRaRbRc._2) {
-    //        setOp(UmodRaRbRc)
-    //      }
-    //      is (SmodRaRbRc._2) {
-    //        setOp(SmodRaRbRc)
-    //      }
-    //      default {
-    //        doDefault()
-    //      }
-    //    }
-    //  }
-    //  is (LdrRaRbRc._1) {
-    //    when (encInstr.rcIdx =/= 0x0) {
-    //      setOp(LdrRaRbRc)
-    //    } otherwise {
-    //      setOp(LdrRaRbSimm16)
-    //    }
-    //  }
-    //  is (LduhRaRbRc._1) {
-    //    switch (encInstr.imm16(1 downto 0)) {
-    //      is (LduhRaRbRc._2) {
-    //        setOp(LduhRaRbRc)
-    //      }
-    //      is (LdshRaRbRc._2) {
-    //        setOp(LdshRaRbRc)
-    //      }
-    //      is (LdubRaRbRc._2) {
-    //        setOp(LdubRaRbRc)
-    //      }
-    //      is (LdsbRaRbRc._2) {
-    //        setOp(LdsbRaRbRc)
-    //      }
-    //    }
-    //  }
-    //  is (StrRaRbRc._1) {
-    //    when (encInstr.rcIdx =/= 0x0) {
-    //      setOp(StrRaRbRc)
-    //    } otherwise {
-    //      setOp(StrRaRbSimm16)
-    //    }
-    //  }
-    //  is (SthRaRbRc._1) {
-    //    switch (encInstr.imm16(0 downto 0)) {
-    //      is (SthRaRbRc._2) {
-    //        setOp(SthRaRbRc)
-    //      }
-    //      is (StbRaRbRc._2) {
-    //        setOp(StbRaRbRc)
-    //      }
-    //    }
-    //  }
-    //  is (BeqRaRbSimm._1) {
-    //    switch (encInstr.rcIdx(1 downto 0)) {
-    //      is (BeqRaRbSimm._2) {
-    //        when (
-    //          encInstr.raIdx === encInstr.rbIdx
-    //          && encInstr.raIdx =/= 0x0
-    //        ) {
-    //          setOp(BlSimm)
-    //        } otherwise {
-    //          setOp(BeqRaRbSimm)
-    //        }
-    //      }
-    //      is (BneRaRbSimm._2) {
-    //        when (
-    //          encInstr.raIdx === encInstr.rbIdx
-    //          && encInstr.raIdx =/= 0x0
-    //        ) {
-    //          setOp(AddRaPcSimm16)
-    //        } otherwise {
-    //          setOp(BneRaRbSimm)
-    //        }
-    //      }
-    //      is (JlRaRb._2) {
-    //        setOp(JlRaRb)
-    //      }
-    //      default {
-    //        doDefault()
-    //      }
-    //    }
-    //  }
-    //  //is (CpyuRaRb._1) {
-    //  //  switch (encInstr.rcIdx(0 downto 0)) {
-    //  //    //is (CpyRaRb._2) {
-    //  //    //  setOp(CpyRaRb)
-    //  //    //}
-    //  //    //is (CpyRaSimm16._2) {
-    //  //    //  setOp(CpyRaSimm16)
-    //  //    //}
-    //  //    is (CpyuRaRb._2) {
-    //  //      setOp(CpyuRaRb)
-    //  //    }
-    //  //    is (CpyuRaSimm16._2) {
-    //  //      setOp(CpyuRaSimm16)
-    //  //    }
-    //  //  }
-    //  //}
-    //  is (PreImm16._1) {
-    //    doDefault(
-    //      //doSetImm=false
-    //    )
-    //    when (
-    //      cId.up.isFiring
-    //      && !rState
-    //    ) {
-    //      upPayload.blockIrq := True
-    //      nextState := True
-    //    }
-    //  }
-    //  default {
-    //    doDefault()
-    //  }
-    //}
-    //upPayload.op := encInstr.op
+  }
+}
+object FlareCpuProgram {
+  def doConvert(
+    filename: String
+  ) = {
+    val tempArr = new ArrayBuffer[Short]()
+    val bis = new BufferedInputStream(new FileInputStream(filename))
+    var idx: Int = 0x0
+    var prevB: Int = 0
+    Iterator.continually(bis.read())
+      .takeWhile(_ != -1)
+      .foreach(b => {
+        if ((idx + 1) % 2 == 1) {
+          tempArr += (
+            (prevB << 8) | b.toInt
+            //(b.toInt << 8) | prevB
+          ).toShort
+        } 
+        idx = (idx + 1) % 2
+        prevB = b.toInt
+      })
+    tempArr
   }
 }
 
@@ -3592,4 +3522,3 @@ object FlareCpuPipeStageInstrDecode {
 //object FlareCpuVerilog extends App {
 //  Config.spinal.generateVerilog(FlareCpu(params=FlareCpuParams()))
 //}
-
